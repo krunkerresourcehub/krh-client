@@ -1,0 +1,488 @@
+import { ipcRenderer } from 'electron';
+import { fetchGame } from './matchmaker';
+import type { MatchmakerConfig } from './matchmaker';
+import { hookSettings } from './settings-render';
+import { hookNativeImport } from './native-import';
+import { initUserscripts } from './userscripts';
+import { initTranslator } from './translator';
+import { installCompositorAnimFix, setDeathAnimBlock, setMenuTimer, setWatermark, showToast } from './utils';
+import { initChat } from './chat';
+import { initHPCounter, initRankProgress } from './competitive';
+import { initKeystrokes } from './keystrokes';
+import type { KeystrokesConfig } from './keystrokes';
+import { setNukeCounter } from './nuke-counter';
+import type { NukeCounterConfig } from './nuke-counter';
+import { checkChangelog } from './changelog';
+import { DEFAULT_CONFIG } from '../main/config-defaults';
+import { savedConsole as _console, setVerbose } from './saved-console';
+import { initAltManagerButton } from './alt-manager';
+import { startHidePopups, setClassicSocial, initModManagerButton } from './menu-tweaks';
+import { initSocialMusic } from './social-music';
+import { initBanlog } from './banlog';
+import { installGameSocketTap } from './game-socket';
+import { installSkyHook } from './sky';
+import { installSoundHook, setHeadshotSoundMode } from './headshot-sound';
+import { initTradeDing } from './trade-ding';
+import { initKrhProtocol } from './protocol';
+import { initSuspectPing } from './kpd-call';
+
+
+_console.log('[KRH] Preload script loaded');
+
+// ── Game socket tap: wrap window.WebSocket before the game socket opens (read-only) ──
+installGameSocketTap();
+
+// ── Sky override: wrap window.fetch before the map config request goes out ──
+installSkyHook();
+
+// preventDefault on wheel events avoids Chromium 100+ pacing frame production to vsync during scroll gestures (FPS would tank from 1000+ to refresh rate). Skip when target is inside a real scrollable element so menus still scroll.
+window.addEventListener('wheel', (e: WheelEvent) => {
+    // Pointer lock = in-game weapon scroll: nothing is scrollable, and the
+    // ancestor walk below forces style+layout (getComputedStyle/scrollHeight)
+    // on every wheel tick mid-combat. Block the gesture without walking.
+    if (document.pointerLockElement) {
+        e.preventDefault();
+        return;
+    }
+    let el = e.target as HTMLElement | null;
+    while (el && el !== document.body && el !== document.documentElement) {
+        const cs = getComputedStyle(el);
+        const scrolls = (cs.overflowY === 'auto' || cs.overflowY === 'scroll' || cs.overflowX === 'auto' || cs.overflowX === 'scroll')
+            && (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
+        if (scrolls) return;
+        el = el.parentElement;
+    }
+    e.preventDefault();
+}, { capture: true, passive: false });
+
+// ── Tell Krunker this is a client (enables "Client" settings tab) ──
+(window as any).OffCliV = true;
+
+// ── IPC bridge exposed as window.krh ──
+(window as any).krh = {
+  platform: {
+    getInfo: () => ipcRenderer.invoke('get-platform'),
+  },
+  config: {
+    get: (key: string) => ipcRenderer.invoke('get-config', key),
+    getAll: (keys: string[]) => ipcRenderer.invoke('get-all-config', keys),
+    set: (key: string, value: unknown) => ipcRenderer.invoke('set-config', key, value),
+  },
+  window: {
+    minimize: () => ipcRenderer.invoke('window-minimize'),
+    maximize: () => ipcRenderer.invoke('window-maximize'),
+    close: () => ipcRenderer.invoke('window-close'),
+    isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  },
+  dev: {
+    toggleDevTools: () => ipcRenderer.invoke('toggle-devtools'),
+  },
+  swapper: {
+    openFolder: () => ipcRenderer.invoke('open-swap-folder'),
+    getPath: () => ipcRenderer.invoke('get-swap-dir'),
+  },
+  userscripts: {
+    openFolder: () => ipcRenderer.invoke('userscripts-open-folder'),
+    getPath: () => ipcRenderer.invoke('userscripts-get-dir'),
+  },
+};
+
+initKrhProtocol();
+
+// ── Direct Server Ping Display (TCP RTT from main, overrides #pingText + #menuPingText) ──
+// Locks the textContent setter on first value arrival so Krunker's writes become
+// no-ops; we write via innerText (different setter) so our value sticks. The
+// lock is deferred so Krunker's value passes through if our IPC never fires.
+function initDirectPingDisplay(): void {
+    const locked = new WeakSet<HTMLElement>();
+    ipcRenderer.on('server-ping', (_e, ms: number) => {
+        const text = String(ms);
+        for (const id of ['pingText', 'menuPingText']) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            if (!locked.has(el)) {
+                Object.defineProperty(el, 'textContent', { set: () => {}, configurable: true });
+                locked.add(el);
+            }
+            el.innerText = text;
+        }
+    });
+}
+
+// ── Show Ping in Player List (numeric ms instead of icon) ──
+// genList returns an HTML string — parse it, replace icon elements, return modified HTML.
+function initShowPing(): void {
+    const w = window as any;
+    let attempts = 0;
+    const poll = setInterval(() => {
+        const origGenList = w.windows?.[22]?.genList;
+        if (origGenList && !origGenList.__krhPingPatched) {
+            clearInterval(poll);
+            const patched = function (this: any) {
+                const html = origGenList.call(this);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                for (const icon of doc.querySelectorAll('.pListPing.material-icons')) {
+                    const ping = icon.getAttribute('title');
+                    icon.classList.remove('pListPing', 'material-icons');
+                    icon.removeAttribute('title');
+                    // data-ping survives the class/title strip so the KPD call row can still read it.
+                    icon.setAttribute('data-ping', ping ?? '');
+                    icon.textContent = ping ? ping + ' ' : 'N/A ';
+                }
+                return doc.body.innerHTML;
+            };
+            (patched as any).__krhPingPatched = true;
+            w.windows[22].genList = patched;
+        } else if (++attempts > 75) {
+            clearInterval(poll);
+        }
+    }, 200);
+}
+
+// ── Matchmaker IPC listener ──
+ipcRenderer.on('matchmaker-find', (_e, mmConfig: MatchmakerConfig) => {
+  fetchGame(mmConfig, _console).catch((err) => _console.error('[KRH] Matchmaker error:', err));
+});
+
+// ── Toast from main (e.g. screenshot confirmation) ──
+ipcRenderer.on('krh-toast', (_e, msg: string) => showToast(msg));
+
+
+// ── Wait for main process to signal page load, then poll for settings window ──
+ipcRenderer.on('main_did-finish-load', () => {
+  _console.log('[KRH] did-finish-load received, waiting to hook settings...');
+
+  const isGamePage = window.location.pathname === '/' || window.location.pathname === '';
+
+  // ── Batch all config reads into a single IPC call ──
+  (window as any).closeClient = () => window.close();
+  Promise.all([
+    ipcRenderer.invoke('get-all-config', ['ui', 'userscripts', 'game', 'translator', 'keybinds', 'discord', 'advanced', 'performance']),
+    ipcRenderer.invoke('get-platform'),
+    ipcRenderer.invoke('get-version'),
+  ]).then(([allConf, _platformInfo, currentVersion]: [any, any, string]) => {
+    const uiConf = allConf.ui;
+    const usConf = allConf.userscripts;
+    const gameConf = allConf.game;
+    const translatorConf = allConf.translator;
+    const discordConf = allConf.discord;
+    const advConf = allConf.advanced;
+
+    // ── Verbose logging toggle ──
+    setVerbose(advConf?.verboseLogging ?? false);
+
+    // ── Exit button + UI toggles ──
+    const showExit = uiConf ? (uiConf.showExitButton !== false) : true;
+    const showExitBtn = () => {
+      const btn = document.getElementById('clientExit');
+      if (btn) {
+        btn.style.display = showExit ? 'flex' : 'none';
+        return true;
+      }
+      return false;
+    };
+    if (!showExitBtn()) {
+      let exitAttempts = 0;
+      const exitPoll = setInterval(() => {
+        if (showExitBtn() || ++exitAttempts > 30) clearInterval(exitPoll);
+      }, 500);
+    }
+
+    if (isGamePage) installCompositorAnimFix();
+    if (uiConf?.deathscreenAnimation) setDeathAnimBlock(true);
+    if (uiConf?.hideMenuPopups) startHidePopups();
+    if (uiConf?.menuTimer ?? true) setMenuTimer(true);
+    if (isGamePage && uiConf?.classicSocial) setClassicSocial(true);
+    if (isGamePage) initModManagerButton();
+
+    if (isGamePage) {
+      initSocialMusic({
+        source: uiConf?.socialMusic ?? '',
+        volume: uiConf?.socialMusicVolume ?? 40,
+        onSocial: uiConf?.socialMusicOnSocial ?? true,
+        onMarket: uiConf?.socialMusicOnMarket ?? false,
+      });
+    }
+
+    // ── Direct server ping (TCP RTT to the game server, replaces Krunker's display) ──
+    if (isGamePage && uiConf?.directServerPing) {
+      initDirectPingDisplay();
+    }
+
+    // ── Show ping in player list ──
+    if (isGamePage && (gameConf?.showPing ?? true)) {
+      initShowPing();
+    }
+
+    // ── Suspect ping on KPD calls ──
+    if (isGamePage && (gameConf?.suspectPing ?? true)) {
+      initSuspectPing();
+    }
+
+    // ── Raw input (Windows only — unadjustedMovement) ──
+    if (isGamePage && process.platform === 'win32' && (gameConf?.rawInput ?? true)) {
+      const origLock = HTMLCanvasElement.prototype.requestPointerLock;
+      HTMLCanvasElement.prototype.requestPointerLock = function (opts?: any) {
+        const promise = origLock.call(this, { ...opts, unadjustedMovement: true }) as any;
+        if (promise && typeof promise.catch === 'function') {
+          return promise.catch(() => origLock.call(this, opts));
+        }
+        return promise;
+      };
+    }
+
+    // ── Better chat + Chat history ──
+    if (isGamePage) {
+      initChat({
+        betterChat: gameConf?.betterChat ?? true,
+        autoHideChat: gameConf?.autoHideChat ?? false,
+        chatHistorySize: gameConf?.chatHistorySize ?? 200,
+      }, _console);
+    }
+
+    // ── Competitive features ──
+    if (isGamePage && (gameConf?.hpEnemyCounter ?? true)) {
+      initHPCounter();
+    }
+    if (isGamePage) {
+      initRankProgress();
+    }
+
+    // ── Headshot sound ──
+    if (isGamePage) {
+      setHeadshotSoundMode(gameConf?.headshotSound ?? 'off');
+      installSoundHook();
+    }
+
+    // ── Trade request ding ──
+    if (isGamePage) {
+      initTradeDing({
+        sound: gameConf?.tradeDingSound ?? 'off',
+        volume: gameConf?.tradeDingVolume ?? 40,
+        soundFile: gameConf?.tradeDingSoundFile ?? '',
+        intervalSec: gameConf?.tradeDingInterval ?? 15,
+      });
+    }
+
+    // ── Keystrokes + Mouse overlay ──
+    if (isGamePage) {
+      ipcRenderer.invoke('get-config', 'keystrokes').then((ksConf: KeystrokesConfig | undefined) => {
+        if (ksConf && (ksConf.enabled || ksConf.mouseEnabled)) initKeystrokes(ksConf);
+      }).catch((err) => _console.warn('[KRH] keystrokes config load failed:', err));
+    }
+
+    // ── Nuke counter overlay ──
+    if (isGamePage) {
+      ipcRenderer.invoke('get-config', 'nukeCounter').then((ncConf: NukeCounterConfig | undefined) => {
+        if (ncConf && ncConf.enabled) setNukeCounter({ ...DEFAULT_CONFIG.nukeCounter, ...ncConf });
+      }).catch((err) => _console.warn('[KRH] nuke counter config load failed:', err));
+    }
+
+    // ── KRH watermark (in-game + menu) ──
+    if (isGamePage) {
+      setWatermark(uiConf?.watermark ?? true, currentVersion);
+    }
+
+    // ── Changelog popup ──
+    if (isGamePage && (uiConf?.showChangelog ?? true)) {
+      checkChangelog(currentVersion, uiConf?.lastSeenVersion || '');
+    }
+
+    // ── Battle Pass Claim All (game page only) ──
+    // Poll for .bpBotH element — injects button when BP window is visible
+    if (isGamePage) {
+      const getClaimable = () => Array.from(document.querySelectorAll('.bpClaimB')).filter(
+        (el: any) => el.offsetParent !== null && el.textContent?.trim() === 'Claim'
+      );
+      setInterval(() => {
+        // The battle-pass window only exists in menus; skip the document-wide
+        // selector + offsetParent (layout) read while pointer-locked in-game.
+        if (document.pointerLockElement) return;
+        const bar = document.querySelector('.bpBotH') as HTMLElement | null;
+        if (!bar || bar.offsetParent === null) return;
+        const existing = document.getElementById('claimAllBtn');
+        if (existing) {
+          // Update state on re-check (rewards may have become claimable)
+          const claimable = getClaimable();
+          if (claimable.length > 0) {
+            existing.textContent = 'Claim All';
+            existing.classList.remove('disabled');
+          } else {
+            existing.textContent = 'Nothing to Claim';
+            existing.classList.add('disabled');
+          }
+          return;
+        }
+        const claimable = getClaimable();
+        const btn = document.createElement('div');
+        btn.className = 'bpBtn skip';
+        btn.id = 'claimAllBtn';
+        btn.style.cssText = 'margin-left: 8px; cursor: pointer; background: #4CAF50;';
+        if (claimable.length > 0) {
+          btn.textContent = 'Claim All';
+        } else {
+          btn.textContent = 'Nothing to Claim';
+          btn.classList.add('disabled');
+        }
+        btn.addEventListener('click', async () => {
+          if (btn.classList.contains('disabled')) return;
+          (window as any).playSelect?.(0.1);
+          const items = getClaimable();
+          if (items.length === 0) return;
+          btn.textContent = 'Claiming...';
+          btn.classList.add('disabled');
+          for (const item of items) {
+            (item as HTMLElement).click();
+            await new Promise(r => setTimeout(r, 200));
+          }
+          const remaining = getClaimable();
+          btn.textContent = remaining.length > 0 ? 'Claim All' : 'Nothing to Claim';
+          btn.classList.toggle('disabled', remaining.length === 0);
+        });
+        bar.appendChild(btn);
+      }, 500);
+    }
+
+    // ── Initialize userscripts ──
+    const usEnabled = usConf ? usConf.enabled : true;
+    if (usEnabled) {
+      initUserscripts(_console).catch(err => _console.error('[KRH] Userscript init error:', err));
+    }
+
+    // ── Join as Spectator — auto-enable spectate on regular game join ──
+    if (isGamePage && gameConf?.joinAsSpectator) {
+      let attempts = 0;
+      const poll = setInterval(() => {
+        if (++attempts > 300) { clearInterval(poll); return; }
+        const uiBase = document.getElementById('uiBase');
+        if (!uiBase || uiBase.className === '') return;
+        if (uiBase.className === 'onMenu') {
+          const specBtn = document.querySelector('#spectButton input') as HTMLInputElement;
+          if (specBtn && !specBtn.checked) {
+            (window as any).setSpect(1);
+          }
+          clearInterval(poll);
+        } else {
+          clearInterval(poll);
+        }
+      }, 100);
+    }
+
+    // ── Initialize chat translator (game page only) ──
+    if (isGamePage) {
+      const mergedTl = { ...DEFAULT_CONFIG.translator, ...translatorConf };
+      initTranslator(_console, mergedTl);
+    }
+
+    // ── Discord Rich Presence game state polling ──
+    if (isGamePage && discordConf?.enabled) {
+      const showMapMode = discordConf.showMapMode !== false;
+      const showClass = discordConf.showClass !== false;
+      const showTimer = discordConf.showTimer !== false;
+      const showStatus = discordConf.showStatus !== false;
+
+      let lastDetails = '';
+      let lastState = '';
+      let firstSend = true;
+      let gameStartTimestamp = Math.floor(Date.now() / 1000);
+
+      function pollDiscordState(): void {
+        let details = '';
+        let state = '';
+        let startTimestamp: number | undefined = undefined;
+
+        const w = window as any;
+        const spectating = w.spectating;
+
+        let gameActivity: any = null;
+        if (typeof w.getGameActivity === 'function') {
+          try { gameActivity = w.getGameActivity(); } catch { /* game API unavailable */ }
+        }
+
+        if (spectating) {
+          if (showStatus) details = 'Spectating';
+          if (showMapMode && gameActivity?.map) {
+            state = gameActivity.map;
+          }
+        } else {
+          const uiBase = document.getElementById('uiBase');
+          if (uiBase && uiBase.className === 'onMenu') {
+            if (showStatus) details = 'In Menus';
+          } else {
+            if (showMapMode) {
+              if (gameActivity?.mode && gameActivity?.map) {
+                details = gameActivity.mode + ' on ' + gameActivity.map;
+              } else {
+                const mapInfo = document.getElementById('mapInfo');
+                details = mapInfo?.textContent || 'Playing Krunker';
+              }
+            }
+
+            if (showClass) {
+              if (gameActivity?.class?.name) {
+                state = gameActivity.class.name;
+              } else {
+                const classElem = document.getElementById('menuClassName');
+                if (classElem?.textContent) state = classElem.textContent;
+              }
+            }
+
+            if (showTimer) startTimestamp = gameStartTimestamp;
+          }
+        }
+
+        if (firstSend || details !== lastDetails || state !== lastState) {
+          if (startTimestamp && lastDetails !== details) {
+            gameStartTimestamp = Math.floor(Date.now() / 1000);
+            startTimestamp = gameStartTimestamp;
+          }
+          lastDetails = details;
+          lastState = state;
+          firstSend = false;
+          ipcRenderer.send('discord-update', {
+            details: details || undefined,
+            state: state || undefined,
+            startTimestamp,
+            largeImageKey: 'krunker',
+            largeImageText: 'KRH Client',
+          });
+        }
+      }
+
+      pollDiscordState();
+      setInterval(pollDiscordState, 5000);
+      document.addEventListener('pointerlockchange', pollDiscordState);
+    }
+    // ── In-game Accounts quick-switch button ──
+    if (isGamePage) initAltManagerButton();
+
+    // ── Ban log enhancements (search + relative times in Krunker's native KPD popup) ──
+    if (isGamePage) initBanlog();
+
+  }).catch((err) => _console.error('[KRH] preload init failed:', err));
+
+  const pollInterval = setInterval(() => {
+    const w = window as any;
+    if (
+      Object.hasOwn(w, 'showWindow')
+      && typeof w.showWindow === 'function'
+      && Object.hasOwn(w, 'windows')
+      && Array.isArray(w.windows)
+      && w.windows.length >= 0
+      && typeof w.windows[0] !== 'undefined'
+      && typeof w.windows[0].changeTab === 'function'
+    ) {
+      clearInterval(pollInterval);
+      _console.log('[KRH] Settings window found, hooking...');
+      hookSettings();
+      hookNativeImport();
+    }
+  }, 500);
+});
+
+// ── Lightweight tab page init (skips game-only features) ──
+ipcRenderer.on('main_did-finish-load-tab', () => {
+  _console.log('[KRH] Tab page loaded');
+  (window as any).closeClient = () => window.close();
+});

@@ -1,0 +1,373 @@
+// ── Better Chat + Chat History + Auto-Hide ──
+// Merges team/all chat with [T]/[M] prefixes and prevents Krunker from pruning old messages.
+
+import type { SavedConsole } from './utils';
+
+const TEAM_MODES = new Set([
+    'Team Deathmatch', 'Hardpoint', 'Capture the Flag', 'Hide & Seek',
+    'Infected', 'Last Man Standing', 'Simon Says', 'Prop Hunt',
+    'Boss Hunt', 'Deposit', 'Stalker', 'Kill Confirmed',
+    'Defuse', 'Traitor', 'Blitz', 'Domination',
+    'Squad Deathmatch', 'Team Defender',
+]);
+
+let chatList: HTMLElement | null = null;
+let observer: MutationObserver | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let historyMax = 0;
+let betterChatEnabled = false;
+let autoHideChatEnabled = false;
+let reInsertGuard = false;
+let scrollPaused = false;
+let savedScrollTop = 0; // position to hold while paused (user scrolled up)
+let lastWheelTime = 0; // when the user last wheeled over the chat
+let pointerDownInChat = false; // user is dragging the chat scrollbar
+let _con: SavedConsole | null = null;
+
+const SCROLL_BOTTOM_THRESHOLD = 30; // px from bottom to consider "at bottom"
+const USER_SCROLL_WINDOW = 200; // ms after a wheel that 'scroll' counts as user-driven
+
+// Messages KRH removes on purpose (e.g. "Text & Voice Chat" notices). Their
+// removal fires a later observer batch whose removedNodes look identical to a
+// Krunker history prune — without this marker the history block would
+// re-insert them at the top of the list.
+const krhRemovedNodes = new WeakSet<Node>();
+
+// A userscript that deletes chat messages fights the re-insert below — we
+// restore, it deletes, forever — and both observers are microtasks, so the
+// page locks up. Krunker's prune drops a node once per new message, so a node
+// crossing this count in one turn is being fought over: let it go.
+const REINSERT_LIMIT = 8;
+let reInsertCounts = new WeakMap<Node, number>();
+let reInsertResetQueued = false;
+
+function shouldReInsert(node: Node): boolean {
+    const n = (reInsertCounts.get(node) ?? 0) + 1;
+    if (n > REINSERT_LIMIT) return false;
+    reInsertCounts.set(node, n);
+    if (!reInsertResetQueued) {
+        reInsertResetQueued = true;
+        // Macrotask, not a microtask: the fight is many microtasks inside one
+        // event-loop turn, so a microtask reset would re-arm it mid-loop.
+        setTimeout(() => { reInsertCounts = new WeakMap(); reInsertResetQueued = false; }, 0);
+    }
+    return true;
+}
+
+function isChatMessage(node: Node): node is HTMLElement {
+    return node.nodeType === 1 && (node as HTMLElement).id?.startsWith('chatMsg_');
+}
+
+// Krunker only displays the active channel's messages (the globe toggle);
+// Better Chat shows both channels at once and labels them instead.
+const MERGE_CSS = '#chatList > * { display: block !important; }';
+
+// :not(.onSpect) keeps the input for spectators; the transitions sit on the
+// in-game rules so leaving the game snaps — updateChatClamp measures on onMenu.
+const AUTOHIDE_CSS = `
+#uiBase.onGame:not(.onSpect) #chatInputHolder { opacity: 0; transform: translateY(50px); transition: opacity .2s ease-in-out, transform .2s ease-in-out; }
+#uiBase.onGame:not(.onSpect) #chatList { margin-bottom: -50px; transition: margin-bottom .2s ease-in-out; }
+#uiBase.onGame:not(.onSpect) #chatHolder:focus-within #chatInputHolder { opacity: 1; transform: translateY(0); }
+#uiBase.onGame:not(.onSpect) #chatHolder:focus-within #chatList { margin-bottom: 0; }
+`;
+
+let chatStyle: HTMLStyleElement | null = null;
+
+function syncChatCss(): void {
+    const css = (betterChatEnabled ? MERGE_CSS : '') + (autoHideChatEnabled ? AUTOHIDE_CSS : '');
+    if (!css) {
+        chatStyle?.remove();
+        chatStyle = null;
+        return;
+    }
+    if (!chatStyle) {
+        if (!document.head) return;
+        chatStyle = document.createElement('style');
+        chatStyle.id = 'krh-chatStyle';
+        document.head.appendChild(chatStyle);
+    }
+    chatStyle.textContent = css;
+}
+
+function isTeamMode(): boolean {
+    try {
+        return TEAM_MODES.has((window as any).getGameActivity?.()?.mode ?? '');
+    } catch { /* game API unavailable */ }
+    return false;
+}
+
+function handleMutations(mutations: MutationRecord[]): void {
+    // Whether this batch changed scrollHeight after Krunker's own
+    // scroll-to-bottom already ran (history re-inserted above the viewport,
+    // or a [T]/[M] tag re-wrapping a line) — the follow pin must be redone.
+    let needsRePin = false;
+
+    // ── Chat history: re-insert removed messages ──
+    if (historyMax > 0 && chatList && observer) {
+        const removed: HTMLElement[] = [];
+        for (const mut of mutations) {
+            if (reInsertGuard) break;
+            for (const node of mut.removedNodes) {
+                if (isChatMessage(node) && !krhRemovedNodes.has(node) && shouldReInsert(node)) removed.push(node);
+            }
+        }
+        if (removed.length > 0) {
+            needsRePin = true;
+            reInsertGuard = true;
+            observer.disconnect();
+            const firstLive = chatList.firstChild;
+            for (const node of removed) {
+                chatList.insertBefore(node, firstLive);
+            }
+            // The restored list matches what savedScrollTop was recorded
+            // against; only the top-trim below shifts the anchor, so subtract
+            // exactly that (and skip the layout reads when not paused).
+            const heightRestored = scrollPaused ? chatList.scrollHeight : 0;
+            while (chatList.children.length > historyMax) {
+                chatList.removeChild(chatList.firstChild!);
+            }
+            if (scrollPaused) {
+                savedScrollTop = Math.max(0, savedScrollTop - (heightRestored - chatList.scrollHeight));
+            }
+            observer.observe(chatList, { childList: true });
+            reInsertGuard = false;
+        }
+    }
+
+    // ── Better chat: tag new messages ──
+    if (betterChatEnabled) {
+        const teamMode = isTeamMode();
+        for (const mut of mutations) {
+            for (const node of mut.addedNodes) {
+                if (!isChatMessage(node)) continue;
+                const chatMsg = node.querySelector('.chatMsg');
+                if (!chatMsg) continue;
+
+                // Remove "Text & Voice Chat" system messages
+                if (chatMsg.textContent?.includes('Text & Voice Chat')) {
+                    krhRemovedNodes.add(node);
+                    node.remove();
+                    continue;
+                }
+
+                // Only tag in team modes with proper chat messages. The
+                // sender name sits outside .chatMsg, so match the LRM-wrapped
+                // "name:" on the whole .chatItem.
+                if (!teamMode) continue;
+                if (!node.querySelector('.chatItem')?.textContent?.includes('\u200E:')) continue;
+                if (!node.dataset.tab) continue;
+
+                const isTeam = node.dataset.tab === '1';
+                const tag = document.createElement('div');
+                tag.style.cssText = 'float:left; margin-right:4px; font-weight:bold;';
+                tag.style.color = isTeam ? '#00FF00' : '#FF0000';
+                tag.textContent = isTeam ? '[T]' : '[M]';
+                chatMsg.insertBefore(tag, chatMsg.firstChild);
+                needsRePin = true;
+            }
+        }
+    }
+
+    // Krunker force-scrolls #chatList to the bottom on every new message. When
+    // the user has scrolled up, undo that and hold their position. When
+    // following, Krunker's own scroll already landed at the bottom — repeating
+    // it here cost a forced-layout scrollHeight read per message; only re-pin
+    // when this handler changed scrollHeight after Krunker's scroll.
+    // (This runs before the resulting scroll event, so the restored position
+    // is what updatePauseState sees.)
+    if (chatList) {
+        if (scrollPaused) {
+            chatList.scrollTop = savedScrollTop;
+        } else if (needsRePin) {
+            chatList.scrollTop = chatList.scrollHeight;
+        }
+    }
+}
+
+function isNearBottom(el: HTMLElement): boolean {
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_BOTTOM_THRESHOLD;
+}
+
+function isUserScrolling(): boolean {
+    return pointerDownInChat || (Date.now() - lastWheelTime <= USER_SCROLL_WINDOW);
+}
+
+function updatePauseState(): void {
+    if (!chatList) return;
+    // Only user-driven scrolls toggle the freeze. Programmatic pins, Krunker's
+    // force-scroll-to-bottom, and the menu→game reflow all fire 'scroll' too —
+    // treating those as "the user scrolled up" caused resume→reflow→re-pause.
+    if (!isUserScrolling()) return;
+    const atBottom = isNearBottom(chatList);
+    if (scrollPaused && atBottom) {
+        scrollPaused = false;
+        chatList.classList.remove('krh-chat-paused');
+    } else if (!scrollPaused && !atBottom) {
+        scrollPaused = true;
+        chatList.classList.add('krh-chat-paused');
+    }
+    // Remember where the user parked so we can restore it after Krunker yanks
+    // the list to the bottom on the next message.
+    if (scrollPaused) savedScrollTop = chatList.scrollTop;
+}
+
+function pinToBottom(): void {
+    if (chatList && !scrollPaused) chatList.scrollTop = chatList.scrollHeight;
+}
+
+// Snap back to the latest message and clear the paused state. Called when the
+// player clicks back into the game (pointer lock re-acquired) so the chat shows
+// current messages immediately instead of staying frozen until the next one.
+// The ResizeObserver re-pins once the chat shrinks to its in-game size.
+function resumeChatScroll(): void {
+    if (!chatList) return;
+    scrollPaused = false;
+    chatList.classList.remove('krh-chat-paused');
+    pinToBottom();
+}
+
+// Krunker's old chat switched the send channel with Tab; the new UI only has
+// the globe button. Restore the shortcut by driving Krunker's own switcher.
+// Document-level capture so it survives Krunker re-mounting the input.
+function handleChatTab(e: KeyboardEvent): void {
+    if (!betterChatEnabled || e.key !== 'Tab' || e.repeat) return;
+    if ((e.target as HTMLElement | null)?.id !== 'chatInput') return;
+    e.preventDefault();
+    try {
+        (window as any).switchChat?.(document.getElementById('chatSwitch'));
+    } catch { /* game API unavailable */ }
+}
+
+function tryAttach(): boolean {
+    chatList = document.getElementById('chatList');
+    if (!chatList) return false;
+
+    document.addEventListener('keydown', handleChatTab, true);
+
+    observer = new MutationObserver(handleMutations);
+    observer.observe(chatList, { childList: true });
+
+    // The in-game chat is shorter than the menu/input-open chat. When clicking
+    // back into the game shrinks it (which raises the scroll bottom), re-pin to
+    // the latest message — unless the user has scrolled up.
+    resizeObserver = new ResizeObserver(pinToBottom);
+    resizeObserver.observe(chatList);
+
+    chatList.addEventListener('scroll', updatePauseState, { passive: true });
+    chatList.addEventListener('wheel', () => { lastWheelTime = Date.now(); }, { passive: true });
+    chatList.addEventListener('pointerdown', () => { pointerDownInChat = true; }, { passive: true });
+    window.addEventListener('pointerup', () => { pointerDownInChat = false; }, { passive: true });
+    // Clicking back into the game re-acquires pointer lock — resume following.
+    document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement) resumeChatScroll();
+    });
+
+    syncChatCss();
+    _con?.log('[KRH-Chat] Observer attached to #chatList');
+    return true;
+}
+
+// ── Dynamic max-height so chat never overlaps menu items KRH injects ──
+// Krunker 9.2.1 added its own chat clamp based on the bottom of #menuItemContainer,
+// but it's calibrated against Krunker's stock menu — our injected Classic Social
+// pushes Community & Events and Exit below Krunker's expected bottom, so chat
+// overlaps them. We measure the *actual* bottom (which includes our items),
+// translate the visual gap into CSS pixels (#uiBase is transform-scaled), and
+// apply a tighter cap via .krh-chat-clamped only when our value is tighter
+// than Krunker's would be.
+const CHAT_MENU_PADDING = 10; // visual px gap between chat top and menu bottom
+let _chatClampTimer: number | null = null;
+let _chatClampObserver: MutationObserver | null = null;
+
+function updateChatClamp(): void {
+    const root = document.documentElement;
+    const list = chatList ?? document.getElementById('chatList');
+    const menu = document.getElementById('menuItemContainer');
+    // In-game detection must be layout-free: this runs on a 250ms safety tick,
+    // and the old `menu.offsetHeight === 0` check forced a layout flush every
+    // tick mid-combat just to conclude "menu hidden, do nothing". #uiBase only
+    // carries onMenu on the menu screen; the offsetHeight fallback then runs
+    // solely while the menu is actually up.
+    const uiBase = document.getElementById('uiBase');
+    if (!list || !menu || !uiBase?.classList.contains('onMenu') || menu.offsetHeight === 0) {
+        // Menu hidden (in-game) — let Krunker manage the chat normally.
+        list?.classList.remove('krh-chat-clamped');
+        root.style.removeProperty('--krh-chat-max');
+        return;
+    }
+    // getBoundingClientRect is post-transform (display px); max-height is CSS px.
+    // Divide by --ui-scale to convert display → CSS. Krunker sets it on <body>;
+    // fall back to <html> in case it moves, then 1 if absent.
+    const scaleRaw = getComputedStyle(document.body).getPropertyValue('--ui-scale')
+        || getComputedStyle(document.documentElement).getPropertyValue('--ui-scale');
+    const scale = parseFloat(scaleRaw) || 1;
+    const menuBottom = menu.getBoundingClientRect().bottom;
+    const chatBottom = list.getBoundingClientRect().bottom;
+    const ceilingDisplay = chatBottom - menuBottom - CHAT_MENU_PADDING;
+    if (ceilingDisplay <= 0) {
+        list.classList.remove('krh-chat-clamped');
+        root.style.removeProperty('--krh-chat-max');
+        return;
+    }
+    const ceilingCss = Math.floor(ceilingDisplay / scale);
+    root.style.setProperty('--krh-chat-max', ceilingCss + 'px');
+    list.classList.add('krh-chat-clamped');
+}
+
+function attachChatClampObserver(): void {
+    if (_chatClampObserver) return;
+    const menu = document.getElementById('menuItemContainer');
+    const uiBase = document.getElementById('uiBase');
+    if (!menu && !uiBase) return;
+    // Targeted observation — no subtree+childList combo (safe per CLAUDE.md).
+    // - menuItemContainer childList: catches button injection/removal.
+    // - uiBase class attr: catches onMenu/onGame transitions instantly.
+    _chatClampObserver = new MutationObserver(updateChatClamp);
+    if (menu) _chatClampObserver.observe(menu, { childList: true });
+    if (uiBase) _chatClampObserver.observe(uiBase, { attributes: true, attributeFilter: ['class'] });
+}
+
+function startChatClamp(): void {
+    if (_chatClampTimer !== null) return;
+    updateChatClamp();
+    attachChatClampObserver();
+    window.addEventListener('resize', updateChatClamp);
+    // Poll as a safety net — catches Svelte attribute-driven show/hide of
+    // individual menu items, which the targeted observers miss.
+    _chatClampTimer = window.setInterval(() => {
+        if (!_chatClampObserver) attachChatClampObserver();
+        updateChatClamp();
+    }, 250);
+}
+
+export function initChat(options: { betterChat: boolean; autoHideChat: boolean; chatHistorySize: number }, con?: SavedConsole): void {
+    _con = con ?? null;
+    betterChatEnabled = options.betterChat;
+    autoHideChatEnabled = options.autoHideChat;
+    historyMax = options.chatHistorySize;
+
+    if (tryAttach()) { startChatClamp(); return; }
+
+    // Poll until #chatList appears
+    let attempts = 0;
+    const poll = setInterval(() => {
+        if (++attempts > 120 || tryAttach()) {
+            clearInterval(poll);
+            if (chatList) startChatClamp();
+        }
+    }, 500);
+}
+
+export function setBetterChat(enabled: boolean): void {
+    betterChatEnabled = enabled;
+    syncChatCss();
+}
+
+export function setAutoHideChat(enabled: boolean): void {
+    autoHideChatEnabled = enabled;
+    syncChatCss();
+}
+
+export function setChatHistorySize(size: number): void {
+    historyMax = size;
+}

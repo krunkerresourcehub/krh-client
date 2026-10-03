@@ -1,0 +1,97 @@
+appId: com.krh.client
+productName: KRH Client
+directories:
+  output: out
+  buildResources: build
+afterPack: "./scripts/afterPack-linux.js"
+# Ship the custom-patched Electron from node_modules/electron/dist/ that
+# scripts/download-electron.js installs during postinstall — NOT a stock build. The
+# electron devDependency (43.0.0) matches the patched binary's version, but it's still a
+# patched build, so we point electron-builder at the local dist/ to package that exact
+# binary (input-priority + frame-pacing patches) instead of re-resolving stock from CDN.
+# CI / cross-compile must override on CLI: --electronDist=./node_modules/electron/dist-{linux,win}
+electronDist: "./node_modules/electron/dist"
+protocols:
+  - name: KRH Protocol
+    schemes:
+      - krh
+files:
+  - dist/**/*
+  - node_modules/electron-store/**/*
+  - node_modules/conf/**/*
+  - node_modules/dot-prop/**/*
+  - node_modules/type-fest/**/*
+  - node_modules/pkg-up/**/*
+  - node_modules/find-up/**/*
+  - node_modules/locate-path/**/*
+  - node_modules/p-locate/**/*
+  - node_modules/p-limit/**/*
+  - node_modules/yocto-queue/**/*
+  - node_modules/path-exists/**/*
+  - node_modules/env-paths/**/*
+  - node_modules/json-schema-typed/**/*
+  - node_modules/ajv/**/*
+  - node_modules/ajv-formats/**/*
+  - node_modules/atomically/**/*
+  - node_modules/debounce-fn/**/*
+  - node_modules/mimic-fn/**/*
+  - node_modules/semver/**/*
+  - node_modules/onetime/**/*
+  - "!node_modules/**/*.ts"
+  - "!node_modules/**/*.map"
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  include: build/installer.nsh
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: KRH Client
+  artifactName: "${productName}-${version}-Setup.${ext}"
+
+portable:
+  artifactName: "${productName}-${version}-Portable.${ext}"
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: build/icon.png
+  category: Game
+  artifactName: "${productName}-${version}-linux-${arch}.${ext}"
+  desktop:
+    entry:
+      Name: KRH Client
+      Comment: Cross-platform Krunker game client
+      Categories: Game;ActionGame;
+      Keywords: krunker;fps;game;
+      StartupWMClass: krh-client
+
+# macOS (arm64): signed with the Developer ID Application cert from the local
+# keychain (electron-builder auto-discovery) + hardened runtime, as notarization
+# requires. scripts/dist-mac.sh drives packaging (--dir), builds the DMG with
+# hdiutil, then notarizes + staples it via notarytool. Falls back to ad-hoc
+# signing when no identity is present (contributors without the cert).
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.action-games
+  icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  artifactName: "${productName}-${version}-mac-${arch}.${ext}"
+

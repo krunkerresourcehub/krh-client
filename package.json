@@ -1,0 +1,44 @@
+{
+  "name": "krh-client",
+  "version": "0.0.1",
+  "description": "KRH Client - Krunker Resource Hub client",
+  "main": "dist/main/index.js",
+  "homepage": "https://github.com/krh/KRH-Client",
+  "author": "Krunker Resource Hub <krh@users.noreply.github.com>",
+  "license": "GPL-3.0",
+  "scripts": {
+    "postinstall": "node scripts/download-electron.js",
+    "dev": "vite build --mode development --config vite.main.config.ts && vite build --mode development --config vite.preload.config.ts && node scripts/launch-electron.js",
+    "build:main": "vite build --config vite.main.config.ts",
+    "build:preload": "vite build --config vite.preload.config.ts",
+    "build": "npm run build:main && npm run build:preload",
+    "start": "npm run build && node scripts/launch-electron.js",
+    "download-electron": "node scripts/download-electron.js",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:mac": "sh scripts/dist-mac.sh",
+    "dist:all": "npm run build && electron-builder --win --linux",
+    "clean": "rimraf dist out",
+    "lint": "eslint src/",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.ts": "eslint --fix"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "electron": "43.0.0",
+    "electron-builder": "^26.0.0",
+    "eslint": "^10.0.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^8.0.14"
+  }
+}

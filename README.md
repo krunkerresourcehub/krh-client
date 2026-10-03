@@ -1,0 +1,102 @@
+# KRH Client
+
+[![GitHub Downloads](https://img.shields.io/github/downloads/bigjakk/KRH-Client/total?style=flat&logo=github&label=Downloads)](https://github.com/bigjakk/KRH-Client/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/bigjakk/KRH-Client?style=flat&logo=github&label=Stars)](https://github.com/bigjakk/KRH-Client/stargazers)
+[![Latest Release](https://img.shields.io/github/v/release/bigjakk/KRH-Client?style=flat&label=Latest)](https://github.com/bigjakk/KRH-Client/releases/latest)
+[![License](https://img.shields.io/github/license/bigjakk/KRH-Client?style=flat&label=License)](https://github.com/bigjakk/KRH-Client/blob/main/LICENSE)
+
+<img src="assets/KRHPOSTER.webp" alt="KRH Client">
+
+Was AI used in the creation of this client? Yes, if you came across this client and don't want to use it due to that, I highly recommend looking at [Glorp](https://github.com/slavcp/glorp) by slav or [Crankshaft](https://github.com/KraXen72/crankshaft) by KraXen72
+
+
+
+**Download:**
+[Windows (x64)](https://github.com/bigjakk/KRH-Client/releases/latest) -
+[macOS (Apple Silicon)](https://github.com/bigjakk/KRH-Client/releases/latest) -
+[Linux (AppImage)](https://github.com/bigjakk/KRH-Client/releases/latest)
+
+## Features
+
+- unlimited FPS with no aim freeze (custom Electron build, see [below](#custom-electron-build))
+- unobtrusive — nearly all features can be disabled
+- hides ads by default
+- resource swapper (textures, sounds, models)
+- CSS theme system with `@import` support (drop `.css` files in `swap/themes/`)
+- separate CSS themes for social/hub tabs (`swap/socialthemes/`)
+- custom loading screen backgrounds (`swap/backgrounds/`)
+- sky swapper — recolour the in-game sky, or replace it with an image (`swap/skies/`)
+- customizable matchmaker with lobby scan animation
+  - filter by region, gamemode, map, player count, remaining time
+  - auto-join with server capacity verification
+- external ranked queue (works even when the game is closed)
+- rank progress tracker with ELO bar and rank distribution popup
+- tabbed hub/social pages with drag-and-drop reorder
+- better chat — merged team/all chat with `[T]`/`[M]` prefixes
+- chat history preservation (Krunker prunes old messages, this prevents it)
+- real-time chat translator (Google Translate, 15 languages)
+- userscript support (Tampermonkey-style metadata, per-script settings)
+- battle pass claim all button
+- alt account manager with encrypted credential storage
+- Discord RPC (gamemode, map, class, spectator status)
+- raw input / unadjusted movement (Windows)
+- show numeric ping in player list
+- direct server ping option (real TCP round-trip to the game server, not Krunker's estimate)
+- hardpoint enemy counter HUD
+- keystrokes overlay for streaming (on-screen keyboard + mouse)
+- changelog popup on update
+- configurable keybinds with visual rebinding dialog
+- configurable ANGLE backend (D3D11, OpenGL, D3D11on12)
+- advanced Chromium flag tweaks (GPU rasterization, high-performance GPU, debloat, and more)
+- auto-updater
+- maintained & open source (GPL-3.0)
+
+## Hotkeys
+
+The game hotkeys are rebindable in settings. The tab shortcuts (`Ctrl+T`/`W`/`Tab`/`Shift+Tab`/`1-9`) are fixed. Chat auto-freezes when you scroll up and resumes when you scroll back to the bottom — no key needed.
+
+| Key | Action |
+|-----|--------|
+| `F4` | New match (triggers matchmaker if enabled) |
+| `F5` | Reload page |
+| `F6` | Open matchmaker |
+| `F9` | Screenshot (copy to clipboard) |
+| `F11` | Toggle fullscreen |
+| `F12` | DevTools |
+| `Ctrl+L` | Copy game link |
+| `Ctrl+J` | Join game from clipboard |
+| `Ctrl+T` | New tab (hub) |
+| `Ctrl+W` | Close tab |
+| `Ctrl+Tab` | Next tab |
+| `Ctrl+Shift+Tab` | Previous tab |
+| `Ctrl+Shift+T` | Reopen closed tab |
+| `Ctrl+1-9` | Jump to tab |
+
+## Userscripts
+
+Any `.js` file in the scripts folder will be loaded as a userscript if enabled in settings. Scripts support Tampermonkey-style metadata blocks (`@name`, `@author`, `@version`, `@desc`) and can define custom settings (boolean, number, select, color, keybind).
+
+> **Use userscripts at your own risk.** Do not write or use any userscripts which would give you a competitive advantage.
+
+## Custom Electron Build
+
+This client uses a custom-patched Electron build to overcome the aim freezing issue present in modern Electron versions. The patched binary is downloaded automatically during `npm install`.
+
+For details on the patch and build instructions, see [Electron-Websocket-Fix](https://github.com/bigjakk/Electron-Websocket-Fix).
+
+## Building From Source
+
+1. Install [git](https://git-scm.com/downloads), [Node.js](https://nodejs.org/), and npm
+2. Clone and install:
+   ```bash
+   git clone https://github.com/bigjakk/KRH-Client.git
+   cd KRH-Client
+   npm install
+   ```
+3. Run: `npm start` or `npm run dev` (dev mode with sourcemaps)
+4. Package: `npm run dist:win`, `npm run dist:mac`, or `npm run dist:linux`
+
+## Credits
+
+- [Crankshaft](https://github.com/KraXen72/crankshaft) by KraXen72 - Original inspiration. Matchmaker, keystrokes overlay
+- [Glorp](https://github.com/slavcp/glorp) by slav - Numerous features for the newer chromium verisions. External Ranked Queue
