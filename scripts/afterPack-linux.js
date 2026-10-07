@@ -38,6 +38,17 @@ fi
 export __GL_SYNC_TO_VBLANK=0
 export __GL_THREADED_OPTIMIZATIONS=1
 
+# NVIDIA proprietary driver present: on hybrid-graphics laptops (Intel/AMD iGPU + NVIDIA dGPU)
+# the game would otherwise render on the weak iGPU. PRIME render offload sends GL/Vulkan work to
+# the NVIDIA GPU. Only applied when the NVIDIA kernel driver is actually loaded: forcing the
+# NVIDIA GLX vendor library on a system without it breaks GL entirely (black window).
+# Opt out with KRH_NO_NVIDIA_ENV=1.
+if [ -z "$KRH_NO_NVIDIA_ENV" ] && [ -e /proc/driver/nvidia/version ]; then
+  export __NV_PRIME_RENDER_OFFLOAD=1
+  export __VK_LAYER_NV_optimus=NVIDIA_only
+  export __GLX_VENDOR_LIBRARY_NAME=nvidia
+fi
+
 exec "$SELF" --ozone-platform=x11 "$SANDBOX" "$@"
 `;
 

@@ -1,25 +1,40 @@
-import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, powerSaveBlocker, safeStorage, session, shell, webContents } from 'electron';
+import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, session, shell, webContents } from 'electron';
 import { join, extname, basename, dirname, resolve as resolvePath } from 'path';
-import { existsSync, mkdirSync, promises as fsp } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, watch as fsWatch, promises as fsp } from 'fs';
 import { get as httpsGet } from 'https';
 import { execFile } from 'child_process';
 import * as os from 'os';
 import { Socket } from 'net';
-import { detectPlatform, applyPlatformFlags, getValidAngleBackends, devWindowIcon, clampFrameCap } from './platform';
+import { detectPlatform, applyPlatformFlags, getValidAngleBackends, devWindowIcon, clampFrameCap, ensureHighPerformanceGpu } from './platform';
+import type { ExtrasConfig } from './config-defaults';
 import { config, Keybind, DEFAULT_KEYBINDS, SavedAccount, DEFAULT_CONFIG, SocialMusicSource } from './config';
-import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL } from './swapper';
+import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL, EXTERNAL_SWAP_FILE, EXTERNAL_EXAMPLE } from './swapper';
 import { listSkyImages, resolveSkyImage, SKIES_DIR, SKY_TEXTURE_RE, SKY_IMAGE_EXTS } from './sky-textures';
 import { UserscriptManager } from './userscripts';
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
-import { electronLog, getLogPath, closeLogStreams } from './logger';
+import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
 import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
-import { createHubWindow, showWindow } from './hub-window';
+import { createHubWindow, showWindow, setHubSuspended } from './hub-window';
+import { loadBlocklist, userListsDir } from './user-lists';
 import { createSplash, splashStatus, splashPrompt, splashAlive, splashElapsed, getSplash, onSplashUserClosed, closeSplash } from './splash';
 import { DiscordRPC } from './discord-rpc';
 import { listThemes, getThemeCSS, listLoadingThemes, getLoadingScreenCSS, GAME_THEMES_DIR, SOCIAL_THEMES_DIR } from './css-themes';
 import { TabManager } from './tab-manager';
-import { openRankedQueue, DEFAULT_RANKED_AUDIO_URL } from './ranked-queue';
-import { takeScreenshot, openScreenshotsFolder } from './screenshot';
+import { openRankedQueue, loadQueueMaps, DEFAULT_RANKED_AUDIO_URL } from './ranked-queue';
+import { takeScreenshot, takeAreaScreenshot, openScreenshotsFolder } from './screenshot';
+import { toggleRecording, togglePauseRecording, stopRecording, openRecordingsFolder } from './recorder';
+import { TwitchChat, normalizeChannel, fetchEmoteImage } from './twitch';
+import { TwitchLinkBot, loadToken as loadTwitchBotToken, saveToken as saveTwitchBotToken, normalizeToken as normalizeTwitchBotToken } from './twitch-link';
+import type { TwitchConfig } from './twitch';
+import { Spotify, fetchSpotifyArt } from './spotify';
+import type { SpotifyConfig, SpotifyAction } from './spotify';
+import { blockOffsiteRedirects, isGameURL, isKrunkerHost, isKrunkerPage, safeOpenExternal } from './links';
+
+// Letter of a Ctrl+Alt shortcut, from the physical key so it also works on AltGr layouts.
+function spotKey(input: { code?: string; key: string }): string {
+  const m = /^Key([A-Z])$/.exec(input.code || '');
+  return m ? m[1].toLowerCase() : input.key.toLowerCase();
+}
 
 const AUDIO_MIME: Record<string, string> = {
   '.mp3': 'audio/mpeg',
@@ -167,6 +182,7 @@ if (advancedConfig.angleBackend && !validBackends.includes(advancedConfig.angleB
 }
 
 applyPlatformFlags(platformInfo, advancedConfig, perfConfig);
+ensureHighPerformanceGpu();
 
 // Live frame-cap changes are safe only in sessions launched without
 // CustomMaxPendingFrames (cap and deeper frame queue are mutually exclusive —
@@ -246,6 +262,17 @@ const BLOCKED_URL_PATTERNS = [
   '*://coeus.frvr.com/*',
   '*://apis.google.com/js/platform.js',
   '*://imasdk.googleapis.com/*',
+  // Added from Glorp's default blocklist (ads / analytics / dead third-party scripts)
+  '*://*.googletagmanager.com/*',
+  '*://*.googlesyndication.com/*',
+  '*://www.google-analytics.com/*',
+  '*://config.aps.amazon-adsystem.com/*',
+  '*://securepubads.g.doubleclick.net/*',
+  '*://fran-cdn.frvr.com/prebid*',
+  '*://cdn.frvr.com/fran/prebid*',
+  '*://cdn.ravenjs.com/*',
+  '*://*.poll.fish/*',
+  '*://unpkg.com/web3*',
 ];
 
 // ── Bunny NPC blocklist (mirrors Glorp) ──
@@ -290,18 +317,8 @@ document.addEventListener('keydown', function(e) {
   }
 }, true);`;
 
-// ── Safe external URL opener (only http/https) ──
-function safeOpenExternal(url: string): void {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
-      shell.openExternal(url);
-    }
-  } catch { /* malformed URL — ignore */ }
-}
-
 // ── Open issue count ──
-const ISSUE_COUNT_URL = 'https://api.github.com/search/issues?q=repo:krh/KRH-Client+is:issue+is:open&per_page=1';
+const ISSUE_COUNT_URL = 'https://api.github.com/search/issues?q=repo:krunkerresourcehub/krh-client+is:issue+is:open&per_page=1';
 const ISSUE_COUNT_TTL = 10 * 60 * 1000;
 const ISSUE_COUNT_TIMEOUT_MS = 5000;
 let issueCount: { value: Promise<number | null>; at: number } | null = null;
@@ -351,7 +368,9 @@ function getIssueCount(): Promise<number | null> {
 // ── Keybind matching ──
 function matchesKeybind(input: { key: string; control: boolean; shift: boolean; alt: boolean }, bind: Keybind | undefined): boolean {
   if (!bind) return false;
-  return input.key === bind.key
+  const sameKey = input.key === bind.key
+    || (input.key.length === 1 && bind.key.length === 1 && input.key.toLowerCase() === bind.key.toLowerCase());
+  return sameKey
     && input.control === bind.ctrl
     && input.shift === bind.shift
     && input.alt === bind.alt;
@@ -517,7 +536,7 @@ app.whenReady().then(async () => {
   }
 
   if (!splashAlive()) return; // user closed the splash — app is quitting
-  splashStatus('Loading KRH Hub...', -1);
+  splashStatus('Loading KRH Client...', -1);
   await launchApp();
 });
 
@@ -560,8 +579,11 @@ async function launchApp(): Promise<void> {
   hideTurfBanners = gameConf?.hideTurfBanners ?? false;
   // *://* matches only http/https — wss needs an explicit pattern so the
   // webRequest handler fires on WebSocket upgrades for direct-ping detection.
+  const userBlock = loadBlocklist(BLOCKED_URL_PATTERNS, (m) => electronLog.warn(m));
+  if (userBlock.extra.length) electronLog.log(`[KRH] User blocklist: ${userBlock.extra.length} extra pattern(s)`);
   const requestFilterUrls = [
-    ...BLOCKED_URL_PATTERNS,
+    ...userBlock.defaults,
+    ...userBlock.extra,
     ...BUNNY_URL_PATTERNS,
     ...TURF_BANNER_URL_PATTERNS,
     '*://*.krunker.io/*',
@@ -579,6 +601,8 @@ async function launchApp(): Promise<void> {
         if (w) setPingTarget(u.hostname, port, w);
       } catch { /* invalid URL — ignore */ }
     }
+    // User blocklist (user_blocklist.json) — also blocks krunker.io URLs, which the ad-block path below lets through
+    if (userBlock.extraRe && userBlock.extraRe.test(details.url)) return callback({ cancel: true });
     // Bunny NPC block — redirect to empty body (matches Glorp's SetUri(null))
     if (hideBunnies && BUNNY_URL_RE.test(details.url)) {
       return callback({ redirectURL: EMPTY_RESPONSE_URL });
@@ -601,7 +625,7 @@ async function launchApp(): Promise<void> {
     // Determine if this URL is a krunker.io request (matched by the broad swapper pattern)
     // vs an ad-block pattern. krunker.io requests that weren't swapped pass through normally.
     try {
-      if (new URL(details.url).hostname.endsWith('krunker.io')) return callback({});
+      if (isKrunkerHost(new URL(details.url).hostname)) return callback({});
     } catch { /* invalid URL — fall through to cancel */ }
     // Matched an ad-block pattern — cancel it
     callback({ cancel: true });
@@ -661,15 +685,97 @@ async function launchApp(): Promise<void> {
   // client) stays hidden and unloaded until Play is pressed on the hub. Editor / Games / Viewer /
   // Docs / Guides open in their own window.
   let appQuitting = false;
-  app.on('before-quit', () => { appQuitting = true; });
+  app.on('before-quit', () => { appQuitting = true; stopRecording(); });
 
   let gameActive = false;
+
+  // ── Twitch chat (read-only overlay; connects only while the game window is open) ──
+  // "!link": viewers type it in your chat and get the link of the game you are in (idea from the LaF Client).
+  const LINK_USER_COOLDOWN_MS = 15_000;
+  const linkCooldown = new Map<string, number>();
+  let streamLive: boolean | null = null; // null = not known yet
+  const twitchLink = new TwitchLinkBot((text) => { if (!win.isDestroyed()) win.webContents.send('twitch-link-notice', text); });
+  const onLinkRequest = (login: string, text: string): void => {
+    if (text.trim().toLowerCase() !== '!link') return;
+    const conf = config.get('twitch');
+    if (!gameActive || !conf?.enabled || !conf.linkCommand || !twitchLink.isReady) return;
+    if (conf.linkOnlyLive !== false && streamLive === false) return;
+    if (!/^[a-z0-9_]{1,25}$/i.test(login)) return;
+    const url = win.isDestroyed() ? '' : win.webContents.getURL();
+    // Only real match links: https://krunker.io/?game=REGION:id
+    if (!isKrunkerPage(url) || !/[?&]game=[A-Za-z0-9:_-]+/.test(url)) return;
+    const now = Date.now();
+    const key = login.toLowerCase();
+    if (now - (linkCooldown.get(key) ?? 0) < LINK_USER_COOLDOWN_MS) return;
+    if (twitchLink.say(`@${login} ${url}`)) {
+      linkCooldown.set(key, now);
+      if (linkCooldown.size > 200) for (const [k, t] of linkCooldown) if (now - t > LINK_USER_COOLDOWN_MS) linkCooldown.delete(k);
+    }
+  };
+  const twitchChat = new TwitchChat({
+    onMessage: (m) => { if (!win.isDestroyed()) win.webContents.send('twitch-message', m); },
+    onStatus: (st) => { if (!win.isDestroyed()) win.webContents.send('twitch-status', st); },
+    onStream: (info) => { streamLive = info.live; if (!win.isDestroyed()) win.webContents.send('twitch-stream', info); },
+    onChatLine: onLinkRequest,
+  });
+  const applyTwitch = (conf: Partial<TwitchConfig> | undefined): void => {
+    const channel = normalizeChannel(conf?.channel);
+    if (gameActive && conf?.enabled && channel) twitchChat.connect(channel, conf.thirdPartyEmotes !== false);
+    else { twitchChat.disconnect(); streamLive = null; }
+    // The sending side of !link: only connected while the command is on, the chat is on and a token is saved.
+    const token = gameActive && conf?.enabled && channel && conf.linkCommand === true ? loadTwitchBotToken() : '';
+    twitchLink.configure(token ? channel : '', token);
+  };
+  ipcMain.handle('twitch-link-status', () => ({ hasToken: !!loadTwitchBotToken() }));
+  ipcMain.handle('twitch-link-save-token', (e, raw: unknown) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'Open Settings inside the game window.' };
+    const token = normalizeTwitchBotToken(raw);
+    if (!token) return { ok: false, error: 'That does not look like a Twitch OAuth token.' };
+    saveTwitchBotToken(token);
+    applyTwitch(config.get('twitch'));
+    return { ok: true };
+  });
+  ipcMain.on('twitch-link-clear-token', (e) => {
+    if (e.sender !== win.webContents) return;
+    saveTwitchBotToken('');
+    applyTwitch(config.get('twitch'));
+  });
+  ipcMain.handle('twitch-emote', (_e, url: unknown) => (typeof url === 'string' ? fetchEmoteImage(url) : null));
+
+  // ── Spotify now-playing (official Web API; polls only while the game window is open) ──
+  const spotify = new Spotify({
+    onState: (st) => { if (!win.isDestroyed()) win.webContents.send('spotify-state', st); },
+    onNotice: (text) => { if (!win.isDestroyed()) win.webContents.send('spotify-notice', text); },
+  });
+  const applySpotify = (conf: Partial<SpotifyConfig> | undefined): void => {
+    if (gameActive && conf?.enabled) spotify.startPolling();
+    else spotify.stopPolling();
+  };
+  ipcMain.handle('spotify-art', (_e, url: unknown) => (typeof url === 'string' ? fetchSpotifyArt(url) : null));
+  ipcMain.handle('spotify-get-state', () => spotify.getState());
+  ipcMain.handle('spotify-status', () => ({ connected: spotify.connected }));
+  ipcMain.handle('spotify-connect', async (e, clientId: unknown) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'Open Settings inside the game window to connect Spotify.' };
+    const r = await spotify.connect(typeof clientId === 'string' ? clientId : '');
+    if (r.ok) applySpotify(config.get('spotify'));
+    return r;
+  });
+  ipcMain.on('spotify-disconnect', (e) => {
+    if (e.sender !== win.webContents) return;
+    spotify.disconnect();
+    applySpotify(config.get('spotify')); // keep showing what plays on this PC (no login needed)
+  });
+  ipcMain.on('spotify-control', (e, action: unknown) => {
+    if (e.sender !== win.webContents || !gameActive) return;
+    if (action === 'toggle' || action === 'next' || action === 'previous') void spotify.control(action as SpotifyAction);
+  });
   const showGameWindow = (): void => {
     if (win.isDestroyed()) return;
     if (!win.isVisible()) {
       if (savedWindow.fullscreen) win.setFullScreen(true);
       else if (savedWindow.maximized) win.maximize();
       win.show();
+      applyDisplayMode(getExtras().displayMode, true);
     }
     showWindow(win);
   };
@@ -679,13 +785,34 @@ async function launchApp(): Promise<void> {
       gameActive = true;
       win.webContents.setAudioMuted(false);
       void win.loadURL(url);
+      applyTwitch(config.get('twitch'));
+      applySpotify(config.get('spotify'));
     } else if (url !== 'https://krunker.io') {
       void win.loadURL(url); // a specific game link (e.g. from the editor or a join link)
     }
     showGameWindow();
-    // Hide the hub while playing so its page effects don't keep rendering behind the game
-    // (that competes for the GPU and costs FPS). It comes back when the game window closes.
-    if (!hub.isDestroyed()) hub.hide();
+    // The KRH window is hidden as soon as the game starts (it is frozen while hidden, so it costs
+    // nothing). Ctrl+H (rebindable) brings it back over the game without closing the game.
+    if (!hub.isDestroyed()) {
+      hub.setAlwaysOnTop(false);
+      hub.hide();
+    }
+  };
+
+  // Open / hide the KRH window while the game keeps running.
+  const toggleHub = (): void => {
+    if (hub.isDestroyed()) return;
+    if (!gameActive) { showWindow(hub); return; }
+    if (hub.isVisible() && hub.isFocused()) {
+      hub.setAlwaysOnTop(false);
+      hub.hide();
+      if (!win.isDestroyed()) showWindow(win);
+      return;
+    }
+    // Float above the (possibly fullscreen) game until the user goes back to it.
+    hub.setAlwaysOnTop(true, 'floating');
+    void setHubSuspended(hub, false);
+    showWindow(hub);
   };
 
   const hub = createHubWindow({
@@ -695,6 +822,13 @@ async function launchApp(): Promise<void> {
     onExternal: (url) => safeOpenExternal(url),
     isGameVisible: () => !win.isDestroyed() && (win.isVisible() || win.isMinimized()),
     isQuitting: () => appQuitting,
+    isHubToggleKey: (input) => matchesKeybind(input, getKeybinds().hubToggle),
+    onHubToggle: toggleHub,
+  });
+  hub.on('blur', () => { if (!hub.isDestroyed()) hub.setAlwaysOnTop(false); });
+  // Game window focused -> freeze the hub; hub focused -> it resumes itself (see hub-window.ts).
+  win.on('focus', () => {
+    if (gameActive && !hub.isDestroyed()) void setHubSuspended(hub, true);
   });
   startGameHook = () => launchGame();
   focusAppHook = () => {
@@ -755,11 +889,12 @@ async function launchApp(): Promise<void> {
 
   // ── Process Priority (Windows only) ──
   if (process.platform === 'win32') {
+    const { PRIORITY_HIGH, PRIORITY_ABOVE_NORMAL, PRIORITY_BELOW_NORMAL, PRIORITY_LOW } = os.constants.priority;
     const PRIORITY_MAP: Record<string, number> = {
-      'High': -14,
-      'Above Normal': -7,
-      'Below Normal': 7,
-      'Low': 19,
+      'High': PRIORITY_HIGH,
+      'Above Normal': PRIORITY_ABOVE_NORMAL,
+      'Below Normal': PRIORITY_BELOW_NORMAL,
+      'Low': PRIORITY_LOW,
     };
     const prioritySetting = config.get('performance')?.processPriority || 'Normal';
     const priorityVal = PRIORITY_MAP[prioritySetting];
@@ -795,7 +930,10 @@ async function launchApp(): Promise<void> {
 
     const binds = getKeybinds();
 
-    if (matchesKeybind(input, binds.reload)) {
+    if (matchesKeybind(input, binds.hubToggle)) {
+      toggleHub();
+      event.preventDefault();
+    } else if (matchesKeybind(input, binds.reload)) {
       win.reload();
       event.preventDefault();
     } else if (matchesKeybind(input, binds.newMatch)) {
@@ -811,11 +949,8 @@ async function launchApp(): Promise<void> {
       event.preventDefault();
     } else if (matchesKeybind(input, binds.joinFromClipboard)) {
       const text = clipboard.readText();
-      try {
-        const u = new URL(text);
-        if (u.protocol === 'https:' && u.hostname.endsWith('krunker.io')) win.loadURL(text);
-        else electronLog.warn('[KRH] Join-from-clipboard: clipboard is not a krunker.io https URL');
-      } catch { electronLog.warn('[KRH] Join-from-clipboard: clipboard is not a valid URL'); }
+      if (isKrunkerPage(text)) win.loadURL(text);
+      else electronLog.warn('[KRH] Join-from-clipboard: clipboard is not a krunker.io https URL');
       event.preventDefault();
     } else if (matchesKeybind(input, binds.copyGameLink)) {
       clipboard.writeText(win.webContents.getURL());
@@ -840,6 +975,38 @@ async function launchApp(): Promise<void> {
     } else if (matchesKeybind(input, binds.screenshot)) {
       void takeScreenshot(win);
       event.preventDefault();
+    } else if (matchesKeybind(input, binds.screenshotArea)) {
+      if (gameActive) void takeAreaScreenshot(win);
+      event.preventDefault();
+    } else if (matchesKeybind(input, binds.record)) {
+      if (gameActive) toggleRecording(win);
+      event.preventDefault();
+    } else if (matchesKeybind(input, binds.recordPause)) {
+      if (gameActive) togglePauseRecording();
+      event.preventDefault();
+    } else if (input.control && input.shift && !input.alt && input.key === 'F1') {
+      // Temporarily remove / restore the custom CSS theme (toggle)
+      win.webContents.executeJavaScript(`(() => {
+        const s = document.getElementById('krh-user-theme');
+        if (s) s.disabled = !s.disabled;
+      })()`).catch(() => { /* page not ready */ });
+      event.preventDefault();
+    } else if (input.control && input.alt && !input.shift && ['1', '2', '3'].includes(input.key)) {
+      // Quick alt login: Ctrl+Alt+1 / 2 / 3 -> first / second / third saved account
+      if (gameActive) win.webContents.send('alt-quick-login', Number(input.key) - 1);
+      event.preventDefault();
+    } else if (input.control && input.alt && !input.shift && input.key.toLowerCase() === 't') {
+      // Show / hide the Twitch chat overlay
+      if (gameActive) win.webContents.send('twitch-toggle');
+      event.preventDefault();
+    } else if (input.control && input.alt && !input.shift && ['p', 'n', 'b', 's'].includes(spotKey(input))) {
+      // Spotify: Ctrl+Alt+P play/pause, N next, B previous, S show/hide the card
+      if (gameActive) {
+        const k = spotKey(input);
+        if (k === 's') win.webContents.send('spotify-toggle');
+        else void spotify.control(k === 'p' ? 'toggle' : k === 'n' ? 'next' : 'previous');
+      }
+      event.preventDefault();
     } else if (input.key === 't' && input.control && !input.shift && !input.alt) {
       tabManager.openTab('https://krunker.io/social.html');
       event.preventDefault();
@@ -857,19 +1024,9 @@ async function launchApp(): Promise<void> {
   win.on('enter-full-screen', () => saveWindowState(win));
   win.on('leave-full-screen', () => saveWindowState(win));
 
-  // ── URL classification ──
-  const GAME_PAGE_PATHS = ['/', ''];
-  function isGameURL(url: string): boolean {
-    try {
-      const parsed = new URL(url);
-      if (!parsed.hostname.includes('krunker.io')) return false;
-      return GAME_PAGE_PATHS.includes(parsed.pathname);
-    } catch { return false; }
-  }
-
   // ── Cached game config (invalidated on set-config writes to 'game') ──
   let cachedGameConf: typeof DEFAULT_CONFIG.game | null = null;
-  function getGameConf(): typeof DEFAULT_CONFIG.game {
+  function _getGameConf(): typeof DEFAULT_CONFIG.game {
     if (!cachedGameConf) cachedGameConf = { ...DEFAULT_CONFIG.game, ...config.get('game') };
     return cachedGameConf;
   }
@@ -883,7 +1040,7 @@ async function launchApp(): Promise<void> {
   let socialTheme = config.get('ui')?.socialCssTheme || 'disabled';
   const socialThemeCSS = () => getThemeCSS(socialTheme, swapDir, SOCIAL_THEMES_DIR);
   let tabManager = new TabManager(
-    win, ses, preloadPath, tabMode, isGameURL,
+    win, ses, preloadPath, tabMode,
     () => config.get('tabWindow'),
     (state) => config.set('tabWindow', state),
     () => sessionTabs,
@@ -895,30 +1052,18 @@ async function launchApp(): Promise<void> {
 
   // Intercept in-page navigation (e.g. window.location = '/social.html')
   win.webContents.on('will-navigate', (event, url) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        event.preventDefault();
-        return;
-      }
-    } catch { event.preventDefault(); return; }
-    if (url.includes('krunker.io') && !isGameURL(url)) {
-      event.preventDefault();
-      tabManager.openTab(url);
-    }
+    if (isGameURL(url)) return;
+    event.preventDefault();
+    if (isKrunkerPage(url)) tabManager.openTab(url);
+    else safeOpenExternal(url);
   });
+  blockOffsiteRedirects(win.webContents);
 
   // Intercept target="_blank" / window.open links
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes('krunker.io')) {
-      if (isGameURL(url)) {
-        win.loadURL(url);
-      } else {
-        setImmediate(() => tabManager.openTab(url));
-      }
-    } else {
-      setImmediate(() => safeOpenExternal(url));
-    }
+    if (isGameURL(url)) win.loadURL(url);
+    else if (isKrunkerPage(url)) setImmediate(() => tabManager.openTab(url));
+    else setImmediate(() => safeOpenExternal(url));
     return { action: 'deny' };
   });
 
@@ -926,11 +1071,11 @@ async function launchApp(): Promise<void> {
   win.webContents.on('context-menu', (_e, params) => {
     if (!params.linkURL) return;
     const items: Electron.MenuItemConstructorOptions[] = [];
-    if (params.linkURL.includes('krunker.io') && !isGameURL(params.linkURL)) {
+    if (isKrunkerPage(params.linkURL) && !isGameURL(params.linkURL)) {
       items.push({ label: 'Open in New Tab', click: () => tabManager.openTab(params.linkURL) });
     }
     items.push({ label: 'Copy Link', click: () => clipboard.writeText(params.linkURL) });
-    if (!params.linkURL.includes('krunker.io')) {
+    if (!isKrunkerPage(params.linkURL)) {
       items.push({ label: 'Open in Browser', click: () => safeOpenExternal(params.linkURL) });
     }
     if (items.length) Menu.buildFromTemplate(items).popup();
@@ -989,7 +1134,7 @@ async function launchApp(): Promise<void> {
   const ALLOWED_CONFIG_KEYS = new Set<string>([
     'window', 'performance', 'game', 'swapper', 'matchmaker',
     'keybinds', 'userscripts', 'ui', 'discord', 'translator',
-    'advanced', 'tabWindow', 'keystrokes', 'nukeCounter',
+    'advanced', 'tabWindow', 'keystrokes', 'nukeCounter', 'twitch', 'spotify', 'extras',
   ]);
 
   // Settings categories included in export/import. Deliberately excludes:
@@ -997,9 +1142,153 @@ async function launchApp(): Promise<void> {
   //   window/tabWindow  — machine-specific window geometry
   //   savedTabs         — transient last-open tabs
   const EXPORT_CONFIG_KEYS = [
-    'performance', 'game', 'keystrokes', 'nukeCounter', 'swapper', 'matchmaker',
-    'keybinds', 'userscripts', 'ui', 'discord', 'translator', 'advanced',
+    'performance', 'game', 'keystrokes', 'nukeCounter', 'twitch', 'spotify', 'swapper', 'matchmaker',
+    'keybinds', 'userscripts', 'ui', 'discord', 'translator', 'advanced', 'extras',
   ] as const;
+
+  // Folder paths are hand-edited only: page scripts and imported files must not repoint where code loads from
+  function keepFolderPath(key: string, value: unknown): unknown {
+    if (key !== 'userscripts' && key !== 'swapper') return value;
+    return { ...(value as object), path: config.get(key).path };
+  }
+
+  // ── Extras (chat tools, mod downloader, display mode, RPC buttons, userscript reload) ──
+  function getExtras(): ExtrasConfig {
+    return { ...DEFAULT_CONFIG.extras, ...(config.get('extras') as Partial<ExtrasConfig> | undefined) };
+  }
+
+  function sanitizeCrosshair(value: unknown): ExtrasConfig['crosshair'] {
+    const d = DEFAULT_CONFIG.extras.crosshair;
+    const v = (value && typeof value === 'object' ? value : {}) as Partial<ExtrasConfig['crosshair']>;
+    const num = (x: unknown, def: number, lo: number, hi: number): number => (typeof x === 'number' && isFinite(x) ? Math.min(hi, Math.max(lo, x)) : def);
+    const col = (x: unknown, def: string): string => (typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x) ? x : def);
+    const shapes = ['cross', 'plus', 'circle', 'hCircle', 'square', 'hSquare', 'symbol'];
+    return {
+      enabled: typeof v.enabled === 'boolean' ? v.enabled : d.enabled,
+      shape: shapes.includes(String(v.shape)) ? (v.shape as ExtrasConfig['crosshair']['shape']) : d.shape,
+      symbol: typeof v.symbol === 'string' && v.symbol.length > 0 ? Array.from(v.symbol).slice(0, 4).join('') : d.symbol,
+      color: col(v.color, d.color),
+      outline: col(v.outline, d.outline),
+      size: num(v.size, d.size, 1, 80),
+      thick: num(v.thick, d.thick, 1, 30),
+      gap: num(v.gap, d.gap, -10, 80),
+      dot: num(v.dot, d.dot, 0, 30),
+      outWidth: num(v.outWidth, d.outWidth, 0, 8),
+    };
+  }
+
+  function sanitizeExtras(value: unknown): ExtrasConfig {
+    const v = (value && typeof value === 'object' ? value : {}) as Partial<ExtrasConfig>;
+    const d = DEFAULT_CONFIG.extras;
+    const str = (x: unknown, def: string, max = 200): string => (typeof x === 'string' ? x.slice(0, max) : def);
+    const bool = (x: unknown, def: boolean): boolean => (typeof x === 'boolean' ? x : def);
+    const rb = (v.rpcButtons && typeof v.rpcButtons === 'object' ? v.rpcButtons : d.rpcButtons) as ExtrasConfig['rpcButtons'];
+    return {
+      rankedBadges: bool(v.rankedBadges, d.rankedBadges),
+      modDownloader: bool(v.modDownloader, d.modDownloader),
+      chatFilters: bool(v.chatFilters, d.chatFilters),
+      chatFilterKey: str(v.chatFilterKey, d.chatFilterKey, 20),
+      chatLogs: bool(v.chatLogs, d.chatLogs),
+      chatLogsKey: str(v.chatLogsKey, d.chatLogsKey, 20),
+      quickPlayKey: str(v.quickPlayKey, d.quickPlayKey, 20),
+      displayMode: v.displayMode === 'maximized' || v.displayMode === 'fullscreen' ? v.displayMode : 'windowed',
+      userscriptReload: v.userscriptReload === 'off' || v.userscriptReload === 'reload' ? v.userscriptReload : 'notify',
+      hiddenMenu: Array.isArray(v.hiddenMenu) ? v.hiddenMenu.filter((k) => typeof k === 'string').slice(0, 40) : [],
+      rpcButtons: {
+        enabled: bool(rb.enabled, false),
+        label1: str(rb.label1, '', 32), url1: str(rb.url1, '', 512),
+        label2: str(rb.label2, '', 32), url2: str(rb.url2, '', 512),
+      },
+      autoRejoin: bool(v.autoRejoin, d.autoRejoin),
+      crosshair: sanitizeCrosshair(v.crosshair),
+      settingsProfiles: Array.isArray(v.settingsProfiles)
+        ? v.settingsProfiles
+            .filter((p) => p && typeof p.name === 'string' && typeof p.data === 'string' && p.data.length < 2_000_000)
+            .slice(0, 30)
+            .map((p) => ({ name: p.name.slice(0, 60), data: p.data }))
+        : [],
+    };
+  }
+
+  // Display mode: windowed / maximized / fullscreen (F11 still toggles fullscreen on top of it)
+  function applyDisplayMode(mode: ExtrasConfig['displayMode'], onlyIfNotWindowed = false): void {
+    if (win.isDestroyed() || (onlyIfNotWindowed && mode === 'windowed')) return;
+    if (mode === 'fullscreen') { win.setFullScreen(true); return; }
+    if (win.isFullScreen()) win.setFullScreen(false);
+    if (mode === 'maximized') { if (!win.isMaximized()) win.maximize(); }
+    else if (win.isMaximized()) win.unmaximize();
+  }
+
+  // Discord presence buttons: https links only, label up to 32 characters, at most two
+  function rpcButtons(): Array<{ label: string; url: string }> {
+    const b = getExtras().rpcButtons;
+    if (!b || !b.enabled) return [];
+    const out: Array<{ label: string; url: string }> = [];
+    for (const [label, url] of [[b.label1, b.url1], [b.label2, b.url2]]) {
+      const l = String(label || '').trim().slice(0, 32);
+      try {
+        const u = new URL(String(url || '').trim());
+        if (l.length >= 1 && u.protocol === 'https:' && u.href.length <= 512) out.push({ label: l, url: u.href });
+      } catch { /* not a valid link: skipped */ }
+    }
+    return out;
+  }
+
+  // One-click mod download (the page asks, only krunker.io https links are fetched)
+  const MODS_DIR = (): string => join(app.getPath('downloads'), 'KRH Client', 'Mods');
+  const MOD_MAX_BYTES = 300 * 1024 * 1024;
+  ipcMain.handle('download-mod', async (e, req: { url?: unknown; name?: unknown }) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'Not allowed here.' };
+    try {
+      const url = new URL(String(req?.url ?? ''));
+      if (url.protocol !== 'https:' || !isKrunkerHost(url.hostname)) return { ok: false, error: 'Only krunker.io https links can be downloaded.' };
+      const res = await net.fetch(url.href, { redirect: 'follow' });
+      if (!res.ok) return { ok: false, error: 'Download failed (HTTP ' + res.status + ').' };
+      try { if (!isKrunkerHost(new URL(res.url).hostname)) return { ok: false, error: 'The link redirected away from krunker.io.' }; } catch { /* keep going */ }
+      const declared = Number(res.headers.get('content-length') || 0);
+      if (declared > MOD_MAX_BYTES) return { ok: false, error: 'That file is too large.' };
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length > MOD_MAX_BYTES) return { ok: false, error: 'That file is too large.' };
+      if (buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4b) return { ok: false, error: 'That link is not a .zip file.' };
+      const safe = Array.from(String(req?.name ?? 'mod')).filter((ch) => ch.charCodeAt(0) >= 32 && !'\\/:*?"<>|'.includes(ch)).join('').replace(/\s+/g, ' ').trim().slice(0, 80) || 'mod';
+      const dir = MODS_DIR();
+      mkdirSync(dir, { recursive: true });
+      let target = join(dir, safe + '.zip');
+      for (let n = 2; existsSync(target) && n < 1000; n++) target = join(dir, `${safe} (${n}).zip`);
+      writeFileSync(target, buf);
+      return { ok: true, path: target };
+    } catch (err) {
+      electronLog.warn('[KRH] Mod download failed:', (err as Error).message);
+      return { ok: false, error: 'Could not download the mod.' };
+    }
+  });
+  // Userscript hot reload: when a script file changes, tell you (or reload the page) without restarting the client
+  if (userscriptManager) {
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      fsWatch(userscriptManager.dir, { persistent: false }, (_ev, filename) => {
+        const name = filename ? String(filename) : '';
+        if (!name.toLowerCase().endsWith('.js')) return;
+        if (getExtras().userscriptReload === 'off') return;
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => {
+          reloadTimer = null;
+          if (win.isDestroyed()) return;
+          const mode = getExtras().userscriptReload; // read again: it may have been switched meanwhile
+          if (mode === 'reload') win.webContents.reloadIgnoringCache();
+          else if (mode === 'notify') win.webContents.send('krh-toast', `Userscript changed: ${name}. Reload the page to apply it.`);
+        }, 700);
+      });
+    } catch (err) {
+      electronLog.warn('[KRH] Could not watch the userscripts folder:', (err as Error).message);
+    }
+  }
+
+  ipcMain.handle('reveal-mod-file', (e, p: unknown) => {
+    if (e.sender !== win.webContents || typeof p !== 'string') return;
+    const dir = MODS_DIR();
+    if (resolvePath(p).startsWith(resolvePath(dir)) && existsSync(p)) shell.showItemInFolder(p);
+  });
 
   ipcMain.handle('get-version', () => appVersion);
   ipcMain.handle('get-platform', () => platformInfo);
@@ -1039,8 +1328,48 @@ async function launchApp(): Promise<void> {
 
   app.on('before-quit', flushPendingConfigWrites);
 
+  // ── CPU throttling (ported from Glorp) ──
+  // Slows the game's JS (via the DevTools protocol) in-game and/or in menus. Off by default (1).
+  // Useful when the GPU is the bottleneck and the game loop outruns what the GPU can present.
+  let uiState: 'menu' | 'game' = 'menu';
+  let appliedThrottle = 1;
+  const clampThrottle = (n: unknown): number => {
+    const v = Number(n);
+    return Number.isFinite(v) ? Math.min(3, Math.max(1, v)) : 1;
+  };
+  const applyCpuThrottle = (perfOverride?: any, force = false): void => {
+    if (win.isDestroyed() || !gameActive) return;
+    const p = perfOverride || config.get('performance') || {};
+    const rate = clampThrottle(uiState === 'game' ? p.cpuThrottle : p.cpuThrottleMenu);
+    if (!force && rate === appliedThrottle) return;
+    const dbg = win.webContents.debugger;
+    // Don't hold the debugger when throttling is off, so F12 DevTools stays unaffected.
+    if (rate === 1 && !dbg.isAttached()) { appliedThrottle = 1; return; }
+    try { if (!dbg.isAttached()) dbg.attach('1.3'); } catch { return; } // DevTools may own it
+    dbg.sendCommand('Emulation.setCPUThrottlingRate', { rate })
+      .then(() => {
+        appliedThrottle = rate;
+        if (rate === 1) { try { dbg.detach(); } catch { /* already detached */ } }
+      })
+      .catch(() => { /* target gone */ });
+  };
+  win.webContents.on('did-finish-load', () => { appliedThrottle = 1; applyCpuThrottle(undefined, true); });
+  ipcMain.on('krh-ui-state', (e, state: string) => {
+    if (e.sender !== win.webContents) return;
+    uiState = state === 'game' ? 'game' : 'menu';
+    applyCpuThrottle();
+  });
+  ipcMain.handle('open-user-lists-folder', () => shell.openPath(userListsDir()));
+
   ipcMain.handle('set-config', (_e, key: string, value: unknown) => {
     if (!ALLOWED_CONFIG_KEYS.has(key)) return;
+    value = keepFolderPath(key, value);
+    if (key === 'extras') {
+      const clean = sanitizeExtras(value);
+      config.set('extras', clean);
+      applyDisplayMode(clean.displayMode);
+      return;
+    }
     // Flush immediately for keys that have side effects
     if (key === 'keybinds') {
       config.set(key as any, value);
@@ -1049,6 +1378,7 @@ async function launchApp(): Promise<void> {
     }
     let frameCapNeedsRestart = false;
     if (key === 'performance') {
+      applyCpuThrottle(value);
       // setFrameCap only exists on the frameCap-patched Electron builds
       const capWin = win as BrowserWindow & { setFrameCap?: (fps: number) => void };
       const capped = clampFrameCap((value as any)?.frameCap);
@@ -1071,7 +1401,7 @@ async function launchApp(): Promise<void> {
           tabManager.destroyAll();
           tabMode = newMode;
           tabManager = new TabManager(
-            win, ses, preloadPath, tabMode, isGameURL,
+            win, ses, preloadPath, tabMode,
             () => config.get('tabWindow'),
             (state) => config.set('tabWindow', state),
             () => sessionTabs,
@@ -1083,6 +1413,8 @@ async function launchApp(): Promise<void> {
         }
       }
     }
+    if (key === 'twitch') applyTwitch(value as Partial<TwitchConfig>);
+    if (key === 'spotify') applySpotify(value as Partial<SpotifyConfig>);
     if (key === 'ui') {
       // Social CSS theme swaps live on open tabs
       const next = (value as any)?.socialCssTheme || 'disabled';
@@ -1114,11 +1446,44 @@ async function launchApp(): Promise<void> {
   });
   ipcMain.handle('get-swap-dir', () => swapDir);
   ipcMain.handle('open-swap-folder', () => shell.openPath(swapDir));
+  // External swapper: points Krunker resources at https links (externalResourceSwapper.json in the swap folder)
+  ipcMain.handle('open-external-swap-file', () => {
+    const file = join(swapDir, EXTERNAL_SWAP_FILE);
+    try { if (!existsSync(file)) writeFileSync(file, JSON.stringify(EXTERNAL_EXAMPLE, null, 2), 'utf-8'); } catch { /* the folder opens anyway */ }
+    shell.showItemInFolder(file);
+  });
+  // Support info for bug reports (idea from the LaF Client): version, OS, CPU, RAM and GPU in one paste.
+  ipcMain.handle('copy-system-info', async () => {
+    const os = await import('os');
+    let gpu = 'unknown';
+    try {
+      const info: any = await app.getGPUInfo('basic');
+      const devs: any[] = Array.isArray(info?.gpuDevice) ? info.gpuDevice : [];
+      const names = devs.map((d) => String(d?.deviceString || d?.vendorString || '').trim()).filter(Boolean);
+      if (names.length) gpu = names.join(' / ');
+    } catch { /* keep unknown */ }
+    const cpu = os.cpus()[0];
+    const gb = (n: number): string => (n / 1073741824).toFixed(1) + ' GB';
+    const text = [
+      '===== KRH Client =====',
+      `KRH Client v${app.getVersion()}`,
+      `Electron ${process.versions.electron} / Chromium ${process.versions.chrome} / Node ${process.versions.node}`,
+      '===== System =====',
+      `OS: ${os.type()} ${os.release()} ${os.arch()}`,
+      `CPU: ${cpu ? cpu.model.trim() : 'unknown'} (${os.cpus().length} threads)`,
+      `RAM: ${gb(os.totalmem() - os.freemem())} used / ${gb(os.totalmem())}`,
+      `GPU: ${gpu}`,
+    ].join('\n');
+    clipboard.writeText(text);
+    return true;
+  });
+  ipcMain.handle('open-log-folder', () => shell.openPath(join(app.getPath('userData'), 'logs')));
   ipcMain.handle('open-themes-folder', () => shell.openPath(join(swapDir, GAME_THEMES_DIR)));
   ipcMain.handle('open-social-themes-folder', () => shell.openPath(join(swapDir, SOCIAL_THEMES_DIR)));
   ipcMain.handle('open-backgrounds-folder', () => shell.openPath(join(swapDir, 'backgrounds')));
   ipcMain.handle('open-skies-folder', () => shell.openPath(join(swapDir, SKIES_DIR)));
   ipcMain.handle('open-screenshots-folder', () => openScreenshotsFolder());
+  ipcMain.handle('open-recordings-folder', () => openRecordingsFolder());
 
   ipcMain.handle('game-server-ping', async () => {
     if (!_pingTarget) return -1;
@@ -1176,9 +1541,9 @@ async function launchApp(): Promise<void> {
   // ── Ranked queue IPC handler ──
   ipcMain.on('open-ranked-queue', async (_e, token: string, region: string, allRegions: boolean) => {
     const mm = config.get('matchmaker');
-    const audioUrl = await resolveRankedAudioUrl(mm?.rankedMatchSound || '');
+    const [audioUrl, maps] = await Promise.all([resolveRankedAudioUrl(mm?.rankedMatchSound || ''), loadQueueMaps()]);
     const showHeader = config.get('ui')?.watermark ?? true;
-    openRankedQueue(token, region, allRegions, audioUrl, showHeader);
+    openRankedQueue(token, region, allRegions, audioUrl, showHeader, maps);
   });
 
   ipcMain.handle('pick-audio-file', async () => {
@@ -1224,14 +1589,18 @@ async function launchApp(): Promise<void> {
 
   // ── Discord Rich Presence IPC handler ──
   ipcMain.on('discord-update', (_e, activity: any) => {
+    const buttons = rpcButtons();
+    if (activity && typeof activity === 'object') {
+      if (buttons.length) activity.buttons = buttons; else delete activity.buttons;
+    }
     discordRpc?.setActivity(activity);
   });
 
   // ── Verbose log IPC handler (preload forwards logs here) ──
   ipcMain.on('verbose-log', (_e, level: string, ...args: unknown[]) => {
-    if (level === 'error') electronLog.error(...args);
-    else if (level === 'warn') electronLog.warn(...args);
-    else electronLog.log(...args);
+    if (level === 'error') rendererLog.error(...args);
+    else if (level === 'warn') rendererLog.warn(...args);
+    else rendererLog.log(...args);
   });
 
   // ── CSS theme & loading background IPC handlers ──
@@ -1260,7 +1629,7 @@ async function launchApp(): Promise<void> {
     const tag = version.startsWith('v') ? version : `v${version}`;
     try {
       const data = await new Promise<string>((resolve, reject) => {
-        httpsGet(`https://api.github.com/repos/krh/KRH-Client/releases/tags/${tag}`, { headers: { 'User-Agent': 'KRH' } }, (res) => {
+        httpsGet(`https://api.github.com/repos/krunkerresourcehub/krh-client/releases/tags/${tag}`, { headers: { 'User-Agent': 'KRH' } }, (res) => {
           let body = '';
           res.on('data', (chunk: string) => { body += chunk; });
           res.on('end', () => resolve(body));
@@ -1435,7 +1804,7 @@ async function launchApp(): Promise<void> {
       if (skipKeybinds && key === 'keybinds') continue;
       const incoming = parsed.client[key];
       if (incoming && typeof incoming === 'object' && !Array.isArray(incoming)) {
-        config.set(key as any, { ...(DEFAULT_CONFIG as Record<string, any>)[key], ...incoming });
+        config.set(key as any, keepFolderPath(key, { ...(DEFAULT_CONFIG as Record<string, any>)[key], ...incoming }));
         applied++;
       }
     }
@@ -1478,7 +1847,7 @@ async function launchApp(): Promise<void> {
     // Only accept https Krunker asset URLs — never arbitrary or data: URLs.
     try {
       const u = new URL(avatarUrl);
-      if (u.protocol !== 'https:' || !u.hostname.endsWith('krunker.io')) return false;
+      if (u.protocol !== 'https:' || !isKrunkerHost(u.hostname)) return false;
     } catch { return false; }
     const accounts = config.get('accounts') || [];
     const target = username.toLowerCase();
@@ -1548,14 +1917,18 @@ async function launchApp(): Promise<void> {
   // Closing the game window returns to the KRH Hub (the game page is unloaded so audio/network stop).
   // If the hub is gone (it was closed while playing), closing the game quits the app.
   win.on('close', (event) => {
+    stopRecording();
     win.webContents.setAudioMuted(true);
     win.webContents.stop();
     stopServerPing();
+    twitchChat.disconnect();
+    spotify.stopPolling();
     if (!appQuitting && !hub.isDestroyed()) {
       event.preventDefault();
       gameActive = false;
       void win.loadURL('about:blank');
       win.hide();
+      void setHubSuspended(hub, false);
       showWindow(hub);
     }
   });
@@ -1563,6 +1936,7 @@ async function launchApp(): Promise<void> {
   // ── Shutdown: disconnect Discord, then close log streams ──
   app.on('will-quit', () => {
     discordRpc?.disconnect();
+    spotify.shutdown();
     electronLog.log('[KRH] Shutting down');
     closeLogStreams();
   });

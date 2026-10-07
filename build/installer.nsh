@@ -3,7 +3,7 @@
 
 !ifndef BUILD_UNINSTALLER
   !define MUI_FINISHPAGE_LINK "KRH Client on GitHub"
-  !define MUI_FINISHPAGE_LINK_LOCATION "https://github.com/krh/KRH-Client"
+  !define MUI_FINISHPAGE_LINK_LOCATION "https://github.com/krunkerresourcehub/krh-client"
 
   !macro customWelcomePage
     !define MUI_WELCOMEPAGE_TITLE "KRH Client"

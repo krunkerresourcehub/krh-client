@@ -6,6 +6,7 @@
 import { ipcRenderer } from 'electron';
 import type { Keybind } from '../main/config';
 import { DEFAULT_CONFIG } from '../main/config-defaults';
+import type { ExtrasConfig } from '../main/config-defaults';
 import type { SocialMusicSource } from '../main/config-defaults';
 import { setDeathAnimBlock, setMenuTimer, setWatermark, showToast } from './utils';
 import {
@@ -14,7 +15,9 @@ import {
   createInfoRow, createRowShell, createSelect, makeButton, onSettingChanged,
   createGroup, createColorRow,
 } from './settings-controls';
-import { setClassicSocial, startHidePopups, stopHidePopups } from './menu-tweaks';
+import { setHiddenMenu, HIDE_ITEMS } from './menu-hider';
+import { setCrosshair } from './crosshair';
+import { setClassicSocial, startHidePopups, stopHidePopups, setCleanMenu, setSelectableChat } from './menu-tweaks';
 import { updateSocialMusicConfig } from './social-music';
 import { initHPCounter, destroyHPCounter } from './competitive';
 import { initSuspectPing, destroySuspectPing } from './kpd-call';
@@ -25,6 +28,10 @@ import { updateKeystrokes } from './keystrokes';
 import type { KeystrokesConfig } from './keystrokes';
 import { setNukeCounter } from './nuke-counter';
 import type { NukeCounterConfig } from './nuke-counter';
+import { setTwitchChat } from './twitch-chat';
+import type { TwitchChatConfig } from './twitch-chat';
+import { setSpotifyOverlay } from './spotify-overlay';
+import type { SpotifyOverlayConfig } from './spotify-overlay';
 import { setBetterChat, setAutoHideChat, setChatHistorySize } from './chat';
 import { updateTranslatorConfig } from './translator';
 import { showChangelogNow } from './changelog';
@@ -120,6 +127,17 @@ export function buildGeneralSection(
     } }],
   }).row);
 
+  clientGroup.appendChild(createButtonRow({
+    label: 'Support Info',
+    desc: 'Copy your version, OS, CPU, RAM and GPU to paste into a bug report, or open the log folder',
+    buttons: [
+      { icon: 'content_copy', label: 'Copy System Info', onClick: () => {
+        ipcRenderer.invoke('copy-system-info').then(() => showToast('System info copied')).catch(() => showToast('Could not copy system info'));
+      } },
+      { icon: 'folder_open', label: 'Open Logs', onClick: () => { void ipcRenderer.invoke('open-log-folder'); } },
+    ],
+  }).row);
+
   const hotkeysGroup = createGroup(body, 'Hotkeys');
 
   hotkeysGroup.appendChild(createKeybindRow('Toggle Fullscreen', 'Fullscreen the game window (default F11)', bag.binds.fullscreenToggle, (b) => {
@@ -127,8 +145,28 @@ export function buildGeneralSection(
     bag.saveBinds();
   }, undefined, true));
 
-  hotkeysGroup.appendChild(createKeybindRow('Screenshot', 'Copy the game view to your clipboard (default F9)', bag.binds.screenshot, (b) => {
+  hotkeysGroup.appendChild(createKeybindRow('Screenshot Area', 'Select just the part you want to capture, like the Snipping Tool: the game freezes, drag a box, release to copy it (default Shift+F9). Esc or right-click cancels', bag.binds.screenshotArea, (b) => {
+    bag.binds.screenshotArea = b;
+    bag.saveBinds();
+  }, undefined, true));
+
+  hotkeysGroup.appendChild(createKeybindRow('Screenshot', 'Copy the whole game view to your clipboard (default F9)', bag.binds.screenshot, (b) => {
     bag.binds.screenshot = b;
+    bag.saveBinds();
+  }, undefined, true));
+
+  hotkeysGroup.appendChild(createKeybindRow('Record Gameplay', 'Start / stop recording the game window to a video file (default F8)', bag.binds.record, (b) => {
+    bag.binds.record = b;
+    bag.saveBinds();
+  }, undefined, true));
+
+  hotkeysGroup.appendChild(createKeybindRow('Pause / Resume Recording', 'Pause the recording you are making, press again to continue in the same file (default F7)', bag.binds.recordPause, (b) => {
+    bag.binds.recordPause = b;
+    bag.saveBinds();
+  }, undefined, true));
+
+  hotkeysGroup.appendChild(createKeybindRow('Open / Hide KRH Hub', 'Bring the KRH window up over the game without closing the game, press again to hide it (default Ctrl+H)', bag.binds.hubToggle, (b) => {
+    bag.binds.hubToggle = b;
     bag.saveBinds();
   }, undefined, true));
 
@@ -145,6 +183,67 @@ export function buildGeneralSection(
     label: 'Screenshots Folder',
     desc: 'Where saved screenshots are written',
     buttons: [{ icon: 'folder', label: 'Screenshots', title: 'Open Folder', onClick: () => ipcRenderer.invoke('open-screenshots-folder') }],
+  }).row);
+
+  const recGroup = createGroup(body, 'Recording');
+
+  recGroup.appendChild(createSelectRow({
+    label: 'Recording Source',
+    desc: 'Game Window records only the game. Entire Screen records the whole screen the game is on, so the hub, Editor, Docs and other windows (and notifications) appear in the video too',
+    options: [
+      { value: 'game', label: 'Game Window' },
+      { value: 'screen', label: 'Entire Screen' },
+    ],
+    value: game.recordSource ?? 'game',
+    onChange: (v) => { game.recordSource = v === 'screen' ? 'screen' : 'game'; ipcRenderer.invoke('set-config', 'game', game); },
+  }));
+
+  recGroup.appendChild(createSelectRow({
+    label: 'Recording Quality',
+    desc: 'Video bitrate. Low ~6 Mbps, Medium ~12 Mbps, High ~25 Mbps (bigger files). Applies to the next recording',
+    options: [
+      { value: 'Low', label: 'Low' },
+      { value: 'Medium', label: 'Medium' },
+      { value: 'High', label: 'High' },
+    ],
+    value: game.recordQuality ?? 'Medium',
+    onChange: (v) => { game.recordQuality = v; ipcRenderer.invoke('set-config', 'game', game); },
+  }));
+
+  recGroup.appendChild(createSelectRow({
+    label: 'Recording Frame Rate',
+    desc: '60 FPS looks smoother but makes larger files and needs more from your PC while recording',
+    options: [
+      { value: '60', label: '60 FPS' },
+      { value: '30', label: '30 FPS' },
+    ],
+    value: String(game.recordFps ?? 60),
+    onChange: (v) => { game.recordFps = Number(v) === 30 ? 30 : 60; ipcRenderer.invoke('set-config', 'game', game); },
+  }));
+
+  recGroup.appendChild(createSelectRow({
+    label: 'Recording Audio',
+    desc: 'Game Audio records only the game. System Audio (Windows only) records everything you hear, including Discord and music',
+    options: [
+      { value: 'game', label: 'Game Audio' },
+      { value: 'system', label: 'System Audio' },
+      { value: 'off', label: 'No Audio' },
+    ],
+    value: game.recordAudio ?? 'game',
+    onChange: (v) => { game.recordAudio = v; ipcRenderer.invoke('set-config', 'game', game); },
+  }));
+
+  recGroup.appendChild(createToggleRow({
+    label: 'Record Microphone (Voice)',
+    desc: 'Adds your own voice from the microphone to the video. Voices of friends in Discord are recorded by choosing System Audio above (Windows)',
+    checked: game.recordMic ?? false, instant: true,
+    onChange: (v) => { game.recordMic = v; ipcRenderer.invoke('set-config', 'game', game); },
+  }));
+
+  recGroup.appendChild(createButtonRow({
+    label: 'Recordings Folder',
+    desc: 'Videos are saved as .mp4 (H.264) in your Videos folder under KRH Client',
+    buttons: [{ icon: 'folder', label: 'Recordings', title: 'Open Folder', onClick: () => ipcRenderer.invoke('open-recordings-folder') }],
   }).row);
 }
 
@@ -332,9 +431,23 @@ export function buildGameSection(
 
   menuGroup.appendChild(createToggleRow({
     label: 'Menu Timer',
-    desc: 'Show the game/spectate timer on the menu screen',
+    desc: 'Show the game/spectate timer on the menu screen. Drag it to move it; double-click to reset',
     checked: ui.menuTimer ?? true, instant: true,
     onChange: (v) => { ui.menuTimer = v; saveUI(); setMenuTimer(v); },
+  }));
+
+  menuGroup.appendChild(createToggleRow({
+    label: 'Ranked Leaderboard Search',
+    desc: 'Adds a player search box to the ranked leaderboard and loads the top 1000 players instead of 50. Reopen the leaderboard page after changing',
+    checked: ui.rankedLeaderboardSearch ?? true, instant: true,
+    onChange: (v) => { ui.rankedLeaderboardSearch = v; saveUI(); },
+  }));
+
+  menuGroup.appendChild(createToggleRow({
+    label: 'Cleaner Menu',
+    desc: 'Removes extra clutter from the main menu: social button, sign-up banner, class preview, terms line, map info and other elements',
+    checked: ui.cleanMenu ?? false, instant: true,
+    onChange: (v) => { ui.cleanMenu = v; saveUI(); setCleanMenu(v); },
   }));
 
   menuGroup.appendChild(createToggleRow({
@@ -350,6 +463,7 @@ export function buildGameSection(
 
   if (ui.deathscreenAnimation) setDeathAnimBlock(true);
   if (ui.menuTimer ?? true) setMenuTimer(true);
+  if (ui.cleanMenu) setCleanMenu(true);
   if (ui.hideMenuPopups) startHidePopups();
 }
 
@@ -546,6 +660,20 @@ export function buildPerformanceSection(
     }));
   }
 
+  sysGroup.appendChild(createNumberRow({
+    label: 'CPU Throttling',
+    desc: 'Slows the game\'s CPU work while playing (1 = off, 2 = half speed). Only use if the game is unstable, e.g. when your GPU is the bottleneck',
+    min: 1, max: 3, step: 0.01, value: Number(perf.cpuThrottle ?? 1), instant: true, safety: 3,
+    onChange: (v) => { perf.cpuThrottle = v; applyPerf(false); },
+  }));
+
+  sysGroup.appendChild(createNumberRow({
+    label: 'CPU Throttling in Menu',
+    desc: 'Same as above, but while you are in menus (1 = off). Can fix high or unstable FPS in menus',
+    min: 1, max: 3, step: 0.01, value: Number(perf.cpuThrottleMenu ?? 1), instant: true, safety: 2,
+    onChange: (v) => { perf.cpuThrottleMenu = v; applyPerf(false); },
+  }));
+
   const angleOptions: Array<{ value: string; label: string }> = isWindows
     ? [
         { value: 'default', label: 'Default (D3D11)' },
@@ -583,6 +711,12 @@ export function buildPerformanceSection(
     checked: !!adv.perfTweaks, restart: true, safety: 3,
     onChange: (v) => { adv.perfTweaks = v; saveAdv(); },
   }));
+
+  flagsGroup.appendChild(createButtonRow({
+    label: 'Custom Blocklist & Flags',
+    desc: 'Opens the folder with user_blocklist.json (extra URLs to block, defaults you want to re-enable) and user_flags.json (extra Chromium flags, one per entry). Restart after editing',
+    buttons: [{ icon: 'folder', label: 'Open Folder', title: 'Open Folder', onClick: () => ipcRenderer.invoke('open-user-lists-folder') }],
+  }).row);
 
   const debugGroup = createGroup(body, 'Debugging');
 
@@ -623,6 +757,12 @@ export function buildSwapperSection(body: HTMLElement, swapperConf: any, uiConfR
     label: 'Swapper Folder',
     desc: 'Place replacement assets here (textures/, sound/, models/)',
     buttons: [{ icon: 'folder', label: 'Swapper', title: 'Open Folder', onClick: () => ipcRenderer.invoke('open-swap-folder') }],
+  }).row);
+
+  group.appendChild(createButtonRow({
+    label: 'External Swapper',
+    desc: 'Point a Krunker resource at a web link instead of a local file: edit externalResourceSwapper.json in the swapper folder ({ "/textures/foo.png": "https://…" }, https only). Applies after a page reload. The link must allow cross-origin loading (images, models).',
+    buttons: [{ icon: 'edit_note', label: 'Open File', title: 'Show externalResourceSwapper.json', onClick: () => ipcRenderer.invoke('open-external-swap-file') }],
   }).row);
 
   // ── Sky ──
@@ -704,7 +844,7 @@ export function buildSwapperSection(body: HTMLElement, swapperConf: any, uiConfR
   });
 }
 
-export function buildAppearanceSection(body: HTMLElement, uiConfRaw: any, ncConf: any): void {
+export function buildAppearanceSection(body: HTMLElement, uiConfRaw: any, ncConf: any, twConf?: any, spConf?: any): void {
   const ui = uiConfRaw;
 
   function saveUI(): void {
@@ -818,6 +958,283 @@ export function buildAppearanceSection(body: HTMLElement, uiConfRaw: any, ncConf
 
   for (const r of nukeSubRows) nukeGroup.appendChild(r);
   syncNukeRows();
+
+  // ── Twitch Chat ──
+  const tw: TwitchChatConfig = { ...DEFAULT_CONFIG.twitch, ...twConf };
+
+  function saveTwitch(): void {
+    ipcRenderer.invoke('set-config', 'twitch', tw);
+    setTwitchChat(tw);
+  }
+
+  const twitchGroup = createGroup(body, 'Twitch Chat');
+  const twitchSubRows: HTMLElement[] = [];
+  const syncTwitchRows = (): void => {
+    for (const r of twitchSubRows) r.classList.toggle('krh-row-hidden', !tw.enabled);
+  };
+
+  twitchGroup.appendChild(createToggleRow({
+    label: 'Twitch Chat Overlay',
+    desc: 'Read-only Twitch chat in-game (no login needed). Show or hide it while playing with Ctrl+Alt+T.',
+    checked: tw.enabled, instant: true,
+    onChange: (v) => { tw.enabled = v; saveTwitch(); syncTwitchRows(); },
+  }));
+
+  twitchSubRows.push(createTextRow({
+    label: 'Channel',
+    desc: 'Twitch channel name or link (for example twitch.tv/yourname)',
+    value: tw.channel, placeholder: 'channel name', instant: true,
+    onChange: (v) => { tw.channel = v; saveTwitch(); },
+  }).row);
+
+  twitchSubRows.push(createToggleRow({
+    label: 'Channel Header',
+    desc: 'Show the channel name and LIVE / OFFLINE status (with viewer count) above the chat',
+    checked: tw.showHeader !== false, instant: true,
+    onChange: (v) => { tw.showHeader = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createToggleRow({
+    label: 'Badges',
+    desc: 'Show broadcaster, mod, VIP and subscriber tags',
+    checked: tw.showBadges, instant: true,
+    onChange: (v) => { tw.showBadges = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createToggleRow({
+    label: 'BTTV, FFZ and 7TV Emotes',
+    desc: 'Show third-party emotes (Twitch emotes always work)',
+    checked: tw.thirdPartyEmotes, instant: true,
+    onChange: (v) => { tw.thirdPartyEmotes = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'Font Size',
+    desc: 'Text size in pixels',
+    min: 8, max: 40, step: 1, value: tw.fontSize, instant: true,
+    onChange: (v) => { tw.fontSize = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'Width',
+    desc: 'Chat width in pixels',
+    min: 150, max: 1000, step: 10, value: tw.width, instant: true,
+    onChange: (v) => { tw.width = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'Height',
+    desc: 'Chat height in pixels',
+    min: 80, max: 800, step: 10, value: tw.height, instant: true,
+    onChange: (v) => { tw.height = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createToggleRow({
+    label: 'Auto Placement',
+    desc: 'Put the chat right next to the in-game chat so it never covers it (the X / Y position below is then ignored)',
+    checked: tw.autoPlace !== false, instant: true,
+    onChange: (v) => { tw.autoPlace = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'X Position',
+    desc: 'Left edge, percent of screen width (only when Auto Placement is off)',
+    min: 0, max: 100, step: 0.5, value: tw.x, instant: true,
+    onChange: (v) => { tw.x = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'Y Position',
+    desc: 'Top edge, percent of screen height (only when Auto Placement is off)',
+    min: 0, max: 100, step: 0.5, value: tw.y, instant: true,
+    onChange: (v) => { tw.y = v; saveTwitch(); },
+  }));
+
+  twitchSubRows.push(createNumberRow({
+    label: 'Background Opacity',
+    desc: 'Dark backdrop behind each message (0 = none)',
+    min: 0, max: 1, step: 0.05, value: tw.background, instant: true,
+    onChange: (v) => { tw.background = v; saveTwitch(); },
+  }));
+
+  // ── !link command (idea from the LaF Client) ──
+  twitchSubRows.push(createToggleRow({
+    label: '!link Command',
+    desc: 'When a viewer types !link in your chat, answer with the link of the game you are in. Use your OWN channel above; needs the chat token below.',
+    checked: tw.linkCommand === true, instant: true,
+    onChange: (v) => { tw.linkCommand = v; saveTwitch(); },
+  }));
+  twitchSubRows.push(createToggleRow({
+    label: '!link Only While Live',
+    desc: 'Do not answer when your stream is offline',
+    checked: tw.linkOnlyLive !== false, instant: true,
+    onChange: (v) => { tw.linkOnlyLive = v; saveTwitch(); },
+  }));
+
+  const linkTokenInput = document.createElement('input');
+  linkTokenInput.type = 'password';
+  linkTokenInput.className = 'krh-input';
+  linkTokenInput.placeholder = 'oauth token (chat:edit)';
+  linkTokenInput.autocomplete = 'off';
+  const linkStatus = document.createElement('span');
+  linkStatus.style.cssText = 'margin-right:10px;opacity:0.8';
+  const linkSave = makeButton({ label: 'Save', title: 'Store the token (encrypted on this computer)', onClick: () => {
+    const v = linkTokenInput.value.trim();
+    if (!v) return;
+    ipcRenderer.invoke('twitch-link-save-token', v).then((r: { ok: boolean; error?: string }) => {
+      if (r.ok) { linkTokenInput.value = ''; setLinkToken(true); showToast('Twitch chat token saved'); }
+      else showToast(r.error || 'Could not save the token');
+    }).catch(() => showToast('Could not save the token'));
+  } });
+  const linkClear = makeButton({ label: 'Remove', onClick: () => {
+    ipcRenderer.send('twitch-link-clear-token');
+    setLinkToken(false);
+  } });
+  function setLinkToken(has: boolean): void {
+    linkStatus.textContent = has ? 'Token saved' : 'No token';
+    linkClear.style.display = has ? '' : 'none';
+  }
+  setLinkToken(false);
+  void ipcRenderer.invoke('twitch-link-status').then((s: { hasToken: boolean }) => setLinkToken(!!s?.hasToken)).catch(() => { /* keep default */ });
+  const linkTokenRow = createButtonRow({
+    label: 'Chat Token',
+    desc: 'OAuth token of YOUR Twitch account with the chat:edit scope (create one at twitchtokengenerator.com, choose "Bot Chat Token"). Stored encrypted on this computer, never shown to the game page. Needed only so the answer can be sent.',
+    buttons: [],
+  });
+  linkTokenRow.control.append(linkStatus, linkTokenInput, linkSave, linkClear);
+  twitchSubRows.push(linkTokenRow.row);
+  if (!(window as any).__krhLinkNoticeHooked) {
+    (window as any).__krhLinkNoticeHooked = true;
+    ipcRenderer.on('twitch-link-notice', (_e, t: unknown) => { if (typeof t === 'string') showToast(t); });
+  }
+
+  for (const r of twitchSubRows) twitchGroup.appendChild(r);
+  syncTwitchRows();
+
+  // ── Spotify ──
+  const sp: SpotifyOverlayConfig = { ...DEFAULT_CONFIG.spotify, ...spConf };
+
+  function saveSpotify(): void {
+    ipcRenderer.invoke('set-config', 'spotify', sp);
+    setSpotifyOverlay(sp);
+  }
+
+  const spotifyGroup = createGroup(body, 'Spotify');
+  const spotifySubRows: HTMLElement[] = [];
+  const syncSpotifyRows = (): void => {
+    for (const r of spotifySubRows) r.classList.toggle('krh-row-hidden', !sp.enabled);
+  };
+
+  spotifyGroup.appendChild(createToggleRow({
+    label: 'Spotify Overlay',
+    desc: 'Now-playing card in-game. Works without any login (reads what plays on this PC, desktop app or browser, free accounts too). Ctrl+Alt+P play/pause, Ctrl+Alt+N next, Ctrl+Alt+B previous, Ctrl+Alt+S show/hide.',
+    checked: sp.enabled,
+    onChange: (v) => { sp.enabled = v; saveSpotify(); syncSpotifyRows(); },
+  }));
+
+  spotifySubRows.push(createToggleRow({
+    label: 'Ignore Live Streams',
+    desc: 'No-login mode: skip live streams such as a Twitch tab (they have no song length), so the card shows your music, not the stream title. Windows only exposes ONE media entry per browser: if the stream tab is the one playing, pause or close it, or use the Spotify desktop app.',
+    checked: sp.ignoreLive !== false, instant: true,
+    onChange: (v) => { sp.ignoreLive = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createTextRow({
+    label: 'Ignore Words',
+    desc: 'No-login mode: comma separated, anything whose title, artist, album or app contains one of these words is skipped (for example: twitch, youtube)',
+    value: sp.ignoreWords ?? 'twitch',
+    placeholder: 'twitch, youtube',
+    onChange: (v) => { sp.ignoreWords = v; saveSpotify(); },
+  }).row);
+
+  spotifySubRows.push(createTextRow({
+    label: 'Client ID',
+    desc: 'Optional, Premium only: Client ID of your own Spotify developer app (adds album art). Leave empty to use the no-login mode.',
+    value: sp.clientId,
+    placeholder: '32 character Client ID',
+    onChange: (v) => { sp.clientId = v; saveSpotify(); },
+  }).row);
+
+  const spStatus = document.createElement('span');
+  spStatus.style.cssText = 'margin-right:10px;opacity:0.8';
+  spStatus.textContent = 'Checking…';
+  const spConnect = makeButton({ label: 'Connect', title: 'Opens Spotify in your browser to sign in', onClick: () => {
+    spStatus.textContent = 'Waiting for the browser…';
+    ipcRenderer.invoke('spotify-connect', sp.clientId).then((r: { ok: boolean; error?: string }) => {
+      if (r.ok) { showToast('Spotify connected'); setSpotifyState(true); }
+      else { showToast(r.error || 'Spotify login failed'); setSpotifyState(false, r.error); }
+    }).catch(() => setSpotifyState(false, 'Spotify login failed'));
+  } });
+  const spDisconnect = makeButton({ label: 'Disconnect', onClick: () => {
+    ipcRenderer.send('spotify-disconnect');
+    setSpotifyState(false);
+  } });
+  function setSpotifyState(connected: boolean, err?: string): void {
+    spStatus.textContent = connected ? 'Connected' : (err ? 'Not connected: ' + err : 'Not connected');
+    spConnect.style.display = connected ? 'none' : '';
+    spDisconnect.style.display = connected ? '' : 'none';
+  }
+  setSpotifyState(false);
+  void ipcRenderer.invoke('spotify-status').then((s: { connected: boolean }) => setSpotifyState(!!s?.connected)).catch(() => { /* keep default */ });
+  const spAcct = createButtonRow({
+    label: 'Account',
+    desc: 'Sign in once in your browser. Your login stays on this computer only.',
+    buttons: [],
+  });
+  spAcct.control.append(spStatus, spConnect, spDisconnect);
+  spotifySubRows.push(spAcct.row);
+
+  spotifySubRows.push(createToggleRow({
+    label: 'Album Art',
+    desc: 'Show the cover next to the title',
+    checked: sp.showArt,
+    onChange: (v) => { sp.showArt = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createToggleRow({
+    label: 'Progress Bar',
+    desc: 'Show the song progress under the title',
+    checked: sp.showProgress,
+    onChange: (v) => { sp.showProgress = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createToggleRow({
+    label: 'Hide When Nothing Plays',
+    desc: 'Hide the card while Spotify is idle',
+    checked: sp.hideWhenIdle,
+    onChange: (v) => { sp.hideWhenIdle = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createNumberRow({
+    label: 'Scale',
+    desc: 'Size of the card (1 = normal)',
+    min: 0.5, max: 3, step: 0.1, value: sp.scale, instant: true,
+    onChange: (v) => { sp.scale = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createNumberRow({
+    label: 'X Position',
+    desc: 'Percent of screen width (centre of the card)',
+    min: 0, max: 100, step: 0.5, value: sp.x, instant: true,
+    onChange: (v) => { sp.x = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createNumberRow({
+    label: 'Y Position',
+    desc: 'Percent of screen height (top edge)',
+    min: 0, max: 100, step: 0.5, value: sp.y, instant: true,
+    onChange: (v) => { sp.y = v; saveSpotify(); },
+  }));
+
+  spotifySubRows.push(createNumberRow({
+    label: 'Background',
+    desc: 'Opacity of the dark card background (0 = none)',
+    min: 0, max: 1, step: 0.05, value: sp.background, instant: true,
+    onChange: (v) => { sp.background = v; saveSpotify(); },
+  }));
+
+  for (const r of spotifySubRows) spotifyGroup.appendChild(r);
+  syncSpotifyRows();
 
   // ── Menu Music ──
   const musicGroup = createGroup(body, 'Menu Music');
@@ -981,6 +1398,20 @@ export function buildMatchmakerSection(body: HTMLElement, mmConf: any, bag: Sett
     bag.saveBinds();
   }, undefined, true));
 
+  // Quick Play key (F2 by default): same value as Extras > Quick Play Key, now rebindable right here.
+  const qpRowHolder = document.createElement('div');
+  hkGroup.appendChild(qpRowHolder);
+  void ipcRenderer.invoke('get-config', 'extras').then((exRaw: Partial<ExtrasConfig> | undefined) => {
+    const ex: ExtrasConfig = { ...DEFAULT_CONFIG.extras, ...(exRaw || {}) };
+    qpRowHolder.appendChild(createSimpleKeyRow({
+      label: 'Quick Play Key',
+      desc: 'Key that opens the Quick Play window (matchmaker tiles, raids, Trade Plaza, ARG). Default: F2',
+      value: ex.quickPlayKey || 'F2',
+      instant: true,
+      onChange: (k) => { ex.quickPlayKey = k; void ipcRenderer.invoke('set-config', 'extras', ex); },
+    }));
+  }).catch(() => { /* config unavailable: row skipped */ });
+
   const filtersGroup = createGroup(body, 'Filters');
 
   filtersGroup.appendChild(createNumberRow({
@@ -1140,6 +1571,13 @@ export function buildChatSection(body: HTMLElement, gameConf: any, translatorCon
   }));
 
   chatGroup.appendChild(createToggleRow({
+    label: 'Selectable Chat',
+    desc: 'Lets you select and copy text from the in-game chat with the mouse',
+    checked: game.selectableChat ?? false, instant: true,
+    onChange: (v) => { game.selectableChat = v; saveGame(); setSelectableChat(v); },
+  }));
+
+  chatGroup.appendChild(createToggleRow({
     label: 'Auto-Hide Chat Input',
     desc: 'Fade the chat input box out in-game until you open chat',
     checked: game.autoHideChat, instant: true,
@@ -1269,4 +1707,240 @@ export function buildChatSection(body: HTMLElement, gameConf: any, translatorCon
     placeholder: 'jakk, bigj, etc.',
     onChange: (v) => { tl.customSkipWords = v; saveTL(); updateTranslatorConfig({ customSkipWords: v }); },
   }).row);
+}
+
+
+// ── Extras: chat tools, mod downloader, display mode, menu hiding, Discord buttons, settings profiles ──
+export function buildExtrasSection(body: HTMLElement, exConf: any): void {
+  const ex: ExtrasConfig = {
+    ...DEFAULT_CONFIG.extras, ...exConf,
+    rpcButtons: { ...DEFAULT_CONFIG.extras.rpcButtons, ...(exConf?.rpcButtons || {}) },
+    crosshair: { ...DEFAULT_CONFIG.extras.crosshair, ...(exConf?.crosshair || {}) },
+  };
+  const save = (): void => { void ipcRenderer.invoke('set-config', 'extras', ex); };
+
+  // ── Chat tools ──
+  const chat = createGroup(body, 'Chat Tools');
+  chat.appendChild(createToggleRow({
+    label: 'Chat Filters',
+    desc: 'Type /players, /kills, /unbox, /server in the in-game chat to show only that kind of message (/all shows everything again). The command is not sent to the server.',
+    checked: ex.chatFilters, refreshOnly: true,
+    onChange: (v) => { ex.chatFilters = v; save(); },
+  }));
+  chat.appendChild(createTextRow({
+    label: 'Chat Filter Key',
+    desc: 'Key that cycles all, players, kills, server and unboxing (a key name such as F3; empty = off)',
+    value: ex.chatFilterKey, placeholder: 'F3', refreshOnly: true,
+    onChange: (v) => { ex.chatFilterKey = v.trim(); save(); },
+  }).row);
+  chat.appendChild(createToggleRow({
+    label: 'Chat Logs',
+    desc: 'Remember the newest 2000 chat messages in a window with filters, search, copy and clickable links',
+    checked: ex.chatLogs, refreshOnly: true,
+    onChange: (v) => { ex.chatLogs = v; save(); },
+  }));
+  chat.appendChild(createTextRow({
+    label: 'Chat Logs Key',
+    desc: 'Key that opens and closes the Chat Logs window',
+    value: ex.chatLogsKey, placeholder: 'F1', refreshOnly: true,
+    onChange: (v) => { ex.chatLogsKey = v.trim(); save(); },
+  }).row);
+
+  // ── Game menu ──
+  const menu = createGroup(body, 'Menu and Leaderboards');
+  menu.appendChild(createToggleRow({
+    label: 'Ranked Badges on the Leaderboard',
+    desc: 'Show a player\'s ranked badge next to their name on the normal in-game leaderboard (taken from the ranked list once it has been shown)',
+    checked: ex.rankedBadges, refreshOnly: true,
+    onChange: (v) => { ex.rankedBadges = v; save(); },
+  }));
+  menu.appendChild(createToggleRow({
+    label: 'One-Click Mod Downloader',
+    desc: 'Adds a download icon to every mod in Krunker\'s Mods window. Mods are saved to Downloads/KRH Client/Mods under their own name.',
+    checked: ex.modDownloader, refreshOnly: true,
+    onChange: (v) => { ex.modDownloader = v; save(); },
+  }));
+  menu.appendChild(createTextRow({
+    label: 'Quick Play Key',
+    desc: 'Key that opens the Quick Play tile picker (regions, gamemodes and maps for the custom matchmaker)',
+    value: ex.quickPlayKey, placeholder: 'F2', refreshOnly: true,
+    onChange: (v) => { ex.quickPlayKey = v.trim(); save(); },
+  }).row);
+  menu.appendChild(createToggleRow({
+    label: 'Auto Find After Disconnect',
+    desc: 'When Krunker shows its update / disconnect screen, start a custom matchmaker search by itself (at most once every 8 seconds). Idea from Lombre_Blanche\'s matchmaker script.',
+    checked: ex.autoRejoin, refreshOnly: true,
+    onChange: (v) => { ex.autoRejoin = v; save(); },
+  }));
+  menu.appendChild(createCheckboxGrid({
+    header: 'Hide Menu Elements',
+    items: HIDE_ITEMS.map((i) => ({ value: i.key, label: i.label })),
+    selected: ex.hiddenMenu,
+    onChange: (sel) => { ex.hiddenMenu = sel; save(); setHiddenMenu(sel); },
+  }));
+
+  // ── Crosshair (idea from Lombre_Blanche's matchmaker script) ──
+  const xh = createGroup(body, 'Crosshair');
+  const xhRows: HTMLElement[] = [];
+  const xhApply = (): void => { save(); setCrosshair(ex.crosshair); };
+  const xhSync = (): void => { for (const r of xhRows) r.classList.toggle('krh-row-hidden', !ex.crosshair.enabled); };
+  xh.appendChild(createToggleRow({
+    label: 'Custom Crosshair',
+    desc: 'Draws your own crosshair in the middle of the screen while you aim and hides the game\'s one. It is drawn once, so it costs no performance.',
+    checked: ex.crosshair.enabled, instant: true,
+    onChange: (v) => { ex.crosshair.enabled = v; xhApply(); xhSync(); },
+  }));
+  const xhAdd = (row: HTMLElement): void => { xhRows.push(row); xh.appendChild(row); };
+  xhAdd(createSelectRow({
+    label: 'Shape', desc: 'Cross has a gap in the middle, Plus is a solid +',
+    options: [
+      { value: 'cross', label: 'Cross' }, { value: 'plus', label: 'Plus' }, { value: 'circle', label: 'Circle' },
+      { value: 'hCircle', label: 'Hollow circle' }, { value: 'square', label: 'Square' }, { value: 'hSquare', label: 'Hollow square' },
+      { value: 'symbol', label: 'Symbol / text' },
+    ],
+    value: ex.crosshair.shape, instant: true,
+    onChange: (v) => { ex.crosshair.shape = v as ExtrasConfig['crosshair']['shape']; xhApply(); },
+  }));
+  xhAdd(createTextRow({
+    label: 'Symbol', desc: 'Used by the Symbol shape (up to 4 characters, for example a star)',
+    value: ex.crosshair.symbol, placeholder: '\u2605', instant: true,
+    onChange: (v) => { if (v) { ex.crosshair.symbol = Array.from(v).slice(0, 4).join(''); xhApply(); } },
+  }).row);
+  const xhNum = (label: string, desc: string, key: 'size' | 'thick' | 'gap' | 'dot' | 'outWidth', min: number, max: number): void => {
+    xhAdd(createNumberRow({
+      label, desc, min, max, step: 1, value: ex.crosshair[key], instant: true,
+      onChange: (v) => { ex.crosshair[key] = v; xhApply(); },
+    }));
+  };
+  xhNum('Size', 'Length of the arms / radius of the shape', 'size', 1, 80);
+  xhNum('Thickness', 'Line thickness', 'thick', 1, 30);
+  xhNum('Gap', 'Space in the middle of the Cross shape', 'gap', -10, 80);
+  xhNum('Center Dot', 'Size of the dot in the middle (0 = none)', 'dot', 0, 30);
+  xhNum('Outline Width', 'Outline around every part (0 = none)', 'outWidth', 0, 8);
+  xhAdd(createColorRow({
+    label: 'Color', desc: 'Crosshair color', value: ex.crosshair.color, defaultValue: '#00ff00', instant: true,
+    onChange: (v) => { ex.crosshair.color = v; xhApply(); },
+  }));
+  xhAdd(createColorRow({
+    label: 'Outline Color', desc: 'Outline color', value: ex.crosshair.outline, defaultValue: '#000000', instant: true,
+    onChange: (v) => { ex.crosshair.outline = v; xhApply(); },
+  }));
+  xhSync();
+
+  // ── Window and scripts ──
+  const win = createGroup(body, 'Window and Scripts');
+  win.appendChild(createSelectRow({
+    label: 'Display Mode',
+    desc: 'How the window opens and what it switches to right now. F11 still toggles fullscreen.',
+    options: [{ value: 'windowed', label: 'Windowed' }, { value: 'maximized', label: 'Maximized' }, { value: 'fullscreen', label: 'Fullscreen' }],
+    value: ex.displayMode, instant: true,
+    onChange: (v) => { ex.displayMode = v as ExtrasConfig['displayMode']; save(); },
+  }));
+  win.appendChild(createSelectRow({
+    label: 'Userscript Hot Reload',
+    desc: 'When a file in your userscripts folder changes: do nothing, show a notice, or reload the page right away (leaves a running match)',
+    options: [{ value: 'off', label: 'Off' }, { value: 'notify', label: 'Show a notice' }, { value: 'reload', label: 'Reload the page' }],
+    value: ex.userscriptReload, instant: true,
+    onChange: (v) => { ex.userscriptReload = v as ExtrasConfig['userscriptReload']; save(); },
+  }));
+
+  // ── Discord buttons ──
+  const rpc = createGroup(body, 'Discord Presence Buttons');
+  const rpcRows: HTMLElement[] = [];
+  const syncRpc = (): void => { for (const r of rpcRows) r.classList.toggle('krh-row-hidden', !ex.rpcButtons.enabled); };
+  rpc.appendChild(createToggleRow({
+    label: 'Custom Buttons',
+    desc: 'Up to two link buttons on your Discord status (https links only, label up to 32 characters). Needs Discord Rich Presence on; other people see the buttons, you do not.',
+    checked: ex.rpcButtons.enabled, instant: true,
+    onChange: (v) => { ex.rpcButtons.enabled = v; save(); syncRpc(); },
+  }));
+  const rpcField = (label: string, key: 'label1' | 'url1' | 'label2' | 'url2', placeholder: string): void => {
+    const r = createTextRow({
+      label, desc: '', value: ex.rpcButtons[key], placeholder, instant: true,
+      onChange: (v) => { ex.rpcButtons[key] = v.trim(); save(); },
+    }).row;
+    rpcRows.push(r);
+    rpc.appendChild(r);
+  };
+  rpcField('Button 1 Label', 'label1', 'My Twitch');
+  rpcField('Button 1 Link', 'url1', 'https://twitch.tv/…');
+  rpcField('Button 2 Label', 'label2', 'My Discord');
+  rpcField('Button 2 Link', 'url2', 'https://discord.gg/…');
+  syncRpc();
+
+  // ── Settings profiles ──
+  const prof = createGroup(body, 'Settings Profiles');
+  const profSelect = createSelect([{ value: '', label: '(no profiles saved)' }], '');
+  const refreshProfiles = (keep?: string): void => {
+    profSelect.innerHTML = '';
+    const list = ex.settingsProfiles;
+    const opts = list.length ? list.map((p) => ({ value: p.name, label: p.name })) : [{ value: '', label: '(no profiles saved)' }];
+    for (const o of opts) {
+      const op = document.createElement('option');
+      op.value = o.value;
+      op.textContent = o.label;
+      profSelect.appendChild(op);
+    }
+    if (keep && list.some((p) => p.name === keep)) profSelect.value = keep;
+  };
+  refreshProfiles();
+
+  const nameRow = createTextRow({
+    label: 'Profile Name',
+    desc: 'Name for the profile you save below, for example Ranked or Low-end. Saving with an existing name replaces it.',
+    value: '', placeholder: 'Ranked', instant: true,
+    onChange: () => { /* read when you press Save */ },
+  });
+  prof.appendChild(nameRow.row);
+
+  const readKrunkerSettings = (): string => {
+    const fn = (window as any).exportSettings;
+    if (typeof fn !== 'function') return '';
+    try { const r = fn(1); return typeof r === 'string' ? r : ''; } catch { return ''; }
+  };
+
+  const actions = createButtonRow({
+    label: 'Profiles',
+    desc: 'Save your current in-game Krunker settings (sensitivity, controls, graphics...) and load them again later with one click.',
+    buttons: [],
+  });
+  actions.control.append(
+    profSelect,
+    makeButton({ label: 'Save Current', title: 'Save the current Krunker settings under the name above', onClick: () => {
+      const name = nameRow.input.value.trim().slice(0, 60);
+      if (!name) { showToast('Type a profile name first'); return; }
+      const data = readKrunkerSettings();
+      if (!data) { showToast('Could not read Krunker settings (open Krunker once and try again)'); return; }
+      const i = ex.settingsProfiles.findIndex((p) => p.name === name);
+      if (i >= 0) ex.settingsProfiles[i] = { name, data }; else ex.settingsProfiles.push({ name, data });
+      save();
+      refreshProfiles(name);
+      showToast('Profile saved: ' + name);
+    } }),
+    makeButton({ label: 'Load', title: 'Apply the selected profile to Krunker', onClick: () => {
+      const p = ex.settingsProfiles.find((x) => x.name === profSelect.value);
+      if (!p) { showToast('Pick a profile first'); return; }
+      const w = window as any;
+      if (typeof w.importSettingsPopup !== 'function' || typeof w.importSettings !== 'function') { showToast('Krunker settings import is not available right now'); return; }
+      // Goes through Krunker\'s own import so the game validates the text and refreshes its UI.
+      w.importSettingsPopup(1);
+      setTimeout(() => {
+        const box = document.getElementById('importTxt') as HTMLTextAreaElement | null;
+        if (!box) { showToast('Could not open Krunker\'s import box'); return; }
+        box.value = p.data;
+        w.importSettings(1);
+        showToast('Profile loaded: ' + p.name);
+      }, 150);
+    } }),
+    makeButton({ label: 'Delete', title: 'Delete the selected profile', onClick: () => {
+      const i = ex.settingsProfiles.findIndex((x) => x.name === profSelect.value);
+      if (i < 0) return;
+      const name = ex.settingsProfiles[i].name;
+      ex.settingsProfiles.splice(i, 1);
+      save();
+      refreshProfiles();
+      showToast('Profile deleted: ' + name);
+    } }),
+  );
+  prof.appendChild(actions.row);
 }

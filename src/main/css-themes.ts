@@ -4,6 +4,12 @@
 import { readdirSync, readFileSync } from 'fs';
 import { join, extname, basename } from 'path';
 import { electronLog } from './logger';
+// Bundled presets from the LaF Client (https://github.com/LaFClient/LaF, MIT). Shipped unmodified, see assets/laf-themes/.
+import lafType1 from '../../assets/laf-themes/type1.css?raw';
+import lafType2 from '../../assets/laf-themes/type2.css?raw';
+import lafType3 from '../../assets/laf-themes/type3.css?raw';
+import lafType4 from '../../assets/laf-themes/type4.css?raw';
+import lafType5 from '../../assets/laf-themes/type5.css?raw';
 
 export interface ThemeEntry {
     id: string;
@@ -15,11 +21,23 @@ export interface LoadingThemeEntry {
     label: string;
 }
 
+const PRESET_PREFIX = 'preset:';
+const PRESETS: Record<string, { label: string; css: string }> = {
+  'laf-minimal': { label: 'LaF: Minimal (2021)', css: lafType1 },
+  'laf-sakura': { label: 'LaF: Sakura (2021)', css: lafType2 },
+  'laf-white-diabodos': { label: 'LaF: White Diabodos (2021)', css: lafType3 },
+  'laf-neonstorm': { label: 'LaF: NeonStorm (2021)', css: lafType4 },
+  'laf-kartoon': { label: 'LaF: Kartoon (2021)', css: lafType5 },
+};
+
 export const GAME_THEMES_DIR = 'themes';
 export const SOCIAL_THEMES_DIR = 'socialthemes';
 
 export function listThemes(swapDir: string, subdir: string = GAME_THEMES_DIR): ThemeEntry[] {
     const entries: ThemeEntry[] = [{ id: 'disabled', label: 'Disabled' }];
+    if (subdir === GAME_THEMES_DIR) {
+        for (const [id, p] of Object.entries(PRESETS)) entries.push({ id: PRESET_PREFIX + id, label: p.label });
+    }
     const themesDir = join(swapDir, subdir);
     try {
         const files = readdirSync(themesDir);
@@ -34,6 +52,10 @@ export function listThemes(swapDir: string, subdir: string = GAME_THEMES_DIR): T
 
 export function getThemeCSS(themeId: string, swapDir: string, subdir: string = GAME_THEMES_DIR): string {
     if (themeId === 'disabled' || !themeId) return '';
+    if (themeId.startsWith(PRESET_PREFIX)) {
+        if (subdir !== GAME_THEMES_DIR) return '';
+        return PRESETS[themeId.slice(PRESET_PREFIX.length)]?.css ?? '';
+    }
     const prefix = 'user:';
     if (!themeId.startsWith(prefix)) return '';
     const filename = basename(themeId.slice(prefix.length));

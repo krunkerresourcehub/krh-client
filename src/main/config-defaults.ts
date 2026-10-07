@@ -33,6 +33,45 @@ export interface SavedAccount {
   avatarUrl?: string;
 }
 
+export interface ExtrasConfig {
+  /** Ranked badges next to names on the normal in-game leaderboard. */
+  rankedBadges: boolean;
+  /** Download icon on the cards of Krunker's Mods window. */
+  modDownloader: boolean;
+  /** /players /kills /unbox /server /all in the in-game chat + a key that cycles them. */
+  chatFilters: boolean;
+  chatFilterKey: string;
+  /** Chat Logs window and the key that opens it. */
+  chatLogs: boolean;
+  chatLogsKey: string;
+  /** Key that opens the Quick Play tile picker. */
+  quickPlayKey: string;
+  displayMode: 'windowed' | 'maximized' | 'fullscreen';
+  /** What to do when a userscript file changes: nothing, show a notice, or reload the page. */
+  userscriptReload: 'off' | 'notify' | 'reload';
+  /** Keys of the menu elements to hide (see preload/menu-hider.ts). */
+  hiddenMenu: string[];
+  /** Up to two link buttons on the Discord presence. */
+  rpcButtons: { enabled: boolean; label1: string; url1: string; label2: string; url2: string };
+  /** Saved sets of Krunker settings (the game's own export text). */
+  settingsProfiles: Array<{ name: string; data: string }>;
+  /** Start a matchmaker search by itself when Krunker shows its update / disconnect screen. */
+  autoRejoin: boolean;
+  /** Custom crosshair drawn once on a canvas while aiming. */
+  crosshair: {
+    enabled: boolean;
+    shape: 'cross' | 'plus' | 'circle' | 'hCircle' | 'square' | 'hSquare' | 'symbol';
+    symbol: string;
+    color: string;
+    outline: string;
+    size: number;
+    thick: number;
+    gap: number;
+    dot: number;
+    outWidth: number;
+  };
+}
+
 export interface AppConfig {
   window: {
     width: number;
@@ -47,6 +86,10 @@ export interface AppConfig {
     higherMaxFps: boolean;
     frameCap: number;
     processPriority: string;
+    /** CPU throttling multiplier while playing (1 = off, max 3). */
+    cpuThrottle: number;
+    /** CPU throttling multiplier while in menus (1 = off, max 3). */
+    cpuThrottleMenu: number;
   };
   game: {
     lastServer: string;
@@ -54,6 +97,7 @@ export interface AppConfig {
     rememberTabs: boolean;
     joinAsSpectator: boolean;
     rawInput: boolean;
+    selectableChat: boolean;
     betterChat: boolean;
     autoHideChat: boolean;
     chatHistorySize: number;
@@ -63,6 +107,16 @@ export interface AppConfig {
     hideBunnies: boolean;
     hideTurfBanners: boolean;
     screenshotSave: boolean;
+    /** Recording quality preset: 'Low' | 'Medium' | 'High'. */
+    recordQuality: string;
+    /** Recording frame rate: 30 or 60. */
+    recordFps: number;
+    /** Recording audio: 'game' | 'system' (Windows only) | 'off'. */
+    recordAudio: string;
+    /** What to record: 'game' (only the game window) or 'screen' (the whole screen the game is on, so other windows show up too). */
+    recordSource: string;
+    /** Also record your microphone (voice) and mix it into the video's audio. */
+    recordMic: boolean;
     headshotSound: 'off' | 'kill' | 'hit';
     tradeDingSound: string;
     tradeDingVolume: number;
@@ -85,6 +139,46 @@ export interface AppConfig {
     x: number;
     y: number;
   };
+  twitch: {
+    enabled: boolean;
+    channel: string;
+    showBadges: boolean;
+    showHeader: boolean;
+    thirdPartyEmotes: boolean;
+    fontSize: number;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+    background: number;
+    /** Sit next to the in-game chat (bottom aligned) instead of using x / y. */
+    autoPlace: boolean;
+    linkCommand: boolean;
+    linkOnlyLive: boolean;
+  };
+  spotify: {
+    enabled: boolean;
+    clientId: string;
+    showArt: boolean;
+    showProgress: boolean;
+    hideWhenIdle: boolean;
+    scale: number;
+    x: number;
+    y: number;
+    background: number;
+    /** Media-session mode: skip live streams (no duration), e.g. a Twitch tab. */
+    ignoreLive: boolean;
+    /** Media-session mode: comma separated words; anything containing one is skipped. */
+    ignoreWords: string;
+  };
+  // Encrypted Spotify login (main process only; not readable by the page, never exported)
+  /** Extra features (chat tools, mod downloader, display mode, ...). */
+  extras: ExtrasConfig;
+  spotifyAuth: string;
+  /** Encrypted Twitch chat token used only by the !link command. */
+  twitchBotAuth: string;
+  /** Version of the overlay default positions that were applied (see config.ts). */
+  overlayLayout: number;
   swapper: {
     enabled: boolean;
     path: string;
@@ -112,6 +206,10 @@ export interface AppConfig {
     matchmakerCancel: Keybind;
     fullscreenToggle: Keybind;
     screenshot: Keybind;
+    screenshotArea: Keybind;
+    record: Keybind;
+    recordPause: Keybind;
+    hubToggle: Keybind;
   };
   userscripts: {
     enabled: boolean;
@@ -122,6 +220,9 @@ export interface AppConfig {
     deathscreenAnimation: boolean;
     hideMenuPopups: boolean;
     menuTimer: boolean;
+    cleanMenu: boolean;
+    /** Player search bar + top-1000 list on the ranked leaderboard page. */
+    rankedLeaderboardSearch: boolean;
     watermark: boolean;
     directServerPing: boolean;
     classicSocial: boolean;
@@ -183,6 +284,10 @@ export const DEFAULT_KEYBINDS: AppConfig['keybinds'] = {
   matchmakerCancel:  { key: 'Escape', ctrl: false, shift: false, alt: false },
   fullscreenToggle:  { key: 'F11',    ctrl: false, shift: false, alt: false },
   screenshot:        { key: 'F9',     ctrl: false, shift: false, alt: false },
+  screenshotArea:    { key: 'F9',     ctrl: false, shift: true,  alt: false },
+  record:            { key: 'F8',     ctrl: false, shift: false, alt: false },
+  recordPause:       { key: 'F7',     ctrl: false, shift: false, alt: false },
+  hubToggle:         { key: 'h',      ctrl: true,  shift: false, alt: false },
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -199,6 +304,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     higherMaxFps: false,
     frameCap: 0,
     processPriority: 'Normal',
+    cpuThrottle: 1,
+    cpuThrottleMenu: 1,
   },
   game: {
     lastServer: '',
@@ -206,6 +313,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     rememberTabs: false,
     joinAsSpectator: false,
     rawInput: true,
+    selectableChat: false,
     betterChat: true,
     autoHideChat: false,
     chatHistorySize: 200,
@@ -215,6 +323,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     hideBunnies: false,
     hideTurfBanners: false,
     screenshotSave: false,
+    recordQuality: 'Medium',
+    recordFps: 60,
+    recordAudio: 'game',
+    recordSource: 'game',
+    recordMic: false,
     headshotSound: 'off',
     tradeDingSound: 'off',
     tradeDingVolume: 40,
@@ -234,9 +347,57 @@ export const DEFAULT_CONFIG: AppConfig = {
     goal: 0,
     background: true,
     scale: 1,
-    x: 94,
-    y: 50,
+    x: 95,
+    y: 62,
   },
+  twitch: {
+    enabled: false,
+    channel: '',
+    showBadges: true,
+    showHeader: true,
+    thirdPartyEmotes: true,
+    fontSize: 16,
+    width: 340,
+    height: 260,
+    x: 1,
+    y: 40,
+    background: 0.35,
+    autoPlace: true,
+    linkCommand: false,
+    linkOnlyLive: true,
+  },
+  spotify: {
+    enabled: false,
+    clientId: '',
+    showArt: true,
+    showProgress: true,
+    hideWhenIdle: true,
+    scale: 1,
+    x: 50,
+    y: 1.5,
+    background: 0.45,
+    ignoreLive: true,
+    ignoreWords: 'twitch',
+  },
+  extras: {
+    rankedBadges: true,
+    modDownloader: true,
+    chatFilters: true,
+    chatFilterKey: 'F3',
+    chatLogs: true,
+    chatLogsKey: 'F1',
+    quickPlayKey: 'F2',
+    displayMode: 'windowed',
+    userscriptReload: 'notify',
+    hiddenMenu: [],
+    rpcButtons: { enabled: false, label1: '', url1: '', label2: '', url2: '' },
+    settingsProfiles: [],
+    autoRejoin: false,
+    crosshair: { enabled: false, shape: 'cross', symbol: '★', color: '#00ff00', outline: '#000000', size: 10, thick: 2, gap: 5, dot: 0, outWidth: 1 },
+  },
+  spotifyAuth: '',
+  twitchBotAuth: '',
+  overlayLayout: 0,
   swapper: {
     enabled: false,
     path: '',
@@ -264,6 +425,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     deathscreenAnimation: true,
     hideMenuPopups: false,
     menuTimer: true,
+    cleanMenu: false,
+    rankedLeaderboardSearch: true,
     watermark: true,
     directServerPing: false,
     classicSocial: false,

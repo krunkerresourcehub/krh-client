@@ -37,13 +37,13 @@ interface GithubRelease {
   assets: GithubAsset[];
 }
 
-// KRH Client has no release feed yet, so update checks are off. Set UPDATES_ENABLED to true
-// and point UPDATE_CONFIG at your own GitHub repo's releases to enable them.
-const UPDATES_ENABLED = false;
+// Update checks read the latest GitHub release of the repository configured below (krunkerresourcehub/krh-client).
+// Releases need a vX.Y.Z tag and a '...Setup.exe' asset for the Windows self-update.
+const UPDATES_ENABLED = true;
 
 const UPDATE_CONFIG = {
-  checkUrl: 'https://api.github.com/repos/krh/KRH-Client/releases/latest',
-  releasesUrl: 'https://github.com/krh/KRH-Client/releases/latest',
+  checkUrl: 'https://api.github.com/repos/krunkerresourcehub/krh-client/releases/latest',
+  releasesUrl: 'https://github.com/krunkerresourcehub/krh-client/releases/latest',
   allowedHosts: ['github.com', 'githubusercontent.com'],
 };
 

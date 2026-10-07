@@ -165,3 +165,34 @@ export function initModManagerButton(): void {
     if (injectModManagerBtn() || ++attempts > 60) clearInterval(poll);
   }, 500);
 }
+
+// ── Cleaner Menu + Selectable Chat (ported from Glorp) ──
+function setStyleTag(id: string, css: string, on: boolean): void {
+  const existing = document.getElementById(id);
+  if (!on) { existing?.remove(); return; }
+  if (existing) return;
+  const el = document.createElement('style');
+  el.id = id;
+  el.textContent = css;
+  (document.head || document.documentElement).appendChild(el);
+}
+
+// Glorp's "Cleaner Menu" list, minus the Quick Match and Editor buttons (KRH keeps those reachable).
+const CLEAN_MENU_CSS =
+  '.settingsBtn[style*="width:auto;background-color:#994cd1"], .setSugBox2, .advancedSwitch, .menuSocialB, ' +
+  '.serverHostOpH, .signup-rewards-container, #tlInfHold, #gameNameHolder, #termsInfo, #bubbleContainer, ' +
+  '#instructions:only-child, #mapInfoHld, #krDiscountAd, #classPreviewCanvas, #menuClassSubtext, ' +
+  '#settingsPreset, #menuClassName, #menuClassIcn, #streamContainerNew { display: none !important; } ' +
+  '.verticalSeparator, .verticalSeparatorInline { visibility: hidden !important; } ' +
+  '#mLevelCont { background-color: transparent !important; } ' +
+  '#uiBase.onMenu #spectButton { top: 94% !important; } ' +
+  '.headerBarRight { right: -23px !important; } ' +
+  '.headerBarLeft, .headerBarRight, #menuItemContainer { background-color: transparent !important; }';
+
+export function setCleanMenu(on: boolean): void {
+  setStyleTag('krh-cleanMenu', CLEAN_MENU_CSS, on);
+}
+
+export function setSelectableChat(on: boolean): void {
+  setStyleTag('krh-selectableChat', '#chatHolder * { user-select: text !important; }', on);
+}

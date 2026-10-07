@@ -22,7 +22,7 @@ import {
 import {
   type SettingsBag,
   buildGeneralSection, buildGameSection, buildKeystrokesRows, buildPerformanceSection,
-  buildSwapperSection, buildAppearanceSection, buildMatchmakerSection, buildDiscordSection,
+  buildSwapperSection, buildAppearanceSection, buildMatchmakerSection, buildDiscordSection, buildExtrasSection,
   buildChatSection, stopMusicPreview,
 } from './settings-sections';
 import { buildAccountsSection } from './alt-manager';
@@ -36,7 +36,7 @@ import type { UserscriptInstance } from './userscripts';
 // namespaces — never auth tokens (`__FRVR_*`, `krunker_username`) or other keys.
 const KRUNKER_SETTING_PREFIXES = ['kro_setngss_', 's_'];
 
-const GITHUB_ISSUES_URL = 'https://github.com/krh/KRH-Client/issues';
+const GITHUB_ISSUES_URL = 'https://github.com/krunkerresourcehub/krh-client/issues';
 const GITHUB_MARK_SVG = '<svg class="krh-issues-mark" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>';
 let issueCountCache: number | null = null;
 
@@ -352,7 +352,7 @@ function renderSettings(searchQuery?: string): void {
   // gap here lets the browser paint the (Krunker-cleared) empty holder = a flash.
   let data: { config: any; platform: any; version: string };
   try {
-    data = ipcRenderer.sendSync('get-settings-data-sync', ['swapper', 'matchmaker', 'keybinds', 'advanced', 'game', 'ui', 'discord', 'translator', 'performance', 'nukeCounter']);
+    data = ipcRenderer.sendSync('get-settings-data-sync', ['swapper', 'matchmaker', 'keybinds', 'advanced', 'game', 'ui', 'discord', 'translator', 'performance', 'nukeCounter', 'twitch', 'spotify', 'extras']);
   } catch (err: any) {
     _console.error('[KRH] Settings render error:', err);
     return;
@@ -418,8 +418,9 @@ function renderSettings(searchQuery?: string): void {
     { key: 'Game', label: 'Game', icon: 'sports_esports', build: (b) => buildGameSection(b, gameConf, uiConfRaw, bag) },
     { key: 'Performance', label: 'Performance', icon: 'speed', build: (b) => buildPerformanceSection(b, allConf.performance, allConf.advanced, isWindows) },
     { key: 'Swapper', label: 'Swapper', icon: 'swap_horiz', build: (b) => buildSwapperSection(b, allConf.swapper, uiConfRaw) },
-    { key: 'Appearance', label: 'Appearance', icon: 'palette', build: (b) => buildAppearanceSection(b, uiConfRaw, allConf.nukeCounter) },
+    { key: 'Appearance', label: 'Appearance', icon: 'palette', build: (b) => buildAppearanceSection(b, uiConfRaw, allConf.nukeCounter, allConf.twitch, allConf.spotify) },
     { key: 'Matchmaker', label: 'Matchmaker', icon: 'travel_explore', build: (b) => buildMatchmakerSection(b, allConf.matchmaker, bag) },
+    { key: 'Extras', label: 'Extras', icon: 'extension', build: (b) => buildExtrasSection(b, allConf.extras) },
     { key: 'Chat', label: 'Chat', icon: 'chat', build: (b) => buildChatSection(b, gameConf, allConf.translator) },
     { key: 'Discord', label: 'Discord', icon: 'forum', build: (b) => buildDiscordSection(b, allConf.discord) },
     { key: 'Accounts', label: 'Accounts', icon: 'people', build: (b) => buildAccountsSection(createGroup(b), reapplySearch) },

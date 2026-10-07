@@ -319,7 +319,7 @@ function attachChatClampObserver(): void {
     const menu = document.getElementById('menuItemContainer');
     const uiBase = document.getElementById('uiBase');
     if (!menu && !uiBase) return;
-    // Targeted observation — no subtree+childList combo (safe per CLAUDE.md).
+    // Targeted observation — no subtree+childList combo.
     // - menuItemContainer childList: catches button injection/removal.
     // - uiBase class attr: catches onMenu/onGame transitions instantly.
     _chatClampObserver = new MutationObserver(updateChatClamp);

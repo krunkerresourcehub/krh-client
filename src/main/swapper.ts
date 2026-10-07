@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, promises as fsp } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, promises as fsp } from 'fs';
 import { join, resolve, sep } from 'path';
 import { pathToFileURL } from 'url';
 import { protocol, net, Session } from 'electron';
@@ -6,6 +6,18 @@ import { electronLog } from './logger';
 
 const PROTOCOL_NAME = 'krh-swap';
 const TARGET_DOMAIN = 'krunker.io';
+
+// External swapper (idea from the PC7 Client, https://github.com/PC7-Client/PC7-Client; written from scratch):
+// externalResourceSwapper.json maps a Krunker resource path to a web address instead of a local file,
+//   { "/textures/foo.png": "https://example.com/my-foo.png" }
+// Keys are resource paths (the same layout as a local swap folder; a leading /assets is ignored).
+// Values must be https links. Keys that do not start with "/" (like "_readme") are ignored.
+export const EXTERNAL_SWAP_FILE = 'externalResourceSwapper.json';
+const EXTERNAL_MAX_ENTRIES = 5000;
+export const EXTERNAL_EXAMPLE = {
+  _readme: 'Map a Krunker resource path to an https link. Example below (remove the leading underscore to use it).',
+  '_/textures/example.png': 'https://example.com/my-texture.png',
+};
 
 /**
  * Convert a native file path to a proper krh-swap:// URL.
@@ -75,13 +87,37 @@ export function registerSwapperFileProtocol(ses: Session, swapDir: string): void
 export class ResourceSwapper {
   private swapDir: string;
   private swapFiles = new Map<string, string>();
+  private externalMap = new Map<string, string>();
   private ready = false;
   private scanPromise: Promise<void>;
 
   constructor(swapDir: string) {
     this.swapDir = swapDir;
     if (!existsSync(this.swapDir)) mkdirSync(this.swapDir, { recursive: true });
+    this.loadExternal();
     this.scanPromise = this.scanAsync('');
+  }
+
+  /** (Re)read externalResourceSwapper.json from the swap folder (created with an example when missing). */
+  loadExternal(): void {
+    this.externalMap.clear();
+    const file = join(this.swapDir, EXTERNAL_SWAP_FILE);
+    try {
+      if (!existsSync(file)) { writeFileSync(file, JSON.stringify(EXTERNAL_EXAMPLE, null, 2), 'utf-8'); return; }
+      const json = JSON.parse(readFileSync(file, 'utf-8'));
+      if (!json || typeof json !== 'object' || Array.isArray(json)) return;
+      for (const [key, value] of Object.entries(json as Record<string, unknown>)) {
+        if (this.externalMap.size >= EXTERNAL_MAX_ENTRIES) break;
+        if (typeof value !== 'string' || !key.startsWith('/')) continue;
+        let target: URL;
+        try { target = new URL(value); } catch { continue; }
+        if (target.protocol !== 'https:') continue;
+        this.externalMap.set(key.startsWith('/assets/') ? key.substring(7) : key, target.href);
+      }
+      electronLog.log(`[KRH] External swapper: ${this.externalMap.size} entr${this.externalMap.size === 1 ? 'y' : 'ies'}`);
+    } catch (err) {
+      electronLog.warn('[KRH] Could not read ' + EXTERNAL_SWAP_FILE + ':', (err as Error).message);
+    }
   }
 
   /** Wait for the async directory scan to complete */
@@ -93,13 +129,14 @@ export class ResourceSwapper {
   /** Rescan the swap directory to pick up added/removed/changed files */
   async rescan(): Promise<void> {
     this.swapFiles.clear();
+    this.loadExternal();
     await this.scanAsync('');
     this.ready = true;
   }
 
   /** URL filter patterns for webRequest.onBeforeRequest — single broad pattern */
   get patterns(): string[] {
-    return this.swapFiles.size > 0 ? [`*://*.${TARGET_DOMAIN}/*`] : [];
+    return this.swapFiles.size > 0 || this.externalMap.size > 0 ? [`*://*.${TARGET_DOMAIN}/*`] : [];
   }
 
   /**
@@ -121,6 +158,8 @@ export class ResourceSwapper {
       if (pathname.startsWith('/assets/')) pathname = pathname.substring(7);
       const localPath = this.swapFiles.get(pathname);
       if (localPath) return filePathToSwapURL(localPath);
+      const external = this.externalMap.get(pathname);
+      if (external) return external;
     } catch { /* malformed URL — ignore */ }
     return null;
   }

@@ -29,6 +29,12 @@ if (process.platform === 'linux') {
     args.unshift('--ozone-platform=x11');
     env.__GL_SYNC_TO_VBLANK = '0';
     env.__GL_THREADED_OPTIMIZATIONS = '1';
+    // Hybrid-graphics laptops: render on the NVIDIA GPU (only when its driver is loaded).
+    if (!env.KRH_NO_NVIDIA_ENV && require('fs').existsSync('/proc/driver/nvidia/version')) {
+        env.__NV_PRIME_RENDER_OFFLOAD = '1';
+        env.__VK_LAYER_NV_optimus = 'NVIDIA_only';
+        env.__GLX_VENDOR_LIBRARY_NAME = 'nvidia';
+    }
 }
 // pass through any extra args from the npm caller
 args.push(...process.argv.slice(2));

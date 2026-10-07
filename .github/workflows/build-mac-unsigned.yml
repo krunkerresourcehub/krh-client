@@ -1,0 +1,27 @@
+name: Build macOS DMG (unsigned test build)
+
+# Manual build for people without a Mac and without an Apple Developer account.
+# Run it from the Actions tab: "Build macOS DMG (unsigned test build)" -> Run workflow.
+# The DMG shows up under "Artifacts" at the bottom of the run page.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci --legacy-peer-deps
+      - name: Build DMG (ad-hoc signed, no notarization)
+        env:
+          KRH_REQUIRE_SIGNED: ''
+        run: npm run dist:mac
+      - run: ls -lh out/*.dmg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: KRH-Client-mac-arm64
+          path: out/*.dmg
+          if-no-files-found: error

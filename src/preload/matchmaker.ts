@@ -5,6 +5,7 @@
 
 import { ipcRenderer } from 'electron';
 import type { Keybind } from '../main/config';
+import { OFFICIAL_MAPS, mapImageUrl } from '../main/maps';
 import { escapeHtml, type SavedConsole } from './utils';
 
 // Full array — indices must match the server's gamemode IDs (game[4].g)
@@ -19,7 +20,6 @@ export const MATCHMAKER_GAMEMODE_FILTER = [
 ];
 export const MATCHMAKER_REGIONS = ['SV', 'TOK', 'FRA', 'MBI', 'SYD', 'SIN', 'DAL', 'BHN', 'BRZ', 'NY'];
 export const MATCHMAKER_REGION_NAMES: Record<string, string> = { SV: 'Silicon Valley', TOK: 'Tokyo', FRA: 'Frankfurt', MBI: 'Mumbai', SYD: 'Sydney', SIN: 'Singapore', DAL: 'Dallas', BHN: 'Bahrain', BRZ: 'Brazil', NY: 'New York' };
-export const MAP_ICON_INDICES = ['Burg', 'Littletown', 'Sandstorm', 'Subzero', 'Undergrowth', 'Shipment', 'Freight', 'Lostworld', 'Citadel', 'Oasis', 'Kanji', 'Industry', 'Lumber', 'Evacuation', 'Site', 'SkyTemple', 'Lagoon', 'Bureau', 'Tortuga', 'Tropicano', 'Krunk_Plaza', 'Arena', 'Habitat', 'Atomic', 'Old_Burg', 'Throwback', 'Stockade', 'Facility', 'Clockwork', 'Laboratory', 'Shipyard', 'Soul Sanctum', 'Bazaar', 'Erupt', 'HQ', 'Khepri', 'Lush', 'Vivo', 'Slide Moonlight', 'Eterno Simulator'];
 export const MATCHMAKER_MAP_NAMES: Record<string, string> = {
     SkyTemple: 'Sky Temple', Krunk_Plaza: 'Krunk Plaza', Old_Burg: 'Old Burg',
 };
@@ -31,6 +31,7 @@ export const MATCHMAKER_MAP_FILTER = [
     'Site', 'SkyTemple', 'Lagoon', 'Tropicano', 'Habitat', 'Atomic', 'Old_Burg',
     'Throwback', 'Clockwork', 'Bazaar', 'Erupt', 'HQ', 'Lush', 'Vivo',
     'Slide Moonlight', 'Eterno Simulator', 'Eterno Jump', 'Frontier',
+    'Piazza', 'Barnyard',
 ];
 
 // Normalize a map identifier for comparison: lowercase, strip non-alphanumerics.
@@ -41,17 +42,12 @@ function normalizeMapId(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// Krunker hosts a top-down preview image per official map at a fixed index — the
-// map's position in MAP_ICON_INDICES. Community maps aren't indexed (no icon).
-// Lookup is normalized so live IDs like "slide_moonlight" still resolve.
+// Krunker hosts a top-down preview image per official map at the map's id.
+// Community maps aren't indexed (no icon). Lookup is normalized so live IDs like
+// "slide_moonlight" still resolve.
 const MAP_ICON_INDEX_BY_NORM = new Map<string, number>(
-    MAP_ICON_INDICES.map((name, i) => [normalizeMapId(name), i]),
+    OFFICIAL_MAPS.map((name, i) => [normalizeMapId(name), i]),
 );
-// Official maps Krunker added after MAP_ICON_INDICES was last synced: their preview
-// images (map_<idx>.png) exist beyond index 39. Registered explicitly with the icon
-// index verified by inspecting the live image.
-MAP_ICON_INDEX_BY_NORM.set(normalizeMapId('Eterno Jump'), 41);
-MAP_ICON_INDEX_BY_NORM.set(normalizeMapId('Frontier'), 42);
 // Normalized IDs of the maps offered in the picker. Used as the default map
 // filter when the user selects no maps, so anything outside the curated list —
 // community maps (e.g. "AIM_Room") and unlisted official maps (e.g. "Shipyard")
@@ -62,7 +58,7 @@ const DEFAULT_MAP_NORMS = new Set(MATCHMAKER_MAP_FILTER.map(normalizeMapId));
 const PARKOUR_MAP_NORMS = new Set(['Eterno Jump', 'Slide Moonlight'].map(normalizeMapId));
 export function mapIconUrl(mapName: string): string | null {
     const idx = MAP_ICON_INDEX_BY_NORM.get(normalizeMapId(mapName));
-    return idx === undefined ? null : `https://assets.krunker.io/img/maps/map_${idx}.png`;
+    return idx === undefined ? null : mapImageUrl(idx);
 }
 
 function createMapIcon(mapName: string, className: string): HTMLImageElement | null {
@@ -173,6 +169,24 @@ function abortSearch(): void {
     dismissPopup();
 }
 
+// Lobbies you joined through the matchmaker lately: preferred last, so pressing the key again does not
+// send you straight back to the lobby you just left (idea from Lombre_Blanche's matchmaker script).
+const RECENT_KEY = 'krh_recent_games';
+const RECENT_MAX = 20;
+function recentGames(): string[] {
+    try {
+        const v = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+    } catch { return []; }
+}
+function rememberGame(id: string): void {
+    try {
+        const list = recentGames().filter((x) => x !== id);
+        list.push(id);
+        localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(-RECENT_MAX)));
+    } catch { /* storage unavailable: skipped */ }
+}
+
 async function verifyAndJoin(run: number, gameID: string): Promise<void> {
     try {
         const controller = new AbortController();
@@ -191,6 +205,7 @@ async function verifyAndJoin(run: number, gameID: string): Promise<void> {
             const live = liveMap.get(id);
             if (live && live.players < live.limit) {
                 dismissPopup();
+                rememberGame(id);
                 window.location.href = `https://krunker.io/?game=${id}`;
                 return;
             }
@@ -419,10 +434,14 @@ async function runSearch(myRun: number, mmConfig: MatchmakerConfig, _con?: Saved
     // Phase 3: pick the match (if any), then play the scan and reveal the result
     let best: MatchmakerGame | undefined;
     if (filtered.length > 0) {
+        // Prefer lobbies you have not just been in; if every match was visited lately, use them all.
+        const recent = new Set(recentGames());
+        const fresh = filtered.filter((g) => !recent.has(g.gameID));
+        const candidates = fresh.length > 0 ? fresh : filtered;
         // Pick randomly from the top tier of comparable matches for variety
-        const top = filtered[0];
+        const top = candidates[0];
         const topPing = pings[top.region] ?? 999;
-        const pool = filtered.filter(g => {
+        const pool = candidates.filter(g => {
             const gPing = pings[g.region] ?? 999;
             return Math.abs(gPing - topPing) <= 20
                 && top.playerCount - g.playerCount <= 2;

@@ -18,6 +18,7 @@ export interface ActivityPayload {
     startTimestamp?: number;
     largeImageKey?: string;
     largeImageText?: string;
+    buttons?: Array<{ label: string; url: string }>;
 }
 
 function getPipePath(id: number): string {
@@ -218,6 +219,7 @@ export class DiscordRPC {
         if (activity.startTimestamp) {
             activityObj.timestamps = { start: activity.startTimestamp };
         }
+        if (activity.buttons && activity.buttons.length) activityObj.buttons = activity.buttons.slice(0, 2);
         if (activity.largeImageKey) {
             activityObj.assets = {
                 large_image: activity.largeImageKey,

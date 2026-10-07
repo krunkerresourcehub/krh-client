@@ -1,9 +1,16 @@
 {
   "name": "krh-client",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "KRH Client - Krunker Resource Hub client",
   "main": "dist/main/index.js",
-  "homepage": "https://github.com/krh/KRH-Client",
+  "homepage": "https://github.com/krunkerresourcehub/krh-client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krunkerresourcehub/krh-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/krunkerresourcehub/krh-client/issues"
+  },
   "author": "Krunker Resource Hub <krh@users.noreply.github.com>",
   "license": "GPL-3.0",
   "scripts": {
@@ -18,6 +25,8 @@
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:mac": "sh scripts/dist-mac.sh",
     "dist:all": "npm run build && electron-builder --win --linux",
+    "dist:win:dist": "npm run build && electron-builder --win -c.electronDist=./node_modules/electron/dist-win",
+    "dist:linux:dist": "npm run build && electron-builder --linux -c.electronDist=./node_modules/electron/dist-linux",
     "clean": "rimraf dist out",
     "lint": "eslint src/",
     "prepare": "husky"

@@ -41,6 +41,10 @@ export interface HubWindowOptions {
   onExternal: (url: string) => void;
   isGameVisible: () => boolean;
   isQuitting: () => boolean;
+  /** Hub key handling: true when this key press is the "open / hide KRH hub" shortcut. */
+  isHubToggleKey: (input: { key: string; control: boolean; shift: boolean; alt: boolean }) => boolean;
+  /** The hub shortcut was pressed while the hub itself has focus. */
+  onHubToggle: () => void;
 }
 
 function offlineHTML(): string {
@@ -116,6 +120,11 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
   // Small conveniences (the app has no menu bar)
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
+    if (opts.isHubToggleKey(input)) {
+      opts.onHubToggle();
+      event.preventDefault();
+      return;
+    }
     if (input.key === 'F5' || (input.control && !input.shift && !input.alt && input.key.toLowerCase() === 'r')) {
       win.webContents.reload();
       event.preventDefault();
@@ -137,8 +146,65 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
     app.quit();
   });
 
+  // Wake the hub up whenever the user comes back to it.
+  win.on('focus', () => { void setHubSuspended(win, false); });
+  win.on('show', () => { void setHubSuspended(win, false); });
+  win.on('restore', () => { void setHubSuspended(win, false); });
+  // Nobody can see it while minimized / hidden behind a running game: freeze it fully then.
+  const freezeIfUnseen = (): void => { if (opts.isGameVisible()) void setHubSuspended(win, true); };
+  win.on('minimize', freezeIfUnseen);
+  win.on('hide', freezeIfUnseen);
+
   void win.loadURL(HUB_URL);
   return win;
+}
+
+// ── Suspend / resume ──
+// While the game has focus the hub stays open (alt-tab back to it any time) but costs next to nothing.
+//   - hub visible (e.g. behind a windowed game): it is only slowed down (CPU throttle through the Chrome
+//     DevTools Protocol). It keeps showing its last picture. A fully frozen page can lose its picture and
+//     repaint as a blank dark window, which is what this avoids.
+//   - hub minimized or hidden: nobody can see it, so it is frozen completely (no JS, timers or rendering).
+// It is resumed as soon as the hub window is focused, shown or restored again.
+type SuspendMode = 'active' | 'throttled' | 'frozen';
+const THROTTLE_RATE = 20;
+const suspendState = new WeakMap<BrowserWindow, { mode: SuspendMode; attached: boolean }>();
+
+function getSuspendState(win: BrowserWindow): { mode: SuspendMode; attached: boolean } {
+  let st = suspendState.get(win);
+  if (!st) {
+    st = { mode: 'active', attached: false };
+    suspendState.set(win, st);
+  }
+  return st;
+}
+
+export async function setHubSuspended(win: BrowserWindow | null | undefined, suspended: boolean): Promise<void> {
+  if (!win || win.isDestroyed()) return;
+  const wc = win.webContents;
+  const st = getSuspendState(win);
+  const want: SuspendMode = !suspended ? 'active' : (win.isVisible() && !win.isMinimized() ? 'throttled' : 'frozen');
+  if (st.mode === want) return;
+  // Never slow down while DevTools is open (it would affect the inspector's target too).
+  if (suspended && wc.isDevToolsOpened()) return;
+  try {
+    if (!st.attached) {
+      wc.debugger.attach('1.3');
+      st.attached = true;
+      wc.debugger.once('detach', () => { st.attached = false; st.mode = 'active'; });
+    }
+    const send = (method: string, params: object): Promise<unknown> => wc.debugger.sendCommand(method, params);
+    if (want === 'frozen') {
+      await send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      await send('Page.setWebLifecycleState', { state: 'frozen' });
+    } else {
+      if (st.mode === 'frozen') await send('Page.setWebLifecycleState', { state: 'active' });
+      await send('Emulation.setCPUThrottlingRate', { rate: want === 'throttled' ? THROTTLE_RATE : 1 });
+    }
+    st.mode = want;
+  } catch (err) {
+    electronLog.warn(`[KRH] Hub ${want} failed:`, err);
+  }
 }
 
 export function showWindow(win: BrowserWindow | null | undefined): void {

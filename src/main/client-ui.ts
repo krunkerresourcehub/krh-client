@@ -719,6 +719,115 @@ ${THEME_CSS}
 #chatList.krh-chat-clamped {
   max-height: var(--krh-chat-max) !important;
 }
+
+/* ═══════════════ KRH "Prism" settings (v1.0) ═══════════════
+   Complete re-layout: category TILES in a grid on top (icon over label, nothing can be clipped),
+   settings as separate rounded cards underneath, violet to magenta accent, pill switches with
+   ON / OFF text. Overrides the base rules above on purpose. */
+:root {
+  --krh-accent: #8b5cf6;
+  --krh-accent-hover: #b39bff;
+  --krh-accent-soft: rgba(139,92,246,0.16);
+  --krh-accent-grad: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  --krh-blue: #8fb4ff;
+  --krh-toggle-off: rgba(255,255,255,0.1);
+}
+.krh-settings { font-size: 14px; }
+
+/* header: one rounded banner */
+.krh-header {
+  margin: 2px 0 12px;
+  padding: 10px 14px;
+  gap: 12px;
+  border: 1px solid rgba(139,92,246,0.35);
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(139,92,246,0.24), rgba(217,70,239,0.08) 60%, rgba(255,255,255,0.02));
+}
+.krh-header-mark { width: 38px; height: 38px; }
+.krh-header-name { font-size: 16px; font-weight: 800; letter-spacing: 0.08em; }
+.krh-header-ver { display: inline-block; margin-top: 2px; padding: 1px 9px; border-radius: 999px; background: rgba(139,92,246,0.3); color: #e4dcff; font-size: 11px; }
+.krh-header-issues { border-radius: 999px; border: 1px solid rgba(139,92,246,0.45); background: rgba(139,92,246,0.14); }
+.krh-header-issues:hover { background: var(--krh-accent); border-color: var(--krh-accent); color: #fff; }
+.krh-header-issues:hover .krh-issues-mark { color: #fff; }
+
+/* shell: tiles on top, content below (was: rail on the left) */
+.krh-shell { flex-direction: column; align-items: stretch; }
+.krh-rail {
+  width: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 6px;
+  padding: 0 0 12px;
+  border-right: none;
+  border-bottom: 1px solid var(--krh-border-default);
+}
+.krh-rail-item {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  min-height: 62px;
+  margin: 0;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border-left: none;
+  background: rgba(255,255,255,0.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  transition: transform 0.12s, background 0.12s, box-shadow 0.12s;
+}
+.krh-rail-item .material-icons { font-size: 22px; }
+.krh-rail-label { font-size: 11.5px; line-height: 1.15; letter-spacing: 0.02em; white-space: normal; }
+.krh-rail-item:hover { background: rgba(139,92,246,0.16); transform: translateY(-1px); }
+.krh-rail-item.krh-active { background: var(--krh-accent-grad); border-left: none; box-shadow: 0 6px 18px rgba(139,92,246,0.4); }
+.krh-rail-item.krh-active .material-icons, .krh-rail-item.krh-active .krh-rail-label { color: #fff; }
+
+.krh-pane { padding: 14px 2px 8px; }
+
+/* groups: no box, a divider heading; every row is its own card */
+.krh-group { background: none; border: none; border-radius: 0; padding: 0; margin-bottom: 18px; }
+.krh-group-label { display: flex; align-items: center; gap: 12px; padding: 4px 2px 10px; font-weight: 800; letter-spacing: 0.16em; color: var(--krh-accent-hover); }
+.krh-group-label::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(139,92,246,0.55), transparent); }
+.krh-row {
+  margin-bottom: 7px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border-left-width: 3px;
+  border-bottom: none;
+  background: rgba(255,255,255,0.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.krh-row:hover { background: rgba(139,92,246,0.1); }
+.krh-row-title { font-size: 18px !important; }
+.krh-row-desc { font-size: 14px !important; color: rgba(255,255,255,0.45) !important; }
+
+.krh-tag { border-radius: 999px; padding: 1px 8px; }
+
+/* toggle: pill with ON / OFF text */
+.krh-toggle { width: 60px; height: 28px; }
+.krh-toggle-track { border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+.krh-toggle-track::before { top: 3px; left: 3px; width: 22px; height: 22px; box-shadow: 0 2px 5px rgba(0,0,0,0.45); transition: left 0.18s; }
+.krh-toggle-track::after { content: "OFF"; position: absolute; right: 9px; top: 0; line-height: 28px; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; color: rgba(255,255,255,0.45); }
+.krh-toggle input:checked + .krh-toggle-track { background: var(--krh-accent-grad); box-shadow: 0 0 12px rgba(139,92,246,0.5); }
+.krh-toggle input:checked + .krh-toggle-track::before { left: 35px; }
+.krh-toggle input:checked + .krh-toggle-track::after { content: "ON"; right: auto; left: 10px; color: #fff; }
+
+/* controls */
+.krh-select, .krh-input, .krh-num-val { border-radius: 10px; background: rgba(0,0,0,0.3); }
+.krh-select:focus, .krh-input:focus, .krh-num-val:focus { border-color: var(--krh-accent); }
+.krh-keyIcon { border-radius: 8px; border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.16); color: #e4dcff; font-weight: 700; }
+.krh-keyIcon:hover { background: var(--krh-accent); border-color: var(--krh-accent); color: #fff; }
+.krh-btn, .krh-clear-btn { border-radius: 10px; border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.14); color: #e4dcff; }
+.krh-btn:hover, .krh-clear-btn:hover { background: var(--krh-accent-grad); border-color: transparent; color: #fff; }
+.krh-color { border-radius: 10px; }
+.krh-range { height: 6px; border-radius: 999px; background: rgba(139,92,246,0.25); }
+.krh-range::-webkit-slider-thumb { width: 17px; height: 17px; background: var(--krh-accent-grad); box-shadow: 0 0 0 3px rgba(255,255,255,0.9); }
+
+/* multi-select tiles */
+.krh-opt { border-radius: 10px; }
+.krh-opt:hover { background: rgba(139,92,246,0.14); }
+.krh-opt:has(input:checked) { background: rgba(139,92,246,0.2); border-color: var(--krh-accent); }
+.krh-opt-check { border-radius: 50%; border-color: rgba(255,255,255,0.4); }
+.krh-opt input:checked ~ .krh-opt-check { background: var(--krh-accent); border-color: var(--krh-accent); }
 `;
 
 
@@ -1080,8 +1189,15 @@ export const BANLOG_SEARCH_CSS = `
 #kpdCalls tr.krh-banlog-hide { display: none !important; }
 `;
 
+// ── More Krunker popup CSS ──
+// Hides the official-client download promo and shrinks the fixed-width popup to the remaining options grid.
+export const MORE_KRUNKER_POPUP_CSS = `
+.moreKrunkerClient { display: none !important; }
+.moreKrunkerPopup { width: auto !important; }
+`;
+
 /** Pre-concatenated CSS for single-call injection */
-export const ALL_CLIENT_CSS = `${CLIENT_SETTINGS_CSS}\n${MATCHMAKER_SETTINGS_CSS}\n${TRANSLATOR_CSS}\n${ALT_MANAGER_CSS}\n${HP_COUNTER_CSS}\n${BP_CLAIM_ALL_CSS}\n${RANK_TRACKER_CSS}\n${WATERMARK_CSS}\n${BANLOG_SEARCH_CSS}`;
+export const ALL_CLIENT_CSS = `${CLIENT_SETTINGS_CSS}\n${MATCHMAKER_SETTINGS_CSS}\n${TRANSLATOR_CSS}\n${ALT_MANAGER_CSS}\n${HP_COUNTER_CSS}\n${BP_CLAIM_ALL_CSS}\n${RANK_TRACKER_CSS}\n${WATERMARK_CSS}\n${BANLOG_SEARCH_CSS}\n${MORE_KRUNKER_POPUP_CSS}`;
 
 /** Hides leftover ad container divs after the network-level URL block cancels their payloads. */
 export const HIDE_ADS_CSS = `

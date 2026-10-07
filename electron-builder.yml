@@ -63,7 +63,9 @@ portable:
 
 linux:
   target:
-    - target: AppImage
+    - target: AppImage   # portable: chmod +x and run
+      arch: [x64]
+    - target: deb        # installer (Debian / Ubuntu / Mint)
       arch: [x64]
   icon: build/icon.png
   category: Game
@@ -95,3 +97,6 @@ mac:
 dmg:
   artifactName: "${productName}-${version}-mac-${arch}.${ext}"
 
+
+deb:
+  depends: [libgtk-3-0, libnotify4, libnss3, libxss1, libxtst6, xdg-utils, libatspi2.0-0, libuuid1, libsecret-1-0]

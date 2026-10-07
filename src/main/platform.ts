@@ -1,5 +1,7 @@
 import { app } from 'electron';
 import { join } from 'path';
+import { execFile } from 'child_process';
+import { loadUserFlags } from './user-lists';
 import type { AppConfig } from './config';
 
 export type Platform = 'win32' | 'linux' | 'darwin';
@@ -40,6 +42,25 @@ export function getValidAngleBackends(info: PlatformInfo): readonly string[] {
   if (info.isWindows) return ['default', 'gl', 'd3d11', 'd3d11on12'];
   // macOS ANGLE has no Vulkan backend (Metal/GL only)
   return info.isLinux ? ['default', 'gl', 'vulkan'] : ['default', 'gl'];
+}
+
+/**
+ * Windows hybrid-graphics laptops (Intel/AMD iGPU + NVIDIA dGPU) can run the game on the weak
+ * iGPU. This is the same switch as Settings > System > Display > Graphics > "High performance"
+ * for this exe: a per-user registry value. It only takes effect from the next launch, and an
+ * existing choice (set by the user or by Windows) is never overwritten.
+ * Opt out with the environment variable KRH_NO_GPU_PREFERENCE=1.
+ */
+export function ensureHighPerformanceGpu(): void {
+  if (process.platform !== 'win32' || !app.isPackaged || process.env.KRH_NO_GPU_PREFERENCE) return;
+  // Portable builds run from a temp dir; the preference must name the real exe the user launches.
+  const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+  const key = 'HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences';
+  execFile('reg', ['query', key, '/v', exe], { windowsHide: true, timeout: 5000 }, (err) => {
+    if (!err) return; // a preference for this exe already exists
+    execFile('reg', ['add', key, '/v', exe, '/t', 'REG_SZ', '/d', 'GpuPreference=2;', '/f'],
+      { windowsHide: true, timeout: 5000 }, () => { /* best effort */ });
+  });
 }
 
 export function applyPlatformFlags(info: PlatformInfo, advanced: AppConfig['advanced'], performance: AppConfig['performance']): void {
@@ -155,6 +176,15 @@ export function applyPlatformFlags(info: PlatformInfo, advanced: AppConfig['adva
   }
 
   // ── Single emission of accumulated feature flag sets ──
+  // ── User flags (<userData>/KRH Client/user_flags.json) ──
+  // enable/disable-features merge into the sets above (one value per switch name in Chromium).
+  for (const f of loadUserFlags((m) => console.warn(m))) {
+    if (f.name === 'enable-features') f.value.split(',').filter(Boolean).forEach((n) => enabledFeatures.add(n.trim()));
+    else if (f.name === 'disable-features') f.value.split(',').filter(Boolean).forEach((n) => disabledFeatures.add(n.trim()));
+    else if (f.value) app.commandLine.appendSwitch(f.name, f.value);
+    else app.commandLine.appendSwitch(f.name);
+  }
+
   if (enabledFeatures.size) app.commandLine.appendSwitch('enable-features', [...enabledFeatures].join(','));
   if (disabledFeatures.size) app.commandLine.appendSwitch('disable-features', [...disabledFeatures].join(','));
 }

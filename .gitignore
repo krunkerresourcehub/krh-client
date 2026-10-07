@@ -5,12 +5,10 @@ out/
 .env
 .vscode/
 .idea/
-.claude/
 *.swp
 *.swo
 .DS_Store
 nul
-CLAUDE.md
 /Screenshot*
 Trace-*
 *.cpuprofile

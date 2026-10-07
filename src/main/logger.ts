@@ -57,15 +57,28 @@ function fmt(...args: unknown[]): string {
   }).join(' ');
 }
 
-function makeLogger(getStream: () => WriteStream) {
+// Readable log lines (idea from the Water Client's "Better Console"): wall-clock time with milliseconds and a
+// source tag, MAIN for the client itself and RENDERER for the game page (forwarded when Verbose Logging is on).
+// In a terminal (npm start) the tag is coloured; the log file gets the same text without colours.
+function clock(): string {
+  const d = new Date();
+  const p = (n: number, w = 2): string => String(n).padStart(w, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+
+function makeLogger(getStream: () => WriteStream, tag: 'MAIN' | 'RENDERER' = 'MAIN') {
+  const tty = !!process.stdout.isTTY;
+  const color = tag === 'MAIN' ? '\x1b[35m' : '\x1b[36m';
+  const line = (m: string): string => (tty ? `\x1b[90m${clock()}\x1b[0m ${color}[${tag}]\x1b[0m ${m}` : `${clock()} [${tag}] ${m}`);
   return {
-    log: (...args: unknown[]) => { init(); const m = fmt(...args); console.log(m); if (!closed) getStream().write(`[${ts()}] ${m}\n`); },
-    warn: (...args: unknown[]) => { init(); const m = fmt(...args); console.warn(m); if (!closed) getStream().write(`[${ts()}] WARN: ${m}\n`); },
-    error: (...args: unknown[]) => { init(); const m = fmt(...args); console.error(m); if (!closed) getStream().write(`[${ts()}] ERROR: ${m}\n`); },
+    log: (...args: unknown[]) => { init(); const m = fmt(...args); console.log(line(m)); if (!closed) getStream().write(`[${ts()}] [${tag}] ${m}\n`); },
+    warn: (...args: unknown[]) => { init(); const m = fmt(...args); console.warn(line(m)); if (!closed) getStream().write(`[${ts()}] [${tag}] WARN: ${m}\n`); },
+    error: (...args: unknown[]) => { init(); const m = fmt(...args); console.error(line(m)); if (!closed) getStream().write(`[${ts()}] [${tag}] ERROR: ${m}\n`); },
   };
 }
 
 export const electronLog = makeLogger(() => electronStream);
+export const rendererLog = makeLogger(() => electronStream, 'RENDERER');
 
 export function getLogPath(): string {
   init();

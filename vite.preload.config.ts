@@ -6,9 +6,13 @@ const isProd = process.env.NODE_ENV === 'production' || !process.argv.includes('
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/preload/index.ts'),
+      entry: {
+        index: resolve(__dirname, 'src/preload/index.ts'),
+        recorder: resolve(__dirname, 'src/preload/recorder.ts'),
+        snip: resolve(__dirname, 'src/preload/snip.ts'),
+      },
       formats: ['cjs'],
-      fileName: () => 'index.js',
+      fileName: (_format: string, name: string) => `${name}.js`,
     },
     outDir: 'dist/preload',
     emptyDirBefore: true,

@@ -12,11 +12,17 @@ import { initKeystrokes } from './keystrokes';
 import type { KeystrokesConfig } from './keystrokes';
 import { setNukeCounter } from './nuke-counter';
 import type { NukeCounterConfig } from './nuke-counter';
+import { setTwitchChat } from './twitch-chat';
+import type { TwitchChatConfig } from './twitch-chat';
+import { setSpotifyOverlay } from './spotify-overlay';
+import type { SpotifyOverlayConfig } from './spotify-overlay';
 import { checkChangelog } from './changelog';
 import { DEFAULT_CONFIG } from '../main/config-defaults';
 import { savedConsole as _console, setVerbose } from './saved-console';
 import { initAltManagerButton } from './alt-manager';
-import { startHidePopups, setClassicSocial, initModManagerButton } from './menu-tweaks';
+import { startHidePopups, setClassicSocial, initModManagerButton, setCleanMenu, setSelectableChat } from './menu-tweaks';
+import { initUiStateReporter } from './ui-state';
+import { installRankedLeaderboardSearch, disableRankedLeaderboardSearch } from './ranked-leaderboard';
 import { initSocialMusic } from './social-music';
 import { initBanlog } from './banlog';
 import { installGameSocketTap } from './game-socket';
@@ -24,6 +30,12 @@ import { installSkyHook } from './sky';
 import { installSoundHook, setHeadshotSoundMode } from './headshot-sound';
 import { initTradeDing } from './trade-ding';
 import { initKrhProtocol } from './protocol';
+import { initRankedBadges } from './ranked-badges';
+import { initModDownloader } from './mod-downloader';
+import { initChatTools } from './chat-tools';
+import { initQuickPlay, initAutoRejoin } from './quickplay';
+import { setCrosshair } from './crosshair';
+import { setHiddenMenu } from './menu-hider';
 import { initSuspectPing } from './kpd-call';
 
 
@@ -148,6 +160,10 @@ ipcRenderer.on('matchmaker-find', (_e, mmConfig: MatchmakerConfig) => {
 // ── Toast from main (e.g. screenshot confirmation) ──
 ipcRenderer.on('krh-toast', (_e, msg: string) => showToast(msg));
 
+// Ranked leaderboard search: must wrap fetch before the social page requests the rankings, so it is
+// installed right away (not after the config round-trip below) and switched off later if disabled.
+if (window.location.pathname === '/social.html' || window.location.pathname === '/' || window.location.pathname === '') installRankedLeaderboardSearch();
+
 
 // ── Wait for main process to signal page load, then poll for settings window ──
 ipcRenderer.on('main_did-finish-load', () => {
@@ -189,10 +205,14 @@ ipcRenderer.on('main_did-finish-load', () => {
       }, 500);
     }
 
+    if (uiConf?.rankedLeaderboardSearch === false) disableRankedLeaderboardSearch();
     if (isGamePage) installCompositorAnimFix();
     if (uiConf?.deathscreenAnimation) setDeathAnimBlock(true);
     if (uiConf?.hideMenuPopups) startHidePopups();
     if (uiConf?.menuTimer ?? true) setMenuTimer(true);
+    if (isGamePage && uiConf?.cleanMenu) setCleanMenu(true);
+    if (isGamePage && gameConf?.selectableChat) setSelectableChat(true);
+    if (isGamePage) initUiStateReporter();
     if (isGamePage && uiConf?.classicSocial) setClassicSocial(true);
     if (isGamePage) initModManagerButton();
 
@@ -277,6 +297,34 @@ ipcRenderer.on('main_did-finish-load', () => {
       ipcRenderer.invoke('get-config', 'nukeCounter').then((ncConf: NukeCounterConfig | undefined) => {
         if (ncConf && ncConf.enabled) setNukeCounter({ ...DEFAULT_CONFIG.nukeCounter, ...ncConf });
       }).catch((err) => _console.warn('[KRH] nuke counter config load failed:', err));
+    }
+
+    // ── Twitch chat overlay ──
+    if (isGamePage) {
+      ipcRenderer.invoke('get-config', 'twitch').then((twConf: TwitchChatConfig | undefined) => {
+        if (twConf && twConf.enabled) setTwitchChat({ ...DEFAULT_CONFIG.twitch, ...twConf });
+      }).catch((err) => _console.warn('[KRH] twitch config load failed:', err));
+    }
+
+    // ── Spotify now-playing overlay ──
+    if (isGamePage) {
+      ipcRenderer.invoke('get-config', 'spotify').then((spConf: SpotifyOverlayConfig | undefined) => {
+        if (spConf && spConf.enabled) setSpotifyOverlay({ ...DEFAULT_CONFIG.spotify, ...spConf });
+      }).catch((err) => _console.warn('[KRH] spotify config load failed:', err));
+    }
+
+    // ── Extras: ranked badges, mod downloader, chat filters + logs, Quick Play, hidden menu elements ──
+    if (isGamePage) {
+      ipcRenderer.invoke('get-config', 'extras').then((exRaw: Partial<typeof DEFAULT_CONFIG.extras> | undefined) => {
+        const ex = { ...DEFAULT_CONFIG.extras, ...exRaw };
+        if (ex.rankedBadges) initRankedBadges();
+        if (ex.modDownloader) initModDownloader();
+        initChatTools({ filters: ex.chatFilters, filterKey: ex.chatFilterKey, logs: ex.chatLogs, logsKey: ex.chatLogsKey });
+        initQuickPlay(ex.quickPlayKey);
+        if (ex.autoRejoin) initAutoRejoin();
+        if (ex.crosshair.enabled) setCrosshair(ex.crosshair);
+        if (ex.hiddenMenu.length) setHiddenMenu(ex.hiddenMenu);
+      }).catch((err) => _console.warn('[KRH] extras config load failed:', err));
     }
 
     // ── KRH watermark (in-game + menu) ──
