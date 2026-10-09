@@ -174,7 +174,9 @@ jobs:
 
       - name: Build macOS DMG
         env:
-          APPLE_API_KEY: ${{ runner.temp }}/notary.p8
+          # Only point at the notary key when it was actually written (all five secrets set);
+          # a half-set APPLE_API_* makes electron-builder demand the rest and fail.
+          APPLE_API_KEY: ${{ steps.signing.outputs.enabled == 'true' && format('{0}/notary.p8', runner.temp) || '' }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           # With all five Apple secrets set, main must produce a signed + notarized DMG

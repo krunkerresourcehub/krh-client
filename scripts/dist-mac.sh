@@ -43,11 +43,14 @@ npm run build
 
 if [ -n "$IDENTITY" ]; then
     echo "[dist-mac] packaging + signing as: $IDENTITY"
-    npx electron-builder --mac --dir
+    npx electron-builder --mac --dir --publish never
     codesign --verify --deep --strict "$OUTAPP" && echo "[dist-mac] signature valid"
 else
     echo "[dist-mac] no Developer ID identity — packaging unsigned, ad-hoc signing (test build)..."
-    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --dir
+    # Without a signing identity there is nothing to notarize. A half-set APPLE_API_* (e.g. CI
+    # passes empty secrets) makes electron-builder demand all three and abort, so clear them.
+    unset APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER
+    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --dir --publish never
     codesign --force --deep --sign - "$OUTAPP"
     codesign --verify --deep "$OUTAPP" && echo "[dist-mac] ad-hoc signature valid"
 fi
