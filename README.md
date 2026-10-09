@@ -90,7 +90,7 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
   - Linux: PRIME render offload is enabled automatically on hybrid-graphics laptops when the NVIDIA driver is loaded
   - Windows: KRH Client is registered for the high-performance GPU on hybrid-graphics laptops
 
-### New in 1.0.1: features from WOK Client and Kute
+### Features from WOK Client and Kute
 
 All of these are off by default unless noted. They are in Settings > Extras.
 
