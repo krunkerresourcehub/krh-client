@@ -17,7 +17,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 APPNAME="KRH Client"
-VERSION="$(node -p "require('./package.json').version")"
+# The real (4-part) release version lives in electron-builder.yml (extraMetadata.version);
+# package.json has to stay valid semver. Fall back to package.json if it isn't set.
+VERSION="$(node -e "const y=require('fs').readFileSync('electron-builder.yml','utf8');const m=y.match(/^\\s+version:\\s*([0-9][0-9.]*)\\s*\$/m);console.log(m?m[1]:require('./package.json').version)")"
 OUTAPP="out/mac-arm64/$APPNAME.app"
 DMG="out/$APPNAME-$VERSION-mac-arm64.dmg"
 

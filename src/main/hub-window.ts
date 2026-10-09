@@ -9,21 +9,23 @@ import { devWindowIcon } from './platform';
  * Docs, Viewer, Guides) point at krunker.io; instead of navigating inside the hub, the client
  * intercepts them:
  *   - https://krunker.io/            -> Play: opens the modded Krunker game window
- *   - any other krunker.io page      -> opens in a new window (editor, games, viewer, docs, guides, hub)
+ *   - any other krunker.io page      -> opens in a new window (editor, games, viewer, guides, hub)
  *   - other websites                 -> default browser
+ *   - docs.krunker.io, community.krunker.io (Polls), krunkerio.fandom.com (Wiki) -> their own window each
  *   - krunker-resources-hub.pages.dev -> stays inside the hub window
  */
 
 export const HUB_URL = 'https://krunker-resources-hub.pages.dev/';
 const HUB_HOSTNAME = 'krunker-resources-hub.pages.dev';
 
-export type HubRoute = 'hub' | 'play' | 'window' | 'external' | 'blocked';
+export type HubRoute = 'hub' | 'site-window' | 'play' | 'window' | 'external' | 'blocked';
 
 export function routeHubUrl(raw: string): HubRoute {
   let u: URL;
   try { u = new URL(raw); } catch { return 'blocked'; }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'blocked';
   if (u.hostname === HUB_HOSTNAME || u.hostname.endsWith('.' + HUB_HOSTNAME)) return 'hub';
+  if (siteWindowKey(u.hostname)) return 'site-window';
   if (u.hostname === 'krunker.io' || u.hostname.endsWith('.krunker.io')) {
     const isGameRoot = u.hostname === 'krunker.io' && (u.pathname === '/' || u.pathname === '');
     return isGameRoot ? 'play' : 'window';
@@ -37,6 +39,8 @@ export interface HubWindowOptions {
   onPlay: (url: string) => void;
   /** Editor / Games / Viewer / Docs / Guides / Hub pressed: open in a new window. */
   onOpenWindow: (url: string) => void;
+  /** Docs / Polls (community) / Wiki pressed: open in their own window. */
+  onOpenSiteWindow: (url: string) => void;
   /** Open a non-Krunker link in the system browser. */
   onExternal: (url: string) => void;
   isGameVisible: () => boolean;
@@ -57,6 +61,113 @@ function offlineHTML(): string {
   </style></head><body><h1>Can't reach Krunker Resource Hub</h1>
   <p>Check your internet connection and try again.</p>
   <div><a href="${HUB_URL}">Retry</a><a class="s" href="https://krunker.io">Play Krunker anyway</a></div></body></html>`;
+}
+
+/**
+ * Own windows for the hub's external sites: KrunkScript Docs, Community (Polls) and the Wiki.
+ * One window per site, re-used and focused if already open. Each site has its own persistent
+ * session (so e.g. the Community login is remembered). Krunker links clicked inside them go to
+ * the game / tab window, everything else off-site goes to the system browser.
+ */
+const SITE_WINDOWS: { host: string; key: string; title: string; match: (h: string) => boolean }[] = [
+  { host: 'docs.krunker.io', key: 'docs', title: 'KRH - Docs', match: (h) => h === 'docs.krunker.io' },
+  { host: 'community.krunker.io', key: 'polls', title: 'KRH - Polls', match: (h) => h === 'community.krunker.io' },
+  { host: 'krunkerio.fandom.com', key: 'wiki', title: 'KRH - Wiki', match: (h) => h === 'krunkerio.fandom.com' },
+];
+
+function siteWindowKey(hostname: string): string | null {
+  return SITE_WINDOWS.find((s) => s.match(hostname))?.key ?? null;
+}
+
+// Hosts a site window may navigate to without leaving it (logins / SSO / wiki sub-pages).
+function staysInSiteWindow(u: URL): boolean {
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+  const h = u.hostname;
+  if (h === 'fandom.com' || h.endsWith('.fandom.com')) return true;
+  if (h === 'krunker.io' || h.endsWith('.krunker.io')) {
+    return !(h === 'krunker.io' && (u.pathname === '/' || u.pathname === '')); // game root = Play
+  }
+  return false;
+}
+
+const siteWindows = new Map<string, BrowserWindow>();
+
+export function openSiteWindow(url: string, opts: Pick<HubWindowOptions, 'onPlay' | 'onOpenWindow' | 'onExternal'> & { onOpenSiteWindow?: (url: string) => void }): void {
+  let host = '';
+  try { host = new URL(url).hostname; } catch { return; }
+  const def = SITE_WINDOWS.find((s) => s.match(host));
+  if (!def) return;
+
+  const existing = siteWindows.get(def.key);
+  if (existing && !existing.isDestroyed()) {
+    if (existing.webContents.getURL() !== url) void existing.loadURL(url);
+    showWindow(existing);
+    return;
+  }
+
+  const ses = session.fromPartition('persist:krh-site-' + def.key);
+  // Present as a normal Chromium browser (some sites / CDNs reject "Electron/…" user agents).
+  ses.setUserAgent(ses.getUserAgent().replace(/\sElectron\/\S+/i, '').replace(/\skrh-client\/\S+/i, ''));
+
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 780,
+    minWidth: 800,
+    minHeight: 560,
+    show: false,
+    backgroundColor: '#ffffff',
+    title: def.title,
+    icon: devWindowIcon(),
+    autoHideMenuBar: true,
+    webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
+  });
+  win.removeMenu();
+  siteWindows.set(def.key, win);
+  win.on('closed', () => { siteWindows.delete(def.key); });
+  win.webContents.on('page-title-updated', (e) => { e.preventDefault(); }); // keep "KRH - Docs" etc.
+
+  // Where should a link go? Returns true if it was handled elsewhere (caller must cancel the navigation).
+  const handleElsewhere = (target: string): boolean => {
+    if (target.startsWith('data:') || target === 'about:blank') return false;
+    let u: URL;
+    try { u = new URL(target); } catch { return true; }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return true; // block odd schemes
+    const own = siteWindowKey(u.hostname);
+    if (own && own !== def.key) { opts.onOpenSiteWindow?.(target); return true; }
+    if (staysInSiteWindow(u)) return false;
+    const r = routeHubUrl(target);
+    if (r === 'play') opts.onPlay(target);
+    else if (r === 'window') opts.onOpenWindow(target);
+    else if (r === 'hub') opts.onOpenWindow(target);
+    else opts.onExternal(target);
+    return true;
+  };
+
+  win.webContents.on('will-navigate', (event, target) => { if (handleElsewhere(target)) event.preventDefault(); });
+  win.webContents.setWindowOpenHandler(({ url: target }) => {
+    setImmediate(() => {
+      if (win.isDestroyed()) return;
+      if (!handleElsewhere(target)) void win.loadURL(target);
+    });
+    return { action: 'deny' };
+  });
+  win.webContents.on('did-fail-load', (_e, errorCode, desc, failedUrl, isMainFrame) => {
+    if (!isMainFrame || errorCode === -3 || failedUrl.startsWith('data:')) return;
+    electronLog.warn(`[KRH] ${def.title} failed to load (${errorCode} ${desc})`);
+    void win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(offlineHTML()));
+  });
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F5' || (input.control && !input.shift && !input.alt && input.key.toLowerCase() === 'r')) {
+      win.webContents.reload();
+      event.preventDefault();
+    } else if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+  win.once('ready-to-show', () => { if (!win.isDestroyed()) win.show(); });
+  void win.loadURL(url);
 }
 
 export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
@@ -88,6 +199,7 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
     switch (route) {
       case 'play': opts.onPlay(url); break;
       case 'window': opts.onOpenWindow(url); break;
+      case 'site-window': opts.onOpenSiteWindow(url); break;
       case 'external': opts.onExternal(url); break;
       default: break; // 'blocked' (non-http schemes) and 'hub' are handled by the callers
     }

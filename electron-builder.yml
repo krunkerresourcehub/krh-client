@@ -1,5 +1,10 @@
 appId: com.krh.client
 productName: KRH Client
+# package.json must stay valid semver (npm / electron-builder reject 4-part versions), so the
+# real 4-part release version is injected into the packaged app here. app.getVersion(), the
+# installer filenames and the Windows file/product version all come from this value.
+extraMetadata:
+  version: 1.0.1.1
 directories:
   output: out
   buildResources: build

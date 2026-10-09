@@ -32,7 +32,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+          # Release version = extraMetadata.version in electron-builder.yml (4-part, e.g. 1.0.1.1);
+          # package.json must stay valid semver, so it's only the fallback.
+          VERSION=$(sed -n 's/^[[:space:]]*version:[[:space:]]*\([0-9][0-9.]*\)[[:space:]]*$/\1/p' electron-builder.yml | head -1)
+          [ -n "$VERSION" ] || VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
           TAG="v$VERSION"
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
@@ -174,9 +177,10 @@ jobs:
           APPLE_API_KEY: ${{ runner.temp }}/notary.p8
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          # Main can publish, so forbid the ad-hoc fallback here (dist-mac.sh hard-fails);
-          # other branches keep it for test artifacts.
-          KRH_REQUIRE_SIGNED: ${{ github.ref == 'refs/heads/main' && '1' || '' }}
+          # With all five Apple secrets set, main must produce a signed + notarized DMG
+          # (dist-mac.sh hard-fails otherwise). Without them (no Apple Developer account) the
+          # ad-hoc signed DMG is used; the release job then flags it in the release notes.
+          KRH_REQUIRE_SIGNED: ${{ github.ref == 'refs/heads/main' && steps.signing.outputs.enabled == 'true' && '1' || '' }}
         run: npm run dist:mac
 
       - name: Report build size
@@ -193,10 +197,10 @@ jobs:
     name: Create Release
     needs: [version-check, build-desktop, build-mac]
     # Publish only from main: a dispatch on another branch runs the build jobs (for
-    # test artifacts) but must never cut a --latest release of unmerged code. SIGNED
-    # must hold too — an unsigned DMG would trip Gatekeeper on download (belt-and-braces;
-    # dist-mac.sh already refuses to build one on main).
-    if: needs.version-check.outputs.SKIP == 'false' && github.ref == 'refs/heads/main' && needs.build-mac.outputs.SIGNED == 'true'
+    # test artifacts) but must never cut a --latest release of unmerged code. When the Apple
+    # secrets are not configured the macOS DMG is only ad-hoc signed; the release is still
+    # published and the notes say how to open it (see the "Note unsigned macOS build" step).
+    if: needs.version-check.outputs.SKIP == 'false' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -227,6 +231,15 @@ jobs:
           scripts/generate-release-notes.sh "${{ needs.version-check.outputs.TAG }}" > /tmp/release-notes.md
           echo "--- Generated release notes ---"
           cat /tmp/release-notes.md
+
+      - name: Note unsigned macOS build
+        if: needs.build-mac.outputs.SIGNED != 'true'
+        run: |
+          cat >> /tmp/release-notes.md <<'EOF'
+
+          ## macOS note
+          The macOS (Apple Silicon) DMG is not notarized by Apple. On first launch, right-click the app and choose **Open**, then **Open** again. If macOS says the app is damaged, run `xattr -cr "/Applications/KRH Client.app"` in Terminal and open it again.
+          EOF
 
       - name: Create GitHub release and upload assets
         env:

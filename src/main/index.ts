@@ -16,7 +16,7 @@ import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
 import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
-import { createHubWindow, showWindow, setHubSuspended } from './hub-window';
+import { createHubWindow, openSiteWindow, showWindow, setHubSuspended } from './hub-window';
 import { loadBlocklist, userListsDir } from './user-lists';
 import { createSplash, splashStatus, splashPrompt, splashAlive, splashElapsed, getSplash, onSplashUserClosed, closeSplash } from './splash';
 import { DiscordRPC } from './discord-rpc';
@@ -849,10 +849,17 @@ async function launchApp(): Promise<void> {
     showWindow(hub);
   };
 
+  const hubLinkHandlers = {
+    onPlay: (url: string) => launchGame(url),
+    onOpenWindow: (url: string) => { tabManager.openTab(url); },
+    onExternal: (url: string) => safeOpenExternal(url),
+    onOpenSiteWindow: (url: string) => openSiteWindow(url, hubLinkHandlers),
+  };
   const hub = createHubWindow({
     version: appVersion,
     onPlay: (url) => launchGame(url),
     onOpenWindow: (url) => { tabManager.openTab(url); },
+    onOpenSiteWindow: (url) => openSiteWindow(url, hubLinkHandlers),
     onExternal: (url) => safeOpenExternal(url),
     isGameVisible: () => !win.isDestroyed() && (win.isVisible() || win.isMinimized()),
     isQuitting: () => appQuitting,
