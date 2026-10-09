@@ -1,15 +1,18 @@
 import { Socket } from 'net';
 import { electronLog } from './logger';
 
-const DISCORD_CLIENT_ID = '1477679025248800982';
+// Application ID of the "Krunker Resource Hub Client" app in the Discord Developer Portal.
+// The name and icon on the Discord profile come from that app. Art asset key used: `krh_logo`.
+// KRH_DISCORD_CLIENT_ID can override it (e.g. for testing with another app).
+const DISCORD_CLIENT_ID = process.env.KRH_DISCORD_CLIENT_ID || '1558098697810616400';
 
 // Discord IPC opcodes
 const OP_HANDSHAKE = 0;
 const OP_FRAME = 1;
 const OP_CLOSE = 2;
 
-// Rate limit: Discord rejects updates faster than 15s
-const RATE_LIMIT_MS = 5000;
+// Rate limit: Discord allows ~5 presence updates per 20s, so keep >= 4s between sends
+const RATE_LIMIT_MS = 4000;
 const RECONNECT_INTERVAL_MS = 30000;
 
 export interface ActivityPayload {
@@ -52,6 +55,10 @@ export class DiscordRPC {
     private destroyed = false;
     private recvBuf = Buffer.alloc(0);
     private pendingActivity: ActivityPayload | null = null;
+    // Last activity the game asked for. Kept so it can be re-sent after a (re)connect:
+    // the preload only sends on change, so without this the presence vanishes for good
+    // whenever Discord restarts or the pipe drops.
+    private lastActivity: ActivityPayload | null = null;
     private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
     get isConnected(): boolean {
@@ -89,6 +96,7 @@ export class DiscordRPC {
                 return;
             }
             settled = true;
+            sock.setTimeout(0);
             this.socket = sock;
             this.recvBuf = Buffer.alloc(0);
 
@@ -143,11 +151,12 @@ export class DiscordRPC {
             if (payload.cmd === 'DISPATCH' && payload.evt === 'READY') {
                 this.connected = true;
                 electronLog.log('[KRH-Discord] Connected to Discord');
-                // Flush any activity that was set before connection completed
-                if (this.pendingActivity) {
-                    this.sendActivity(this.pendingActivity);
-                    this.pendingActivity = null;
-                }
+                // Re-send the latest activity (set before connect, or from before a disconnect)
+                const toSend = this.pendingActivity ?? this.lastActivity;
+                this.pendingActivity = null;
+                if (toSend) this.sendActivity(toSend);
+            } else if (payload.evt === 'ERROR' || (payload.data && payload.data.code && payload.evt === 'ERROR')) {
+                electronLog.warn('[KRH-Discord] Discord rejected a command:', payload.data?.code, payload.data?.message || '');
             }
         } else if (opcode === OP_CLOSE) {
             electronLog.warn('[KRH-Discord] Discord closed connection:', payload.message || '');
@@ -186,6 +195,7 @@ export class DiscordRPC {
 
         // Always store latest activity so it can be sent on (re)connect
         this.pendingActivity = activity;
+        this.lastActivity = activity;
 
         if (!this.connected || !this.socket) return;
 
@@ -213,17 +223,27 @@ export class DiscordRPC {
         if (!this.socket || this.destroyed) return;
         this.lastUpdate = Date.now();
 
+        // Discord rejects the whole payload if details/state are shorter than 2 or longer than 128 chars
+        const clean = (v?: string): string | undefined => {
+            const t = (v ?? '').trim();
+            if (t.length < 2) return undefined;
+            return t.length > 128 ? t.slice(0, 127) + '…' : t;
+        };
         const activityObj: any = {};
-        if (activity.details) activityObj.details = activity.details;
-        if (activity.state) activityObj.state = activity.state;
+        const details = clean(activity.details);
+        const state = clean(activity.state);
+        if (details) activityObj.details = details;
+        if (state) activityObj.state = state;
         if (activity.startTimestamp) {
-            activityObj.timestamps = { start: activity.startTimestamp };
+            // Discord wants unix seconds; accept ms too
+            const ts = activity.startTimestamp > 1e12 ? Math.floor(activity.startTimestamp / 1000) : activity.startTimestamp;
+            activityObj.timestamps = { start: ts };
         }
         if (activity.buttons && activity.buttons.length) activityObj.buttons = activity.buttons.slice(0, 2);
         if (activity.largeImageKey) {
             activityObj.assets = {
                 large_image: activity.largeImageKey,
-                large_text: activity.largeImageText || 'KRH Client',
+                large_text: activity.largeImageText || 'Krunker Resource Hub Client',
             };
         }
 
@@ -264,6 +284,8 @@ export class DiscordRPC {
 
     disconnect(): void {
         this.destroyed = true;
+        this.lastActivity = null;
+        this.pendingActivity = null;
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;

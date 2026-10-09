@@ -440,8 +440,10 @@ ipcRenderer.on('main_did-finish-load', () => {
       const showTimer = discordConf.showTimer !== false;
       const showStatus = discordConf.showStatus !== false;
 
+      const GENERIC_DETAILS = 'Playing Krunker';
       let lastDetails = '';
       let lastState = '';
+      let lastHadTimer = false;
       let firstSend = true;
       let gameStartTimestamp = Math.floor(Date.now() / 1000);
 
@@ -469,11 +471,15 @@ ipcRenderer.on('main_did-finish-load', () => {
             if (showStatus) details = 'In Menus';
           } else {
             if (showMapMode) {
-              if (gameActivity?.mode && gameActivity?.map) {
-                details = gameActivity.mode + ' on ' + gameActivity.map;
+              const mode = typeof gameActivity?.mode === 'string' ? gameActivity.mode.trim() : '';
+              const map = typeof gameActivity?.map === 'string' ? gameActivity.map.trim() : '';
+              if (mode && map) {
+                details = mode + ' on ' + map;
+              } else if (map || mode) {
+                details = map || mode;
               } else {
-                const mapInfo = document.getElementById('mapInfo');
-                details = mapInfo?.textContent || 'Playing Krunker';
+                const mapInfo = document.getElementById('mapInfo')?.textContent?.trim();
+                details = mapInfo || GENERIC_DETAILS;
               }
             }
 
@@ -491,10 +497,13 @@ ipcRenderer.on('main_did-finish-load', () => {
         }
 
         if (firstSend || details !== lastDetails || state !== lastState) {
-          if (startTimestamp && lastDetails !== details) {
+          // Restart the timer when a new match begins (coming from menus/spectating, or a different map/mode),
+          // but not when the generic loading text is just being replaced by the real map/mode.
+          if (startTimestamp && (!lastHadTimer || (lastDetails !== details && lastDetails !== GENERIC_DETAILS))) {
             gameStartTimestamp = Math.floor(Date.now() / 1000);
-            startTimestamp = gameStartTimestamp;
           }
+          if (startTimestamp) startTimestamp = gameStartTimestamp;
+          lastHadTimer = !!startTimestamp;
           lastDetails = details;
           lastState = state;
           firstSend = false;
@@ -502,8 +511,8 @@ ipcRenderer.on('main_did-finish-load', () => {
             details: details || undefined,
             state: state || undefined,
             startTimestamp,
-            largeImageKey: 'krunker',
-            largeImageText: 'KRH Client',
+            largeImageKey: 'krh_logo',
+            largeImageText: 'Krunker Resource Hub Client',
           });
         }
       }
