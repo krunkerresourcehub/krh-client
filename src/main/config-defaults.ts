@@ -70,6 +70,26 @@ export interface ExtrasConfig {
     dot: number;
     outWidth: number;
   };
+  /** Opt-in motion blur while turning the camera (adapted from WOK Client, see THIRD_PARTY_NOTICES.md). */
+  motionBlur: {
+    enabled: boolean;
+    /** 0-100: how strong the blur trail is. */
+    strength: number;
+    /** native = full resolution, balanced / performance = fewer pixels processed. */
+    quality: 'native' | 'balanced' | 'performance';
+  };
+  /** Class icons above the play buttons for one-click class switching (idea from WOK Client). */
+  quickClassPicker: boolean;
+  /** Season 9 style main menu layout (adapted from Kute). */
+  classicMenu: boolean;
+  /** Do not load animated video skins (for more FPS; idea from Kute). */
+  disableVideoSkins: boolean;
+  /** Bring the client to the front / flash the taskbar when the ranked queue finds a match while tabbed out (idea from Kute). */
+  rankedAlert: boolean;
+  /** Keep the unsent text of a friend chat message when Krunker clears the box (adapted from Kute). */
+  chatDraft: boolean;
+  /** Remember Krunker's Match End Message separately for every account (adapted from Kute). */
+  accountEndMessage: boolean;
 }
 
 export interface AppConfig {
@@ -175,6 +195,8 @@ export interface AppConfig {
   /** Extra features (chat tools, mod downloader, display mode, ...). */
   extras: ExtrasConfig;
   spotifyAuth: string;
+  /** Match End Message per account name (main process only, edited through its own IPC, never exported). */
+  endMessages: Record<string, string>;
   /** Encrypted Twitch chat token used only by the !link command. */
   twitchBotAuth: string;
   /** Version of the overlay default positions that were applied (see config.ts). */
@@ -394,8 +416,16 @@ export const DEFAULT_CONFIG: AppConfig = {
     settingsProfiles: [],
     autoRejoin: false,
     crosshair: { enabled: false, shape: 'cross', symbol: '★', color: '#00ff00', outline: '#000000', size: 10, thick: 2, gap: 5, dot: 0, outWidth: 1 },
+    motionBlur: { enabled: false, strength: 50, quality: 'native' },
+    quickClassPicker: false,
+    classicMenu: false,
+    disableVideoSkins: false,
+    rankedAlert: true,
+    chatDraft: true,
+    accountEndMessage: false,
   },
   spotifyAuth: '',
+  endMessages: {},
   twitchBotAuth: '',
   overlayLayout: 0,
   swapper: {

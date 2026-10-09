@@ -10,8 +10,17 @@
 KRH Client is the official client of the [Krunker Resource Hub](https://krunker-resources-hub.pages.dev/). It is a high-performance Krunker client that runs on a patched Electron build, and it is based on the [Krunker Civilian Client](https://github.com/bigjakk/krunker-civilian-client) (KCC).
 
 **Download:** [Windows (x64): Setup or Portable](https://github.com/krunkerresourcehub/krh-client/releases/latest) -
-[Linux (AppImage)](https://github.com/krunkerresourcehub/krh-client/releases/latest) -
+[Linux (AppImage or .deb)](https://github.com/krunkerresourcehub/krh-client/releases/latest) -
 [Build for macOS](#building-from-source)
+
+| File | For |
+| --- | --- |
+| `KRH-Client-1.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-1.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-1.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-1.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+
+The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
 ## How it works
 
@@ -80,6 +89,20 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 - **Better performance on NVIDIA systems**
   - Linux: PRIME render offload is enabled automatically on hybrid-graphics laptops when the NVIDIA driver is loaded
   - Windows: KRH Client is registered for the high-performance GPU on hybrid-graphics laptops
+
+### New in 1.0.1: features from WOK Client and Kute
+
+All of these are off by default unless noted. They are in Settings > Extras.
+
+- **Motion Blur** (from [WOK Client](https://github.com/Alx8g/wok-client)): a slight blur trail while the camera turns. The HUD, crosshair and menus stay sharp, and nothing runs while you stand still. Strength 0-100 and three quality levels (Native, Balanced, Performance)
+- **Quick Class Picker** (from WOK Client): the class icons above the play buttons, one click to switch class
+- **Classic Menu** (from [Kute](https://github.com/NullDev/Kute)): the Season 9 main menu layout over the current menu
+- **Disable Video Skins** (idea from Kute): animated video skins are never downloaded, which saves FPS (applies on the next load)
+- **Ranked Match Alert** (idea from Kute, on by default): brings the client to the front, or flashes the taskbar, when Krunker's ranked queue finds a match while you are in another window
+- **Keep Friend Chat Drafts** (from Kute, on by default): the unsent text of a friend chat message is put back when Krunker clears the box
+- **End Message Per Account** (from Kute): Krunker's Match End Message is remembered for each account, so an alt never sends your main account's message
+- **Secure DNS (fixed)**: all lookups of the client use DNS-over-HTTPS, Cloudflare (1.1.1.1) first and Google (8.8.8.8) if Cloudflare fails. It is not a setting and there is no fallback to the DNS of your system or provider, so if both are blocked on your network the client cannot connect
+- **Example userscripts** (from Kute): Class Roulette and Quick Sell by Rarity, installed with one button in Settings > Userscripts. They start switched off and are never copied over an existing file
 
 ### Inherited from KCC
 
@@ -176,6 +199,8 @@ Notes:
 
 ## Userscripts
 
+Settings > Userscripts has an **Install** button for two example scripts (Class Roulette and Quick Sell by Rarity, both from Kute).
+
 Any `.js` file in the scripts folder is loaded as a userscript if userscripts are enabled in the settings. Scripts support Tampermonkey-style metadata blocks (`@name`, `@author`, `@version`, `@desc`) and can define custom settings (boolean, number, select, color, keybind).
 
 > **Use userscripts at your own risk.** Do not write or use userscripts that give you a competitive advantage.
@@ -211,14 +236,20 @@ Found a bug or have an idea? [Open an issue](https://github.com/krunkerresourceh
 - [PC7 Client](https://github.com/PC7-Client/PC7-Client) (discontinued): the ideas of the Chat Logs window and the external resource swapper, written from scratch. No PC7 code or assets are used (its license does not allow it)
 - [Water Client](https://github.com/ghostypostie/Water) by ghostypostie: the ideas of chat filters, Quick Play grid, one-click mod downloader, settings profiles, display mode, userscript hot reload, hide-menu options, Discord buttons and readable logs, all written from scratch for KRH Client
 - [LaF Client](https://github.com/LaFClient/LaF) by Hiro527 and sh (MIT license): the idea of the `!link` command and the system info button (both written from scratch for KRH Client), and the five built-in CSS themes, made by NamekujiLSDs, which are included unmodified with their original headers. The MIT license text is in [`assets/laf-themes/LICENSE-LaF.txt`](assets/laf-themes/LICENSE-LaF.txt)
+- [WOK Client](https://github.com/Alx8g/wok-client) by Alx8g (GPL-3.0): the motion blur (code adapted for KRH Client) and the quick class picker (idea and styling)
+- [Kute](https://github.com/NullDev/Kute) by NullDev (GPL-3.0): the classic menu styling, friend chat drafts and per-account end message (adapted for KRH Client), the ranked match alert and video skin blocking (ideas, written for KRH Client), and the Class Roulette and Quick Sell by Rarity example userscripts (included unmodified, MIT headers kept). No Kute website or API is used
 - [Crankshaft](https://github.com/KraXen72/crankshaft) by KraXen72: matchmaker and keystrokes overlay
 - [Glorp](https://github.com/slavcp/glorp) by slav: external ranked queue, plus several features reworked for KRH Client (CPU throttling, cleaner menu, selectable chat, custom blocklist and flags)
 - [Lombre_Blanche - Krunker Scripts](https://lombreblanche34.github.io/krunker_scripts/): author of the ranked leaderboard userscript that the leaderboard search feature is based on
 - [NXT Client](https://github.com/vaqqq/nxt-client) by vaqqq and the NXT team: inspiration for the quick alt login, temporary CSS toggle, Twitch chat and Spotify features. No NXT code is used; NXT is proprietary software and these features were written independently from its public feature list
 - [Electron-Websocket-Fix](https://github.com/bigjakk/Electron-Websocket-Fix) by bigjakk: the patched Electron build
 
+Which files use or adapt code from other projects, and what was changed, is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Modified files carry the notice of the project they come from, as the GPL-3.0 asks.
+
 ## License
 
-KRH Client is released under the [GPL-3.0](LICENSE) license, the same license as the projects it is based on.
+The source code of KRH Client is released under the [GPL-3.0](LICENSE) license. It has to be: KRH Client is built on the Krunker Civilian Client, and since 1.0.1 also contains code from WOK Client and Kute, all of which are GPL-3.0 projects. That license lets everyone use, study, modify and share the code as long as the same license, the credits and the notes about changes are kept. The full terms are in the LICENSE file.
+
+**Name and logo:** "KRH", "KRH Client", the KRH logo and the artwork of the Krunker Resource Hub are not covered by the GPL. They may not be used for a modified or redistributed version in a way that suggests it is the official KRH Client. A fork has to use its own name and logo.
 
 KRH Client is an unofficial community project. It is not affiliated with or endorsed by FRVR or Krunker.

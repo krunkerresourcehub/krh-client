@@ -17,7 +17,11 @@ import {
 } from './settings-controls';
 import { setHiddenMenu, HIDE_ITEMS } from './menu-hider';
 import { setCrosshair } from './crosshair';
-import { setClassicSocial, startHidePopups, stopHidePopups, setCleanMenu, setSelectableChat } from './menu-tweaks';
+import { setClassicSocial, startHidePopups, stopHidePopups, setCleanMenu, setSelectableChat, setQuickClassPicker, setClassicMenu } from './menu-tweaks';
+import { setMotionBlur } from './motion-blur';
+import { setChatDraft } from './chat-draft';
+import { setRankedAlert } from './ranked-alert';
+import { setAccountEndMessage } from './end-message';
 import { updateSocialMusicConfig } from './social-music';
 import { initHPCounter, destroyHPCounter } from './competitive';
 import { initSuspectPing, destroySuspectPing } from './kpd-call';
@@ -1716,6 +1720,7 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     ...DEFAULT_CONFIG.extras, ...exConf,
     rpcButtons: { ...DEFAULT_CONFIG.extras.rpcButtons, ...(exConf?.rpcButtons || {}) },
     crosshair: { ...DEFAULT_CONFIG.extras.crosshair, ...(exConf?.crosshair || {}) },
+    motionBlur: { ...DEFAULT_CONFIG.extras.motionBlur, ...(exConf?.motionBlur || {}) },
   };
   const save = (): void => { void ipcRenderer.invoke('set-config', 'extras', ex); };
 
@@ -1826,6 +1831,70 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     onChange: (v) => { ex.crosshair.outline = v; xhApply(); },
   }));
   xhSync();
+
+  // ── Visuals and menu (motion blur and quick class picker from WOK Client, classic menu from Kute) ──
+  const vis = createGroup(body, 'Visuals and Menu');
+  const mbRows: HTMLElement[] = [];
+  const mbApply = (): void => { save(); setMotionBlur(ex.motionBlur); };
+  const mbSync = (): void => { for (const r of mbRows) r.classList.toggle('krh-row-hidden', !ex.motionBlur.enabled); };
+  vis.appendChild(createToggleRow({
+    label: 'Motion Blur',
+    desc: 'A slight blur trail while you turn the camera. The HUD, crosshair and menus stay sharp, and nothing runs while you stand still. It costs some performance, so it is off by default. Adapted from WOK Client.',
+    checked: ex.motionBlur.enabled, instant: true,
+    onChange: (v) => { ex.motionBlur.enabled = v; mbApply(); mbSync(); },
+  }));
+  const mbAdd = (row: HTMLElement): void => { mbRows.push(row); vis.appendChild(row); };
+  mbAdd(createNumberRow({
+    label: 'Motion Blur Strength', desc: '0 is none, 100 is the strongest trail', min: 0, max: 100, step: 5,
+    value: ex.motionBlur.strength, instant: true,
+    onChange: (v) => { ex.motionBlur.strength = v; mbApply(); },
+  }));
+  mbAdd(createSelectRow({
+    label: 'Motion Blur Quality', desc: 'Native keeps the full resolution. Balanced and Performance process fewer pixels, which is lighter on weak GPUs.',
+    options: [{ value: 'native', label: 'Native' }, { value: 'balanced', label: 'Balanced' }, { value: 'performance', label: 'Performance' }],
+    value: ex.motionBlur.quality, instant: true,
+    onChange: (v) => { ex.motionBlur.quality = v as ExtrasConfig['motionBlur']['quality']; mbApply(); },
+  }));
+  mbSync();
+  vis.appendChild(createToggleRow({
+    label: 'Quick Class Picker',
+    desc: 'Shows the class icons above the play buttons, so one click switches class. Idea and styling from WOK Client.',
+    checked: ex.quickClassPicker, instant: true,
+    onChange: (v) => { ex.quickClassPicker = v; save(); setQuickClassPicker(v); },
+  }));
+  vis.appendChild(createToggleRow({
+    label: 'Classic Menu',
+    desc: 'The Season 9 main menu layout (play buttons in a grid, class card on the right) over the current menu. Adapted from Kute. If Krunker changes its menu, turn this off.',
+    checked: ex.classicMenu, instant: true,
+    onChange: (v) => { ex.classicMenu = v; save(); setClassicMenu(v); },
+  }));
+  vis.appendChild(createToggleRow({
+    label: 'Disable Video Skins',
+    desc: 'Animated video skins (like Glitch) are not loaded, which saves FPS. Takes effect the next time the game loads. Idea from Kute.',
+    checked: ex.disableVideoSkins, refreshOnly: true,
+    onChange: (v) => { ex.disableVideoSkins = v; save(); },
+  }));
+
+  // ── Convenience (all three adapted from Kute) ──
+  const conv = createGroup(body, 'Convenience');
+  conv.appendChild(createToggleRow({
+    label: 'Ranked Match Alert',
+    desc: 'When Krunker\'s ranked queue finds a match while you are in another window, bring KRH Client to the front (or flash it in the taskbar if the system does not allow that).',
+    checked: ex.rankedAlert, instant: true,
+    onChange: (v) => { ex.rankedAlert = v; save(); setRankedAlert(v); },
+  }));
+  conv.appendChild(createToggleRow({
+    label: 'Keep Friend Chat Drafts',
+    desc: 'Krunker empties the message box of a friend chat whenever a new message arrives. This puts your unsent text back.',
+    checked: ex.chatDraft, instant: true,
+    onChange: (v) => { ex.chatDraft = v; save(); setChatDraft(v); },
+  }));
+  conv.appendChild(createToggleRow({
+    label: 'End Message Per Account',
+    desc: 'Krunker\'s Match End Message is remembered for each account. An account without a message of its own sends nothing, so an alt never sends your main account\'s message.',
+    checked: ex.accountEndMessage, instant: true,
+    onChange: (v) => { ex.accountEndMessage = v; save(); void setAccountEndMessage(v, true); },
+  }));
 
   // ── Window and scripts ──
   const win = createGroup(body, 'Window and Scripts');

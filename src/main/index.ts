@@ -11,6 +11,8 @@ import { config, Keybind, DEFAULT_KEYBINDS, SavedAccount, DEFAULT_CONFIG, Social
 import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL, EXTERNAL_SWAP_FILE, EXTERNAL_EXAMPLE } from './swapper';
 import { listSkyImages, resolveSkyImage, SKIES_DIR, SKY_TEXTURE_RE, SKY_IMAGE_EXTS } from './sky-textures';
 import { UserscriptManager } from './userscripts';
+import exampleClassRoulette from '../../assets/example-userscripts/classRoulette.js?raw';
+import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity.js?raw';
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
 import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
@@ -309,6 +311,12 @@ const TURF_BANNER_URL_PATTERNS = [
 const TURF_BANNER_URL_RE = /user-assets\.krunker\.io\/(?:64295|64300|64301|64303)\/model\.obj/;
 let hideTurfBanners = false;
 
+// ── Video skin blocklist (idea from Kute, see THIRD_PARTY_NOTICES.md) ──
+// Animated video skins (Glitch etc.) are .mp4 textures. With "Disable Video Skins" on, the request is
+// cancelled so the game never downloads or decodes them. Tutorial videos live elsewhere and are not matched.
+const VIDEO_SKIN_URL_RE = /^https?:\/\/(?:assets\.krunker\.io\/videos\/video_[^?#]*\.mp4|user-assets\.krunker\.io\/skins\/[^?#]*\.mp4)/;
+let disableVideoSkins = false;
+
 // ── Escape pointer lock fix ──
 const ESCAPE_POINTERLOCK_FIX_JS = `
 document.addEventListener('keydown', function(e) {
@@ -407,6 +415,29 @@ function saveWindowState(win: BrowserWindow): void {
 
 app.whenReady().then(async () => {
   electronLog.log('[KRH] App ready');
+
+  // DNS: every lookup of the client (game, hub, updates, mods) goes through DNS-over-HTTPS. This is fixed on
+  // purpose and has no setting. Cloudflare is tried first; if it fails, Google DNS takes over. Each service is
+  // listed by name and by IP address, so a lookup does not depend on the system DNS to find the DoH server.
+  // 'secure' mode means there is never a fallback to the DNS of the system or the provider.
+  try {
+    app.configureHostResolver({
+      enableBuiltInResolver: true,
+      secureDnsMode: 'secure',
+      secureDnsServers: [
+        'https://cloudflare-dns.com/dns-query',
+        'https://1.1.1.1/dns-query',
+        'https://dns.google/dns-query',
+        'https://8.8.8.8/dns-query',
+      ],
+    });
+    electronLog.log('[KRH] DNS: DNS-over-HTTPS, Cloudflare first then Google (secure mode, no system DNS)');
+  } catch (err) {
+    // Never continue silently on another resolver: the DNS is meant to be Cloudflare/Google DoH or nothing.
+    electronLog.error('[KRH] Could not enable secure DNS, quitting:', (err as Error).message);
+    app.quit();
+    return;
+  }
 
   // macOS: opt out of App Nap / timer coalescing for the whole app lifetime.
   // Finder/LaunchServices-launched instances get app-role scheduling (App Nap
@@ -577,6 +608,7 @@ async function launchApp(): Promise<void> {
   const gameConf = config.get('game');
   hideBunnies = gameConf?.hideBunnies ?? false;
   hideTurfBanners = gameConf?.hideTurfBanners ?? false;
+  disableVideoSkins = (config.get('extras') as Partial<ExtrasConfig> | undefined)?.disableVideoSkins === true;
   // *://* matches only http/https — wss needs an explicit pattern so the
   // webRequest handler fires on WebSocket upgrades for direct-ping detection.
   const userBlock = loadBlocklist(BLOCKED_URL_PATTERNS, (m) => electronLog.warn(m));
@@ -603,6 +635,8 @@ async function launchApp(): Promise<void> {
     }
     // User blocklist (user_blocklist.json) — also blocks krunker.io URLs, which the ad-block path below lets through
     if (userBlock.extraRe && userBlock.extraRe.test(details.url)) return callback({ cancel: true });
+    // Video skins (.mp4 textures): cancel the request when the option is on
+    if (disableVideoSkins && VIDEO_SKIN_URL_RE.test(details.url)) return callback({ cancel: true });
     // Bunny NPC block — redirect to empty body (matches Glorp's SetUri(null))
     if (hideBunnies && BUNNY_URL_RE.test(details.url)) {
       return callback({ redirectURL: EMPTY_RESPONSE_URL });
@@ -1183,6 +1217,7 @@ async function launchApp(): Promise<void> {
     const str = (x: unknown, def: string, max = 200): string => (typeof x === 'string' ? x.slice(0, max) : def);
     const bool = (x: unknown, def: boolean): boolean => (typeof x === 'boolean' ? x : def);
     const rb = (v.rpcButtons && typeof v.rpcButtons === 'object' ? v.rpcButtons : d.rpcButtons) as ExtrasConfig['rpcButtons'];
+    const mb = (v.motionBlur && typeof v.motionBlur === 'object' ? v.motionBlur : d.motionBlur) as Partial<ExtrasConfig['motionBlur']>;
     return {
       rankedBadges: bool(v.rankedBadges, d.rankedBadges),
       modDownloader: bool(v.modDownloader, d.modDownloader),
@@ -1201,6 +1236,17 @@ async function launchApp(): Promise<void> {
       },
       autoRejoin: bool(v.autoRejoin, d.autoRejoin),
       crosshair: sanitizeCrosshair(v.crosshair),
+      motionBlur: {
+        enabled: bool(mb.enabled, d.motionBlur.enabled),
+        strength: typeof mb.strength === 'number' && isFinite(mb.strength) ? Math.min(100, Math.max(0, Math.round(mb.strength))) : d.motionBlur.strength,
+        quality: mb.quality === 'balanced' || mb.quality === 'performance' ? mb.quality : 'native',
+      },
+      quickClassPicker: bool(v.quickClassPicker, d.quickClassPicker),
+      classicMenu: bool(v.classicMenu, d.classicMenu),
+      disableVideoSkins: bool(v.disableVideoSkins, d.disableVideoSkins),
+      rankedAlert: bool(v.rankedAlert, d.rankedAlert),
+      chatDraft: bool(v.chatDraft, d.chatDraft),
+      accountEndMessage: bool(v.accountEndMessage, d.accountEndMessage),
       settingsProfiles: Array.isArray(v.settingsProfiles)
         ? v.settingsProfiles
             .filter((p) => p && typeof p.name === 'string' && typeof p.data === 'string' && p.data.length < 2_000_000)
@@ -1262,6 +1308,71 @@ async function launchApp(): Promise<void> {
       return { ok: false, error: 'Could not download the mod.' };
     }
   });
+  // Ranked match alert (idea from Kute): the game page reports that Krunker's ranked queue found a match.
+  // If the client is not the window in front, bring it up (and flash the taskbar where the OS refuses to steal focus).
+  let lastRankedAlert = 0;
+  ipcMain.on('krh-ranked-found', (e) => {
+    if (e.sender !== win.webContents || win.isDestroyed() || !getExtras().rankedAlert) return;
+    const now = Date.now();
+    if (now - lastRankedAlert < 5000) return;
+    lastRankedAlert = now;
+    if (win.isFocused()) return;
+    showWindow(win);
+    if (!win.isFocused()) {
+      win.flashFrame(true);
+      win.once('focus', () => { if (!win.isDestroyed()) win.flashFrame(false); });
+    }
+  });
+
+  // Match End Message per account (adapted from Kute): stored by account name, edited only through these two handlers.
+  const END_MESSAGE_ACCOUNT_RE = /^[\w.-]{1,40}$/;
+  const END_MESSAGE_MAX_ACCOUNTS = 100;
+  const endMessagesOf = (): Record<string, string> => {
+    const raw = config.get('endMessages') as unknown;
+    const out: Record<string, string> = {};
+    if (raw && typeof raw === 'object') {
+      for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+        if (k !== '__proto__' && END_MESSAGE_ACCOUNT_RE.test(k) && typeof val === 'string') out[k] = val.slice(0, 200);
+      }
+    }
+    return out;
+  };
+  ipcMain.handle('end-message-get', (e) => (e.sender === win.webContents ? endMessagesOf() : {}));
+  ipcMain.handle('end-message-set', (e, account: unknown, message: unknown) => {
+    if (e.sender !== win.webContents) return false;
+    if (typeof account !== 'string' || account === '__proto__' || !END_MESSAGE_ACCOUNT_RE.test(account)) return false;
+    const text = typeof message === 'string' ? message.slice(0, 200) : '';
+    const all = endMessagesOf();
+    if (text) {
+      if (!(account in all) && Object.keys(all).length >= END_MESSAGE_MAX_ACCOUNTS) return false;
+      all[account] = text;
+    } else {
+      delete all[account];
+    }
+    config.set('endMessages', all);
+    return true;
+  });
+
+  // Example userscripts (Class Roulette and Quick Sell by Rarity, both from Kute): copied into the userscripts
+  // folder on request, never over a file that is already there. New scripts start switched off.
+  ipcMain.handle('install-example-userscripts', () => {
+    if (!userscriptManager) return { ok: false, error: 'Turn on Userscripts in the Userscripts settings and restart the client first.', added: [] as string[] };
+    const added: string[] = [];
+    const existing: string[] = [];
+    try {
+      for (const [name, code] of [['classRoulette.js', exampleClassRoulette], ['quickSellByRarity.js', exampleQuickSell]] as const) {
+        const target = join(userscriptManager.dir, name);
+        if (existsSync(target)) { existing.push(name); continue; }
+        writeFileSync(target, code, 'utf-8');
+        added.push(name);
+      }
+    } catch (err) {
+      electronLog.warn('[KRH] Could not install the example userscripts:', (err as Error).message);
+      return { ok: false, error: 'Could not write to the userscripts folder.', added };
+    }
+    return { ok: true, error: '', added, existing };
+  });
+
   // Userscript hot reload: when a script file changes, tell you (or reload the page) without restarting the client
   if (userscriptManager) {
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1367,6 +1478,7 @@ async function launchApp(): Promise<void> {
     if (key === 'extras') {
       const clean = sanitizeExtras(value);
       config.set('extras', clean);
+      disableVideoSkins = clean.disableVideoSkins;
       applyDisplayMode(clean.displayMode);
       return;
     }

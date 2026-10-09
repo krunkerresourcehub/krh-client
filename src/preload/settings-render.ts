@@ -505,6 +505,19 @@ function renderUserscriptsSection(body: HTMLElement): void {
       buttons: [{ icon: 'folder', label: 'Scripts', title: 'Open Folder', onClick: () => ipcRenderer.invoke('userscripts-open-folder') }],
     }).row);
 
+    engineGroup.appendChild(createButtonRow({
+      label: 'Example Userscripts',
+      desc: 'Adds Class Roulette (a random class on every respawn) and Quick Sell by Rarity, both from Kute, to the scripts folder. They start switched off, and files that already exist are never replaced.',
+      buttons: [{ icon: 'download', label: 'Install', title: 'Copy the example scripts into the scripts folder', onClick: () => {
+        void ipcRenderer.invoke('install-example-userscripts').then((r: { ok: boolean; error: string; added: string[] }) => {
+          if (!r.ok) { showToast(r.error); return; }
+          showToast(r.added.length
+            ? 'Installed ' + r.added.join(' and ') + '. Reload the page, then switch them on in the list below'
+            : 'The example scripts are already in your scripts folder');
+        });
+      } }],
+    }).row);
+
     const scriptsGroup = createGroup(body, 'Installed Scripts');
 
     const scriptInstances = getInstances();

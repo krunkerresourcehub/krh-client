@@ -33,3 +33,34 @@ readable logs) were written from scratch for KRH Client.
 No code is included. The raid finder, Trade Plaza joiner, custom crosshair, auto find after disconnect, ARG shortcut,
 Trade Plaza info and recently-joined avoidance were inspired by the public "Lombre Matchmaker" userscript and written from scratch
 for KRH Client.
+
+## WOK Client (GPL-3.0, code adapted)
+
+- Source: https://github.com/Alx8g/wok-client
+- License: GPL-3.0 (KRH Client is GPL-3.0 as well, full text in `LICENSE`)
+
+Used for:
+
+- `src/preload/motion-blur.ts`: adapted from WOK Client's `src/motion-blur.ts`. Changes: code style, element ids,
+  removal of WOK's preferences helper and weapon-loader check, and a small settings wrapper (`setMotionBlur`).
+- The Quick Class Picker styling in `src/preload/menu-tweaks.ts`, adapted from WOK Client's
+  `assets/quickClassPicker.css` and `hiddenClassesImages()`.
+
+## Kute (GPL-3.0, code adapted)
+
+- Source: https://github.com/NullDev/Kute
+- License: GPL-3.0 (full text in `LICENSE`)
+
+Used for:
+
+- `src/preload/menu-tweaks.ts` (Classic Menu): the rules of Kute's `classicMenu.css`, with the same declarations.
+- `src/preload/chat-draft.ts`: adapted from `chatDraft.js`, rewritten in TypeScript and made switchable at runtime.
+- `src/preload/end-message.ts`: adapted from `accountEndMessage.js`, rewritten in TypeScript; the messages are stored by
+  KRH Client's main process instead of Kute's host bridge.
+- `assets/example-userscripts/classRoulette.js` and `quickSellByRarity.js`: included **unmodified**. Their headers
+  name MIT as their license (authors: Kute / aashten). They are also covered by Kute's GPL-3.0 repository license.
+- Ideas only, written for KRH Client: Ranked Match Alert (`src/preload/ranked-alert.ts`, `krh-ranked-found` in the
+  main process) and Disable Video Skins (a request filter in the main process).
+
+No part of Kute's website, API or native components is used.
+

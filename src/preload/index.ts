@@ -20,7 +20,7 @@ import { checkChangelog } from './changelog';
 import { DEFAULT_CONFIG } from '../main/config-defaults';
 import { savedConsole as _console, setVerbose } from './saved-console';
 import { initAltManagerButton } from './alt-manager';
-import { startHidePopups, setClassicSocial, initModManagerButton, setCleanMenu, setSelectableChat } from './menu-tweaks';
+import { startHidePopups, setClassicSocial, initModManagerButton, setCleanMenu, setSelectableChat, setQuickClassPicker, setClassicMenu } from './menu-tweaks';
 import { initUiStateReporter } from './ui-state';
 import { installRankedLeaderboardSearch, disableRankedLeaderboardSearch } from './ranked-leaderboard';
 import { initSocialMusic } from './social-music';
@@ -35,6 +35,10 @@ import { initModDownloader } from './mod-downloader';
 import { initChatTools } from './chat-tools';
 import { initQuickPlay, initAutoRejoin } from './quickplay';
 import { setCrosshair } from './crosshair';
+import { setMotionBlur } from './motion-blur';
+import { setChatDraft } from './chat-draft';
+import { setRankedAlert } from './ranked-alert';
+import { setAccountEndMessage } from './end-message';
 import { setHiddenMenu } from './menu-hider';
 import { initSuspectPing } from './kpd-call';
 
@@ -324,6 +328,12 @@ ipcRenderer.on('main_did-finish-load', () => {
         if (ex.autoRejoin) initAutoRejoin();
         if (ex.crosshair.enabled) setCrosshair(ex.crosshair);
         if (ex.hiddenMenu.length) setHiddenMenu(ex.hiddenMenu);
+        if (ex.motionBlur.enabled) setMotionBlur(ex.motionBlur);
+        if (ex.quickClassPicker) setQuickClassPicker(true);
+        if (ex.classicMenu) setClassicMenu(true);
+        setChatDraft(ex.chatDraft);
+        setRankedAlert(ex.rankedAlert);
+        if (ex.accountEndMessage) void setAccountEndMessage(true);
       }).catch((err) => _console.warn('[KRH] extras config load failed:', err));
     }
 

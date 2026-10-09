@@ -196,3 +196,71 @@ export function setCleanMenu(on: boolean): void {
 export function setSelectableChat(on: boolean): void {
   setStyleTag('krh-selectableChat', '#chatHolder * { user-select: text !important; }', on);
 }
+
+// ── Quick Class Picker ──
+// Idea and CSS from WOK Client (https://github.com/Alx8g/wok-client, assets/quickClassPicker.css and
+// hiddenClassesImages() in src/utils.ts), GPL-3.0-only. Adapted for KRH Client 1.0.1.
+// Krunker already renders a hidden row of class pickers (#hiddenClasses); this just shows it above the
+// play buttons with each class icon, so one click switches class.
+const CLASS_COUNT = 16;
+
+function quickClassPickerCss(classesCount: number): string {
+  const gaps = 4 * (classesCount - 1);
+  const buttonSize = Math.min(Math.round((810 - gaps) / classesCount), 50); // 810 = width of Krunker's middle element
+  let css =
+    '#hiddenClasses { display: flex !important; justify-content: space-evenly; align-items: center; column-gap: 4px; ' +
+    'position: absolute; bottom: 300px; left: 50%; transform: translate(-50%, 0) scale(.95); pointer-events: all; ' +
+    'min-width: 810px; width: min-content; } ' +
+    '#hiddenClasses [id^="menuClassPicker"] { border-radius: 5px; display: block; pointer-events: all; ' +
+    'background-position: center; background-repeat: no-repeat; image-rendering: pixelated; border: 2px solid transparent; ' +
+    'cursor: pointer; transition: background-color 0.2s, border 0.2s; ' +
+    `width: ${buttonSize}px; height: ${buttonSize}px; background-size: ${buttonSize - 6}px ${buttonSize - 6}px; } ` +
+    '#hiddenClasses [id^="menuClassPicker"]:hover { background-color: #262626; border-color: #313131; } ' +
+    '#hiddenClasses [id^="menuClassPicker"]:active { background-color: #393939; border-color: #a3a5aa; } ';
+  for (let i = 0; i < classesCount; i++) {
+    css += `#menuClassPicker${i} { background-image: url("https://assets.krunker.io/textures/classes/icon_${i}.png"); } `;
+  }
+  return css;
+}
+
+export function setQuickClassPicker(on: boolean): void {
+  setStyleTag('krh-quickClassPicker', quickClassPickerCss(CLASS_COUNT), on);
+}
+
+// ── Classic Menu (Season 9 layout) ──
+// CSS from Kute (https://github.com/NullDev/Kute, src/frontend/components/classicMenu.css), GPL-3.0.
+// Adapted for KRH Client 1.0.1. Values come from Krunker's season 9 stylesheet, laid over the season 10 markup.
+// Written as one string so it can be switched on and off at runtime.
+const CLASSIC_MENU_CSS = `
+#uiBase.onMenu #spectButton { top: calc(48% - 60px); }
+#instructions { top: 50%; }
+#subLogoButtons { right: auto; left: 50%; bottom: 139px; width: 950px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; transform: translate(-50%, 0) scale(0.95); transform-origin: bottom center; }
+#matchInfoHolder { grid-column: 1 / -1; position: static; order: -2; box-sizing: border-box; width: 100%; flex-wrap: wrap; justify-content: flex-start; row-gap: 4px; transform: none; padding: 0 0 12px; margin-bottom: 10px; font-size: 20px; background: none; border: none; border-bottom: 5px solid #585858; border-radius: 0; box-shadow: none; backdrop-filter: none; }
+#matchInfoHolder > .match-divider:has(+ .match-info-actions) { flex-basis: 100%; height: 0; margin: 0; border: none; background: none; }
+#matchInfoHolder > .match-info-actions { padding-left: 7px; }
+#mapInfo { font-size: 20px; }
+#mapInfoHld { padding-left: 7px; }
+#subLogoButtons > .actionCard { grid-column: span 2; justify-content: center; box-sizing: border-box; width: auto; height: auto; padding: 6px 18px; font-size: 27px; text-transform: none; background: rgba(0, 0, 0, 0.2); box-shadow: none; }
+#subLogoButtons > .actionCard .cardIcon { display: none; }
+#subLogoButtons > .actionCard .cardLabel { font-size: 27px; text-transform: none; letter-spacing: normal; }
+#subLogoButtons > #menuBtnQuickMatch, #subLogoButtons > #menuBtnRanked { grid-column: span 3; }
+#menuBtnHost, #menuBtnBrowser { border-color: #ed4242 !important; }
+#subLogoButtons > .popRail { grid-column: 1 / -1; order: 1; margin-top: 10px; }
+#menuClassContainer { left: auto; right: 21px; bottom: 80px; text-align: right; transform: scale(0.7); transform-origin: bottom right; }
+#menuClassContainer::before { display: none; }
+#menuClassFooter { flex-direction: column; align-items: flex-end; margin: 0 0 0 auto; }
+#menuClassContainerInner { justify-content: flex-end; width: 449px; height: 85px; padding: 0; gap: 0; background: none; border: none; }
+#menuClassContainerInner:hover { background: none; filter: brightness(1.15); }
+#menuClassContainerInfo { height: 85px; justify-content: space-between; }
+#menuClassIcn { width: 85px; height: 85px; margin-left: 10px; border: 4px solid #353534; border-radius: 4px; }
+#menuClassName { font-size: 17px; }
+#menuClassSubtext { font-size: 30px; margin-bottom: 0; }
+#classPreviewCanvas { margin-bottom: -100px; margin-right: -113px; }
+#customizeButton { box-sizing: border-box; width: 449px; padding: 15px; font-size: 27px !important; }
+#bubbleContainer { right: 420px; }
+body #uiBase.onMenu .spectateInfo { top: calc(48% - 150px); }
+`;
+
+export function setClassicMenu(on: boolean): void {
+  setStyleTag('krh-classicMenu', CLASSIC_MENU_CSS, on);
+}
