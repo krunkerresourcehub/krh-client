@@ -91,6 +91,13 @@ fi
 hdiutil convert "$RW" -format UDZO -o "$DMG" >/dev/null
 rm -rf "$RWDIR"
 
+# Portable build: the signed .app in a zip. Unzip anywhere (Desktop, USB stick, ...) and run it,
+# no installation needed. ditto keeps the symlinks / permissions / signature a plain zip would lose.
+PORTABLE="out/$APPNAME-$VERSION-mac-arm64-Portable.zip"
+rm -f "$PORTABLE"
+ditto -c -k --sequesterRsrc --keepParent "$OUTAPP" "$PORTABLE"
+echo "[dist-mac] portable zip: $PORTABLE ($(du -h "$PORTABLE" | cut -f1))"
+
 # notarytool with whichever creds are set (CI API key vs local keychain profile),
 # in one place so submit and the log fetch can't drift apart.
 notary() {

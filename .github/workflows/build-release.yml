@@ -186,13 +186,15 @@ jobs:
         run: npm run dist:mac
 
       - name: Report build size
-        run: ls -lh out/*.dmg 2>/dev/null || true
+        run: ls -lh out/*.dmg out/*.zip 2>/dev/null || true
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v7
         with:
           name: dist-mac
-          path: out/*.dmg
+          path: |
+            out/*.dmg
+            out/*-Portable.zip
           if-no-files-found: error
 
   release:
@@ -225,6 +227,7 @@ jobs:
             out/*.AppImage
             out/*.deb
             out/*.dmg
+            out/*-Portable.zip
 
       - name: Generate release notes
         run: |
@@ -240,7 +243,7 @@ jobs:
           cat >> /tmp/release-notes.md <<'EOF'
 
           ## macOS note
-          The macOS (Apple Silicon) DMG is not notarized by Apple. On first launch, right-click the app and choose **Open**, then **Open** again. If macOS says the app is damaged, run `xattr -cr "/Applications/KRH Client.app"` in Terminal and open it again.
+          The macOS (Apple Silicon) DMG and Portable zip are not notarized by Apple, so Gatekeeper warns on first launch. On macOS 14 and earlier, right-click the app, choose **Open**, then **Open** again. On macOS 15 (Sequoia) and later, try to open the app once, then go to **System Settings > Privacy & Security** and click **Open Anyway**. If macOS says the app is damaged, run `xattr -cr "/Applications/KRH Client.app"` (or the path of the portable app) in Terminal and open it again.
           EOF
 
       - name: Create GitHub release and upload assets
@@ -248,7 +251,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ASSETS=()
-          for file in out/*.exe out/*.AppImage out/*.deb out/*.dmg; do
+          for file in out/*.exe out/*.AppImage out/*.deb out/*.dmg out/*-Portable.zip; do
             [ -f "$file" ] || continue
             ASSETS+=("$file")
           done
