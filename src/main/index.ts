@@ -94,8 +94,11 @@ async function resolveSocialMusic(setting: string): Promise<SocialMusicSource> {
 }
 
 // ── App version for API calls ──
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const appVersion: string = require('../../package.json').version;
+// Must come from app.getVersion(): require('../../package.json') is inlined by Vite at build time, so it
+// always reports package.json's 3-part semver (1.0.1) and ignores the 4-part release version that
+// electron-builder injects via extraMetadata (electron-builder.yml). Reading the inlined copy made the
+// client think it was still 1.0.1 after updating, so it kept offering the same update again.
+const appVersion: string = app.getVersion();
 
 // ── Region ping cache ──
 const SERVER_MAP: Record<string, string> = {
