@@ -3,14 +3,14 @@ import { devWindowIcon } from './platform';
 import { SPLASH_POSTER } from './splash-image';
 import { escapeHtml, renderMarkdown } from '../shared/markdown';
 
-// Branded startup splash: shows the KRH poster art while the update check and
-// the initial game load run, and doubles as the update UI (status text, progress
-// bar, and accept/skip buttons render in its bottom overlay). One window covers
-// the whole launch, so there is never a zero-window moment where the
+// Branded startup splash: the KRH poster art shown while the update check and the initial game load run.
+// Status sits in a glass pill at the top and progress runs along the bottom edge, so the poster logo stays
+// clear. It doubles as the update UI: the update prompt (version change, release notes, accept/skip
+// buttons) opens as a glass card over the dimmed poster in the same window. One window covers the whole launch, so there is never a zero-window moment where the
 // window-all-closed handler would quit the app mid-startup.
 
-const SPLASH_WIDTH = 760;
-const SPLASH_HEIGHT = 400;
+const SPLASH_WIDTH = 800;
+const SPLASH_HEIGHT = 440;
 
 function buildSplashHTML(version: string): string {
   // Buttons and the close control signal via console.log — captured by
@@ -18,126 +18,138 @@ function buildSplashHTML(version: string): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --blue: #2f8cff; --cyan: #38c8ff; --ink: #eaf2ff; --muted: rgba(200,218,248,0.7); }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     width: 100vw; height: 100vh; overflow: hidden;
-    background: #0b0b10;
+    background: #060912; color: var(--ink);
     user-select: none; cursor: default;
     -webkit-app-region: drag;
   }
   #poster {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    pointer-events: none;
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; pointer-events: none;
+    transition: filter 0.3s ease, transform 0.3s ease;
+  }
+  /* top and bottom shading so the pill and progress line stay readable over the art */
+  #shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(4,8,20,0.65) 0%, rgba(4,8,20,0) 24%),
+      linear-gradient(0deg, rgba(4,8,20,0.5) 0%, rgba(4,8,20,0) 14%);
+    transition: background 0.3s ease;
+  }
+  #frame { position: absolute; inset: 0; pointer-events: none; border: 1px solid rgba(90,150,255,0.28); }
+
+  #topbar {
+    position: absolute; top: 12px; left: 14px; right: 14px; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chip {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    padding: 5px 11px; border-radius: 999px;
+    background: rgba(8,14,32,0.55); border: 1px solid rgba(120,170,255,0.28);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: var(--ink);
+  }
+  #status {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-weight: 500; letter-spacing: 0; font-size: 12.5px; padding: 6px 16px;
   }
   #close {
-    position: absolute; top: 8px; right: 10px;
-    z-index: 2;
-    -webkit-app-region: no-drag;
-    color: rgba(255,255,255,0.55);
-    font-size: 14px; line-height: 1;
-    padding: 6px 8px;
-    cursor: pointer;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-    transition: color 0.15s;
+    -webkit-app-region: no-drag; cursor: pointer;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    border-radius: 999px; font-size: 12px; color: var(--muted);
+    background: rgba(8,14,32,0.55); border: 1px solid rgba(120,170,255,0.28);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    transition: color 0.15s, background 0.15s;
   }
-  #close:hover { color: #fff; }
-  #overlay {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    z-index: 1;
-    padding: 34px 16px 12px;
-    background: linear-gradient(180deg, rgba(5,7,10,0) 0%, rgba(5,7,10,0.7) 70%);
-    display: flex; flex-direction: column; gap: 9px;
-  }
-  #row { display: flex; align-items: center; gap: 12px; min-height: 26px; }
-  #status {
-    flex: 1;
-    font-size: 13px;
-    color: rgba(255,255,255,0.88);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.85);
-    line-height: 1.4;
-  }
-  #version {
-    font-size: 11px;
-    color: rgba(255,255,255,0.5);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.85);
-    white-space: nowrap;
-  }
-  #buttons { display: none; gap: 8px; -webkit-app-region: no-drag; }
-  #notes {
-    display: none;
-    -webkit-app-region: no-drag;
-    max-height: 176px;
-    overflow-y: auto;
-    background: rgba(8,10,14,0.6);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 12px;
-    line-height: 1.55;
-    color: rgba(255,255,255,0.78);
-  }
-  #notes h1, #notes h2, #notes h3 {
-    font-size: 12.5px; font-weight: 600;
-    color: #fff;
-    margin: 10px 0 4px;
-  }
-  #notes h1:first-child, #notes h2:first-child, #notes h3:first-child { margin-top: 0; }
-  #notes ul { padding-left: 16px; margin: 4px 0; }
-  #notes li { margin: 3px 0; }
-  #notes li::marker { color: rgba(46,229,157,0.8); }
-  #notes strong { color: #fff; }
-  #notes::-webkit-scrollbar { width: 8px; }
-  #notes::-webkit-scrollbar-track { background: transparent; }
-  #notes::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 4px; }
-  #notes::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
-  #skipRow {
-    display: none;
-    align-items: center; gap: 6px;
-    align-self: flex-end;
-    -webkit-app-region: no-drag;
-    font-size: 11px;
-    color: rgba(255,255,255,0.65);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.85);
-    cursor: pointer;
-  }
-  #skipRow input { cursor: pointer; accent-color: #2ee59d; margin: 0; }
-  button {
-    padding: 7px 16px;
-    border: none; border-radius: 4px;
-    color: #fff;
-    font-size: 12px; font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    transition: filter 0.15s, background 0.15s;
-  }
-  button.primary { background: linear-gradient(90deg, #0fa96c, #2ee59d); }
-  button.primary:hover { filter: brightness(1.12); }
-  button.secondary { background: rgba(255,255,255,0.14); }
-  button.secondary:hover { background: rgba(255,255,255,0.24); }
+  #close:hover { color: #fff; background: rgba(8,14,32,0.8); }
+
+  /* progress line along the bottom edge */
   .progress-container {
-    width: 100%; height: 3px;
-    background: rgba(255,255,255,0.14);
-    border-radius: 2px;
-    overflow: hidden;
-    opacity: 0;
-    transition: opacity 0.25s;
+    position: absolute; left: 0; right: 0; bottom: 0; height: 4px; z-index: 2;
+    background: rgba(8,14,32,0.55); overflow: hidden;
+    opacity: 0; transition: opacity 0.25s;
   }
   .progress-container.active { opacity: 1; }
   .progress-bar {
     height: 100%; width: 0%;
-    background: linear-gradient(90deg, #0fa96c, #2ee59d);
-    border-radius: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    box-shadow: 0 0 12px rgba(56,200,255,0.8);
     transition: width 0.3s ease;
   }
   /* Indeterminate sweep for steps with no measurable progress (check, verify, install). */
   .progress-container.indeterminate .progress-bar {
-    width: 40%;
-    transition: none;
+    width: 40%; transition: none;
     animation: krh-indet 1.15s ease-in-out infinite;
   }
+
+  /* Update prompt card */
+  #card {
+    position: absolute; z-index: 3; left: 50%; top: 50%;
+    width: 470px; max-width: calc(100% - 48px);
+    transform: translate(-50%, -48%) scale(0.98);
+    opacity: 0; pointer-events: none;
+    padding: 20px 22px 16px; text-align: center;
+    background: rgba(8,14,32,0.78);
+    border: 1px solid rgba(120,170,255,0.3); border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(47,140,255,0.08) inset;
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #title { font-size: 13px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
+  #flow { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 13px; font-weight: 600; }
+  #flow .from { color: var(--muted); }
+  #flow .arrow { color: var(--cyan); }
+  #flow .to {
+    color: #fff; padding: 2px 10px; border-radius: 999px;
+    background: rgba(47,140,255,0.22); border: 1px solid rgba(56,200,255,0.45);
+  }
+  #cardMsg { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  #notes {
+    display: none; -webkit-app-region: no-drag;
+    text-align: left; max-height: 120px; overflow-y: auto; margin-top: 12px;
+    background: rgba(4,10,26,0.6);
+    border: 1px solid rgba(90,150,255,0.2); border-radius: 10px;
+    padding: 10px 13px;
+    font-size: 12px; line-height: 1.55; color: rgba(214,226,250,0.88);
+  }
+  #notes h1, #notes h2, #notes h3 { font-size: 12.5px; font-weight: 600; color: #fff; margin: 9px 0 4px; }
+  #notes h1:first-child, #notes h2:first-child, #notes h3:first-child { margin-top: 0; }
+  #notes ul { padding-left: 16px; margin: 4px 0; }
+  #notes li { margin: 3px 0; }
+  #notes li::marker { color: var(--cyan); }
+  #notes strong { color: #fff; }
+  #notes::-webkit-scrollbar { width: 8px; }
+  #notes::-webkit-scrollbar-track { background: transparent; }
+  #notes::-webkit-scrollbar-thumb { background: rgba(120,160,230,0.28); border-radius: 4px; }
+  #notes::-webkit-scrollbar-thumb:hover { background: rgba(120,160,230,0.45); }
+  #buttons { display: flex; justify-content: center; gap: 10px; margin-top: 14px; -webkit-app-region: no-drag; }
+  button {
+    min-width: 112px; padding: 9px 20px;
+    border: 1px solid transparent; border-radius: 8px;
+    color: #fff; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: filter 0.15s, background 0.15s;
+  }
+  button.primary { background: linear-gradient(90deg, #1f6fe0, var(--cyan)); box-shadow: 0 4px 18px rgba(47,140,255,0.35); }
+  button.primary:hover { filter: brightness(1.12); }
+  button.secondary { background: rgba(120,160,230,0.14); border-color: rgba(120,160,230,0.3); }
+  button.secondary:hover { background: rgba(120,160,230,0.24); }
+  #skipRow {
+    display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 11px;
+    -webkit-app-region: no-drag; font-size: 11px; color: var(--muted); cursor: pointer;
+  }
+  #skipRow input { cursor: pointer; accent-color: var(--blue); margin: 0; }
+
+  /* prompting: dim + blur the poster, hide the pill, open the card */
+  body.prompting #poster { filter: blur(5px) brightness(0.5); transform: scale(1.03); }
+  body.prompting #shade { background: rgba(4,8,20,0.25); }
+  body.prompting #status { display: none; }
+  body.prompting #card { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+
   @keyframes krh-indet {
     0%   { transform: translateX(-110%); }
     100% { transform: translateX(260%); }
@@ -145,21 +157,26 @@ function buildSplashHTML(version: string): string {
 </style></head>
 <body>
   <img id="poster" src="${SPLASH_POSTER}" alt="">
-  <div id="close" title="Close">&#10005;</div>
-  <div id="overlay">
+  <div id="shade"></div>
+  <div id="frame"></div>
+  <div id="topbar">
+    <div class="chip" id="version">v${version}</div>
+    <div class="chip" id="status">Starting...</div>
+    <div id="close" title="Close">&#10005;</div>
+  </div>
+  <div class="progress-container" id="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div id="card">
+    <div id="title">Update available</div>
+    <div id="flow"><span class="from" id="flowFrom"></span><span class="arrow">&#8594;</span><span class="to" id="flowTo"></span></div>
+    <div id="cardMsg"></div>
     <div id="notes"></div>
-    <div id="row">
-      <div id="status">Starting...</div>
-      <div id="buttons">
-        <button class="secondary" id="btnSecondary"></button>
-        <button class="primary" id="btnPrimary"></button>
-      </div>
-      <div id="version">v${version}</div>
+    <div id="buttons">
+      <button class="secondary" id="btnSecondary"></button>
+      <button class="primary" id="btnPrimary"></button>
     </div>
     <label id="skipRow"><input type="checkbox" id="skipChk"><span>Don't ask again for this version</span></label>
-    <div class="progress-container" id="progress">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
   </div>
   <script>
     document.getElementById('close').addEventListener('click', () => console.log('KRH_SPLASH:close'));
@@ -207,7 +224,7 @@ export function createSplash(version: string): void {
     frame: false,
     resizable: false,
     show: false,
-    backgroundColor: '#0b0b10',
+    backgroundColor: '#060912',
     title: 'KRH Client',
     icon: devWindowIcon(),
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
@@ -275,17 +292,12 @@ export function splashStatus(message: string, percent?: number): void {
   const pct = typeof percent === 'number' ? percent : NaN;
   splash!.webContents.executeJavaScript(`(() => {
     const s = document.getElementById('status');
-    const b = document.getElementById('buttons');
-    const v = document.getElementById('version');
     const c = document.getElementById('progress');
     const p = document.getElementById('progressBar');
-    const k = document.getElementById('skipRow');
     const n = document.getElementById('notes');
+    document.body.classList.remove('prompting');
     if (s) s.textContent = ${JSON.stringify(message)};
-    if (b) b.style.display = 'none';
-    if (k) k.style.display = 'none';
     if (n) n.style.display = 'none';
-    if (v) v.style.display = '';
     if (c && p) {
       const pct = ${pct};
       if (Number.isNaN(pct)) { c.classList.remove('active', 'indeterminate'); }
@@ -307,8 +319,8 @@ export function splashPrompt(kind: 'install' | 'notice', newVersion: string, cur
   if (!splashAlive()) return Promise.resolve('closed');
 
   const message = kind === 'install'
-    ? `Update v${newVersion} is available — you're on v${currentVersion}.`
-    : `Update v${newVersion} is available. This build can't update itself — Download opens the releases page.`;
+    ? 'A new version is ready to install.'
+    : "This build can't update itself. Download opens the releases page.";
   const primaryLabel = kind === 'install' ? 'Update Now' : 'Download';
   const secondaryLabel = kind === 'install' ? 'Skip' : 'Later';
   // Links render as plain text — the splash blocks all navigation.
@@ -317,17 +329,16 @@ export function splashPrompt(kind: 'install' | 'notice', newVersion: string, cur
     : '';
 
   splash!.webContents.executeJavaScript(`(() => {
-    const s = document.getElementById('status');
-    const b = document.getElementById('buttons');
-    const v = document.getElementById('version');
+    const m = document.getElementById('cardMsg');
     const c = document.getElementById('progress');
-    if (s) s.textContent = ${JSON.stringify(message)};
-    if (v) v.style.display = 'none';
-    if (c) c.classList.remove('active', 'indeterminate');
-    if (b) b.style.display = 'flex';
-    const k = document.getElementById('skipRow');
     const kc = document.getElementById('skipChk');
-    if (k) k.style.display = 'flex';
+    document.body.classList.add('prompting');
+    const ff = document.getElementById('flowFrom');
+    const ft = document.getElementById('flowTo');
+    if (ff) ff.textContent = ${JSON.stringify('v' + currentVersion)};
+    if (ft) ft.textContent = ${JSON.stringify('v' + newVersion)};
+    if (m) m.textContent = ${JSON.stringify(message)};
+    if (c) c.classList.remove('active', 'indeterminate');
     if (kc) kc.checked = false;
     const n = document.getElementById('notes');
     if (n) { n.innerHTML = ${JSON.stringify(notesHtml)}; n.style.display = ${JSON.stringify(notesHtml ? 'block' : 'none')}; }

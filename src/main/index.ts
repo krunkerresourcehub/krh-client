@@ -455,7 +455,7 @@ app.whenReady().then(async () => {
   }
 
   // ── Branded splash ──
-  // Shows the poster art through the update check and the initial game load, and
+  // Shows the KRH poster art through the update check and the initial game load, and
   // hosts the update prompts/progress so startup is one uniform window. Closing it
   // before the main window exists quits the app (window-all-closed).
   createSplash(appVersion);
