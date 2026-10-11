@@ -93,6 +93,15 @@ function altRemove(index: number): Promise<unknown> {
 
 const isSignedIn = (): boolean => !!document.querySelector('#signedInHeaderBar');
 
+/** Krunker's own popup after a login with another account: "Different Account used this Session. Please refresh." */
+function sessionTakenOver(): boolean {
+  return (document.body?.textContent || '').toLowerCase().includes('different account used this session');
+}
+
+function lsGet(key: string): string {
+  try { return localStorage.getItem(key) || ''; } catch { return ''; }
+}
+
 /** Poll until check() is true (checked right away, then every stepMs). Resolves false on timeout. */
 async function waitFor(check: () => boolean, timeoutMs: number, stepMs = 250): Promise<boolean> {
   const end = Date.now() + timeoutMs;
@@ -115,24 +124,44 @@ async function altSwitch(index: number): Promise<void> {
       _console.warn('[KRH-Alt] loginOrRegister unavailable; cannot switch account');
       return;
     }
+    // What the page looked like before, so that the NEW login can be told apart from the old one.
+    // (Values stay in memory only; they are compared and never logged or stored.)
+    const target = creds.username.trim().toLowerCase();
+    const userBefore = lsGet('krunker_username');
+    const tokenBefore = lsGet('krunker_token');
+    const popupBefore = sessionTakenOver(); // already on screen from earlier: then it says nothing about this switch
     const wasSignedIn = isSignedIn();
     const canLogout = typeof w.logoutAcc === 'function';
     if (wasSignedIn && canLogout) w.logoutAcc();
-    // The header bar disappears on logout. Seeing that happen is what lets us tell the NEW login apart from
-    // the old one, so a refresh is never triggered by the account we are leaving.
-    const loggedOut = wasSignedIn ? (canLogout && await waitFor(() => !isSignedIn(), 3000, 100)) : true;
+    // Krunker does not always redraw its header after an in-page login, so the header is only a backup signal
+    const sawLoggedOut = wasSignedIn ? (canLogout && await waitFor(() => !isSignedIn(), 3000, 100)) : true;
     await ensureFrvrSession();
     submitLogin(creds);
-    if (!loggedOut) return; // cannot tell old from new login: the refresh stays manual, as before
 
-    // Wait for the login to go through, then reload so the whole page (menu, stats, socials) is the new account's
-    if (!(await waitFor(isSignedIn, 20000))) {
+    const onTarget = (): boolean => lsGet('krunker_username').trim().toLowerCase() === target;
+    // Main signal: Krunker shows "Different Account used this Session. Please refresh." once the new login went through.
+    // Backups: the page holds the target account's name and it changed since before (the name itself, or the session
+    // token when switching to the very account that was already active), or the header came back after a logout.
+    const switched = (): boolean =>
+      (!popupBefore && sessionTakenOver())
+      || (onTarget() && (lsGet('krunker_username') !== userBefore || lsGet('krunker_token') !== tokenBefore))
+      || (sawLoggedOut && isSignedIn());
+
+    let ok = await waitFor(switched, 20000);
+    // Last chance: the page says it is the target account, even if we could not see it change.
+    // Only reached after the full wait, so the login has had its time to finish.
+    if (!ok && onTarget() && lsGet('krunker_username') !== '') ok = true;
+    if (!ok) {
+      _console.warn(`[KRH-Alt] Login not confirmed (popup: ${sessionTakenOver()}, name matches target: ${onTarget()}, header signed in: ${isSignedIn()})`);
       showToast('Could not confirm the login. Refresh the page if the account did not change.');
       return;
     }
-    // give the header a moment to draw the avatar so it can still be saved for the account list
-    await waitFor(() => !!(document.querySelector('.ph-avatar') as HTMLImageElement | null)?.src, 2500);
-    await linkCurrentAccount();
+    _console.log(`[KRH-Alt] Login confirmed (popup: ${sessionTakenOver()}, name matches target: ${onTarget()}, header signed in: ${isSignedIn()}), refreshing`);
+    // The popup can arrive a moment before the page has stored the new login: let that finish before reloading
+    await waitFor(onTarget, 3000);
+    await new Promise<void>((r) => setTimeout(r, 400));
+    // No avatar is saved here: the header is often still the old account's until the reload. It is saved
+    // when the account list is opened after the reload (linkCurrentAccount), when the header is correct.
     location.reload();
   } catch (err) {
     _console.error('[KRH-Alt] Account switch failed:', err);
