@@ -93,6 +93,48 @@ function init(): void {
   });
 }
 
+
+// The capture page must be a secure context (getDisplayMedia is unavailable on data: URLs).
+function ensureRecorderPage(): string {
+  const pageFile = join(app.getPath('userData'), 'KRH Client', 'recorder.html');
+  mkdirSync(join(app.getPath('userData'), 'KRH Client'), { recursive: true });
+  writeFileSync(pageFile, '<!doctype html><meta charset="utf-8"><title>KRH Recorder</title>');
+  return pageFile;
+}
+
+/** In-memory session for a hidden capture window: answers the screen-capture request with the game's own frame. */
+function prepareSession(partition: string): Electron.Session {
+  const ses = session.fromPartition(partition);
+  ses.setDisplayMediaRequestHandler(async (_req, callback) => {
+    if (!target || target.isDestroyed()) { callback({}); return; }
+    try {
+      const frame = target.webContents.mainFrame;
+      // Video: the game window's own frame, or the whole screen the game is on (shows other windows too).
+      let video: Electron.WebFrameMain | Electron.DesktopCapturerSource = frame;
+      if (sourceMode === 'screen') {
+        const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+        const disp = screen.getDisplayMatching(target.getBounds());
+        const src = sources.find((s) => s.display_id === String(disp.id)) || sources[0];
+        if (!src) { callback({}); return; }
+        video = src;
+      }
+      if (audioMode === 'off') callback({ video });
+      else if (audioMode === 'system' && process.platform === 'win32') callback({ video, audio: 'loopback' });
+      else callback({ video, audio: frame });
+    } catch (err) {
+      electronLog.error('[KRH] Display media request failed:', err);
+      callback({});
+    }
+  }, { useSystemPicker: false });
+  // The capture window may use the microphone (only audio, only for this window).
+  ses.setPermissionRequestHandler((_wc, permission, cb, details) => {
+    const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
+    cb(permission === 'media' && types.every((t) => t === 'audio'));
+  });
+  ses.setPermissionCheckHandler((_wc, permission) => permission === 'media');
+  return ses;
+}
+
 function finalize(failed: boolean): void {
   if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
   const stream = out, win = recWin, path = filePath, dest = finalPath, size = bytes, began = startedAt;
@@ -141,39 +183,8 @@ export async function startRecording(game: BrowserWindow): Promise<void> {
     bytes = 0;
     startedAt = 0;
 
-    // The capture page must be a secure context (getDisplayMedia is unavailable on data: URLs).
-    const pageFile = join(app.getPath('userData'), 'KRH Client', 'recorder.html');
-    mkdirSync(join(app.getPath('userData'), 'KRH Client'), { recursive: true });
-    writeFileSync(pageFile, '<!doctype html><meta charset="utf-8"><title>KRH Recorder</title>');
-
-    const ses = session.fromPartition('krh-recorder'); // in-memory
-    ses.setDisplayMediaRequestHandler(async (_req, callback) => {
-      if (!target || target.isDestroyed()) { callback({}); return; }
-      try {
-        const frame = target.webContents.mainFrame;
-        // Video: the game window's own frame, or the whole screen the game is on (shows other windows too).
-        let video: Electron.WebFrameMain | Electron.DesktopCapturerSource = frame;
-        if (sourceMode === 'screen') {
-          const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
-          const disp = screen.getDisplayMatching(target.getBounds());
-          const src = sources.find((s) => s.display_id === String(disp.id)) || sources[0];
-          if (!src) { callback({}); return; }
-          video = src;
-        }
-        if (audioMode === 'off') callback({ video });
-        else if (audioMode === 'system' && process.platform === 'win32') callback({ video, audio: 'loopback' });
-        else callback({ video, audio: frame });
-      } catch (err) {
-        electronLog.error('[KRH] Display media request failed:', err);
-        callback({});
-      }
-    }, { useSystemPicker: false });
-    // The recorder window may use the microphone (only audio, only for this window).
-    ses.setPermissionRequestHandler((_wc, permission, cb, details) => {
-      const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
-      cb(permission === 'media' && types.every((t) => t === 'audio'));
-    });
-    ses.setPermissionCheckHandler((_wc, permission) => permission === 'media');
+    const pageFile = ensureRecorderPage();
+    const ses = prepareSession('krh-recorder'); // in-memory
 
     recWin = new BrowserWindow({
       show: false,
@@ -228,4 +239,167 @@ export async function openRecordingsFolder(): Promise<string> {
   const dir = recordingsDir();
   await fsp.mkdir(dir, { recursive: true });
   return shell.openPath(dir);
+}
+
+// ── Instant replay ──
+// A second hidden capture window records the game all the time into memory. Only the newest N seconds are kept.
+// "Save clip" writes them to <Videos>/KRH Client as Krunker_replay_<time>.mp4 (or .webm). The encoder output is
+// cut at fragment / cluster borders and glued to the stream header taken from the very first piece, so the
+// clip needs no re-encoding. A clip can start with a short stretch of picture glitches until the encoder's next
+// keyframe, because MediaRecorder cannot be told to cut on one.
+
+let repWin: BrowserWindow | null = null;
+let repState: 'idle' | 'starting' | 'running' = 'idle';
+let repSeconds = 30;
+let repFirst: Buffer | null = null;
+let repRing: Array<{ t: number; buf: Buffer }> = [];
+let repMime = '';
+let repIpc = false;
+let repSaving = false;
+
+export function replayActive(): boolean { return repState !== 'idle'; }
+
+function initReplayIpc(): void {
+  if (repIpc) return;
+  repIpc = true;
+  ipcMain.on('krh-rbuf-chunk', (e, buf: ArrayBuffer) => {
+    if (!repWin || e.sender !== repWin.webContents) return;
+    const b = Buffer.from(buf);
+    if (!repFirst) { repFirst = b; return; }
+    const now = Date.now();
+    repRing.push({ t: now, buf: b });
+    const cutoff = now - (repSeconds + 3) * 1000;
+    while (repRing.length > 1 && repRing[0].t < cutoff) repRing.shift();
+  });
+  ipcMain.on('krh-rbuf-started', (e, info: { mime?: string }) => {
+    if (!repWin || e.sender !== repWin.webContents) return;
+    repMime = info.mime || '';
+    repState = 'running';
+    electronLog.log(`[KRH] Instant replay buffer running (${repSeconds}s, ${repMime || 'unknown format'})`);
+  });
+  ipcMain.on('krh-rbuf-error', (e, msg: string) => {
+    if (!repWin || e.sender !== repWin.webContents) return;
+    electronLog.error('[KRH] Instant replay error:', msg);
+    toast('Instant replay stopped (capture failed)');
+    stopReplayBuffer();
+  });
+  ipcMain.on('krh-rbuf-stopped', (e) => {
+    if (!repWin || e.sender !== repWin.webContents) return;
+    stopReplayBuffer();
+  });
+}
+
+export async function startReplayBuffer(game: BrowserWindow, seconds: number): Promise<void> {
+  repSeconds = Math.max(10, Math.min(120, Math.round(seconds) || 30));
+  if (repState !== 'idle' || game.isDestroyed()) return;
+  initReplayIpc();
+  repState = 'starting';
+  target = game;
+  repFirst = null;
+  repRing = [];
+  const g = config.get('game');
+  const fps = g.recordFps === 30 ? 30 : 60;
+  const bps = Math.min(BITRATES[g.recordQuality] ?? BITRATES.Medium, 12_000_000);
+  audioMode = g.recordAudio === 'system' || g.recordAudio === 'off' ? g.recordAudio : 'game';
+  sourceMode = g.recordSource === 'screen' ? 'screen' : 'game';
+  try {
+    const ses = prepareSession('krh-replay');
+    repWin = new BrowserWindow({
+      show: false, width: 320, height: 240,
+      webPreferences: {
+        session: ses,
+        preload: join(__dirname, '..', 'preload', 'recorder.js'),
+        contextIsolation: true, nodeIntegration: false, sandbox: true,
+        backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required',
+      },
+    });
+    await repWin.loadFile(ensureRecorderPage());
+    await repWin.webContents.executeJavaScript('0', true);
+    repWin.webContents.send('krh-rec-start', { fps, bps, audio: audioMode !== 'off', mic: false, prefix: 'krh-rbuf' });
+  } catch (err) {
+    electronLog.error('[KRH] Could not start instant replay:', err);
+    stopReplayBuffer();
+  }
+}
+
+export function setReplaySeconds(seconds: number): void {
+  repSeconds = Math.max(10, Math.min(120, Math.round(seconds) || 30));
+}
+
+export function stopReplayBuffer(): void {
+  const w = repWin;
+  repWin = null;
+  repState = 'idle';
+  repFirst = null;
+  repRing = [];
+  if (w && !w.isDestroyed()) {
+    try { w.webContents.send('krh-rec-stop'); } catch { /* ignore */ }
+    setTimeout(() => { if (!w.isDestroyed()) w.destroy(); }, 1500);
+  }
+}
+
+/** Position of the first occurrence of a byte pattern, or -1. */
+function indexOfBytes(buf: Buffer, pattern: number[], from = 0): number {
+  return buf.indexOf(Buffer.from(pattern), from);
+}
+
+/** Start of the first MP4 fragment (moof box) in the buffer, or -1. Walks the boxes; falls back to a search. */
+function firstMoof(buf: Buffer): number {
+  let p = 0;
+  while (p + 8 <= buf.length) {
+    const size = buf.readUInt32BE(p);
+    const type = buf.toString('latin1', p + 4, p + 8);
+    if (type === 'moof') return p;
+    if (size < 8 || p + size > buf.length) break;
+    p += size;
+  }
+  const i = buf.indexOf('moof', 4, 'latin1');
+  return i >= 4 ? i - 4 : -1;
+}
+
+/** Pure part (exported for tests): build the clip bytes from the first piece and the kept pieces. */
+export function buildClip(first: Buffer, pieces: Buffer[], mime: string): Buffer {
+  const mp4 = mime.startsWith('video/mp4');
+  let init = first;
+  if (mp4) {
+    const m = firstMoof(first);
+    if (m > 0) init = first.subarray(0, m);
+  } else {
+    const c = indexOfBytes(first, [0x1f, 0x43, 0xb6, 0x75]);   // WebM Cluster id
+    if (c > 0) init = first.subarray(0, c);
+  }
+  let body = Buffer.concat(pieces);
+  if (mp4) {
+    const m = firstMoof(body);
+    if (m > 0) body = body.subarray(m);
+  } else {
+    const c = indexOfBytes(body, [0x1f, 0x43, 0xb6, 0x75]);
+    if (c > 0) body = body.subarray(c);
+  }
+  return Buffer.concat([init, body]);
+}
+
+export async function saveReplayClip(): Promise<void> {
+  if (repState !== 'running' || !repFirst) { toast('Instant replay is not running'); return; }
+  if (repSaving) return;
+  const pieces = repRing.map((r) => r.buf);
+  if (pieces.length === 0) { toast('Not enough recorded yet, try again in a moment'); return; }
+  repSaving = true;
+  try {
+    const now = Date.now();
+    const keep = repRing.filter((r) => r.t >= now - (repSeconds + 1) * 1000).map((r) => r.buf);
+    const bytes = buildClip(repFirst, keep.length ? keep : pieces, repMime);
+    const dir = recordingsDir();
+    await fsp.mkdir(dir, { recursive: true });
+    const ext = repMime.startsWith('video/mp4') ? '.mp4' : '.webm';
+    const path = join(dir, `Krunker_replay_${stamp()}${ext}`);
+    await fsp.writeFile(path, bytes);
+    electronLog.log(`[KRH] Instant replay clip saved: ${path} (${fmtSize(bytes.length)})`);
+    toast(`Clip saved (last ${Math.min(repSeconds, keep.length || pieces.length)} s, ${fmtSize(bytes.length)})`);
+  } catch (err) {
+    electronLog.error('[KRH] Could not save the replay clip:', err);
+    toast('Could not save the clip');
+  } finally {
+    repSaving = false;
+  }
 }

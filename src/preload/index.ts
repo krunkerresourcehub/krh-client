@@ -28,6 +28,10 @@ import { initBanlog } from './banlog';
 import { installGameSocketTap } from './game-socket';
 import { installSkyHook } from './sky';
 import { installSoundHook, setHeadshotSoundMode } from './headshot-sound';
+import { initStreamerMode } from './streamer-mode';
+import { initSessionTracker } from './session-tracker';
+import { initLayoutEditor } from './layout-editor';
+import { initReplayKey } from './replay-key';
 import { initTradeDing } from './trade-ding';
 import { initKrhProtocol } from './protocol';
 import { initRankedBadges } from './ranked-badges';
@@ -162,6 +166,9 @@ ipcRenderer.on('matchmaker-find', (_e, mmConfig: MatchmakerConfig) => {
 });
 
 // ── Toast from main (e.g. screenshot confirmation) ──
+// Safe mode (decided in the main process): overlays and the extra features are not started at all
+const SAFE: boolean = ipcRenderer.sendSync('is-safe-mode') === true;
+
 ipcRenderer.on('krh-toast', (_e, msg: string) => showToast(msg));
 
 // Ranked leaderboard search: must wrap fetch before the social page requests the rankings, so it is
@@ -290,35 +297,35 @@ ipcRenderer.on('main_did-finish-load', () => {
     }
 
     // ── Keystrokes + Mouse overlay ──
-    if (isGamePage) {
+    if (isGamePage && !SAFE) {
       ipcRenderer.invoke('get-config', 'keystrokes').then((ksConf: KeystrokesConfig | undefined) => {
         if (ksConf && (ksConf.enabled || ksConf.mouseEnabled)) initKeystrokes(ksConf);
       }).catch((err) => _console.warn('[KRH] keystrokes config load failed:', err));
     }
 
     // ── Nuke counter overlay ──
-    if (isGamePage) {
+    if (isGamePage && !SAFE) {
       ipcRenderer.invoke('get-config', 'nukeCounter').then((ncConf: NukeCounterConfig | undefined) => {
         if (ncConf && ncConf.enabled) setNukeCounter({ ...DEFAULT_CONFIG.nukeCounter, ...ncConf });
       }).catch((err) => _console.warn('[KRH] nuke counter config load failed:', err));
     }
 
     // ── Twitch chat overlay ──
-    if (isGamePage) {
+    if (isGamePage && !SAFE) {
       ipcRenderer.invoke('get-config', 'twitch').then((twConf: TwitchChatConfig | undefined) => {
         if (twConf && twConf.enabled) setTwitchChat({ ...DEFAULT_CONFIG.twitch, ...twConf });
       }).catch((err) => _console.warn('[KRH] twitch config load failed:', err));
     }
 
     // ── Spotify now-playing overlay ──
-    if (isGamePage) {
+    if (isGamePage && !SAFE) {
       ipcRenderer.invoke('get-config', 'spotify').then((spConf: SpotifyOverlayConfig | undefined) => {
         if (spConf && spConf.enabled) setSpotifyOverlay({ ...DEFAULT_CONFIG.spotify, ...spConf });
       }).catch((err) => _console.warn('[KRH] spotify config load failed:', err));
     }
 
     // ── Extras: ranked badges, mod downloader, chat filters + logs, Quick Play, hidden menu elements ──
-    if (isGamePage) {
+    if (isGamePage && !SAFE) {
       ipcRenderer.invoke('get-config', 'extras').then((exRaw: Partial<typeof DEFAULT_CONFIG.extras> | undefined) => {
         const ex = { ...DEFAULT_CONFIG.extras, ...exRaw };
         if (ex.rankedBadges) initRankedBadges();
@@ -334,6 +341,15 @@ ipcRenderer.on('main_did-finish-load', () => {
         setChatDraft(ex.chatDraft);
         setRankedAlert(ex.rankedAlert);
         if (ex.accountEndMessage) void setAccountEndMessage(true);
+        // Version 1.1: streamer mode, session stats, instant replay key and the overlay layout editor
+        initStreamerMode(ex.streamerMode, ex.streamerKey);
+        initSessionTracker({
+          enabled: ex.sessionStats?.enabled ?? true,
+          key: ex.sessionStats?.key ?? 'Ctrl+Alt+K',
+          autoStreak: ex.instantReplay?.enabled ? (ex.instantReplay.autoStreak || 0) : 0,
+        });
+        initLayoutEditor(ex.layoutEditorKey);
+        if (ex.instantReplay?.enabled) initReplayKey(ex.instantReplay.key || 'Ctrl+Alt+R');
       }).catch((err) => _console.warn('[KRH] extras config load failed:', err));
     }
 
@@ -441,6 +457,11 @@ ipcRenderer.on('main_did-finish-load', () => {
       const showStatus = discordConf.showStatus !== false;
 
       const GENERIC_DETAILS = 'Playing Krunker';
+      // Extra presence features (Settings > Extras > Discord Presence+). Off until the settings say otherwise.
+      let rich = { classIcon: false, mapArt: false, join: false };
+      ipcRenderer.invoke('get-config', 'extras').then((x: any) => { rich = { ...rich, ...(x?.rpcRich || {}) }; }).catch(() => { /* keep defaults */ });
+      const slug = (t: string): string => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 28);
+      let lastRich = '';
       let lastDetails = '';
       let lastState = '';
       let lastHadTimer = false;
@@ -451,6 +472,9 @@ ipcRenderer.on('main_did-finish-load', () => {
         let details = '';
         let state = '';
         let startTimestamp: number | undefined = undefined;
+        let matchMap = '';
+        let matchClass = '';
+        let inMatchNow = false;
 
         const w = window as any;
         const spectating = w.spectating;
@@ -493,10 +517,37 @@ ipcRenderer.on('main_did-finish-load', () => {
             }
 
             if (showTimer) startTimestamp = gameStartTimestamp;
+
+            inMatchNow = true;
+            matchMap = typeof gameActivity?.map === 'string' ? gameActivity.map.trim() : '';
+            matchClass = typeof gameActivity?.class?.name === 'string' ? gameActivity.class.name.trim()
+              : (document.getElementById('menuClassName')?.textContent?.trim() || '');
           }
         }
 
-        if (firstSend || details !== lastDetails || state !== lastState) {
+        // Art and Join (only inside a match). Asset keys: map_<name> and class_<name>, see DISCORD-ART.md.
+        let largeImageKey = 'krh_logo';
+        let largeImageText = 'Krunker Resource Hub Client';
+        let smallImageKey: string | undefined;
+        let smallImageText: string | undefined;
+        let joinSecret: string | undefined;
+        let partyId: string | undefined;
+        let partySize: [number, number] | undefined;
+        if (inMatchNow) {
+          if (rich.mapArt && matchMap) { largeImageKey = 'map_' + slug(matchMap); largeImageText = matchMap; }
+          if (rich.classIcon && matchClass) { smallImageKey = 'class_' + slug(matchClass); smallImageText = matchClass; }
+          const gid = new URLSearchParams(location.search).get('game') || '';
+          if (rich.join && /^[A-Za-z0-9:_-]{3,64}$/.test(gid)) {
+            joinSecret = gid;
+            partyId = 'krh-' + gid;
+            const cur = Number(gameActivity?.players ?? gameActivity?.playerCount);
+            const max = Number(gameActivity?.maxPlayers ?? gameActivity?.playerLimit);
+            if (Number.isInteger(cur) && Number.isInteger(max) && cur >= 1 && max >= cur) partySize = [cur, max];
+          }
+        }
+        const richKey = [largeImageKey, smallImageKey, joinSecret, partySize?.join('/')].join('|');
+
+        if (firstSend || details !== lastDetails || state !== lastState || richKey !== lastRich) {
           // Restart the timer when a new match begins (coming from menus/spectating, or a different map/mode),
           // but not when the generic loading text is just being replaced by the real map/mode.
           if (startTimestamp && (!lastHadTimer || (lastDetails !== details && lastDetails !== GENERIC_DETAILS))) {
@@ -506,13 +557,19 @@ ipcRenderer.on('main_did-finish-load', () => {
           lastHadTimer = !!startTimestamp;
           lastDetails = details;
           lastState = state;
+          lastRich = richKey;
           firstSend = false;
           ipcRenderer.send('discord-update', {
             details: details || undefined,
             state: state || undefined,
             startTimestamp,
-            largeImageKey: 'krh_logo',
-            largeImageText: 'Krunker Resource Hub Client',
+            largeImageKey,
+            largeImageText,
+            smallImageKey,
+            smallImageText,
+            joinSecret,
+            partyId,
+            partySize,
           });
         }
       }

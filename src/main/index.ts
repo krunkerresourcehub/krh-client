@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, session, shell, webContents } from 'electron';
+import { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, session, shell, webContents } from 'electron';
 import { join, extname, basename, dirname, resolve as resolvePath } from 'path';
 import { existsSync, mkdirSync, writeFileSync, watch as fsWatch, promises as fsp } from 'fs';
 import { get as httpsGet } from 'https';
@@ -24,7 +24,12 @@ import { listThemes, getThemeCSS, listLoadingThemes, getLoadingScreenCSS, GAME_T
 import { TabManager } from './tab-manager';
 import { openRankedQueue, loadQueueMaps, DEFAULT_RANKED_AUDIO_URL } from './ranked-queue';
 import { takeScreenshot, takeAreaScreenshot, openScreenshotsFolder } from './screenshot';
-import { toggleRecording, togglePauseRecording, stopRecording, openRecordingsFolder } from './recorder';
+import { toggleRecording, togglePauseRecording, stopRecording, openRecordingsFolder, startReplayBuffer, stopReplayBuffer, saveReplayClip, setReplaySeconds, replayActive } from './recorder';
+import { installPackFromUrl, installPackFromFile, listPacks, deletePack, PACK_ID_RE } from './packs';
+import { encodeShare, decodeShare } from './share-code';
+import { addDelta, endSession, flushStats, getStats, clearStats, summaryText } from './session-stats';
+import { beginLaunchGuard, isSafeMode, markCleanQuit, noteProcessCrash } from './safe-mode';
+import { startBackgroundUpdates, wireHubBadge, installReadyUpdate, installOnQuitIfWanted, pokeBackgroundUpdates, getReadyUpdate } from './update-manager';
 import { TwitchChat, normalizeChannel, fetchEmoteImage } from './twitch';
 import { TwitchLinkBot, loadToken as loadTwitchBotToken, saveToken as saveTwitchBotToken, normalizeToken as normalizeTwitchBotToken } from './twitch-link';
 import type { TwitchConfig } from './twitch';
@@ -416,6 +421,17 @@ function saveWindowState(win: BrowserWindow): void {
   }, 1000);
 }
 
+// Safe mode (see safe-mode.ts): decided once at start, read by the rest of the client.
+let safeMode = false;
+
+// A crashed renderer or GPU process counts towards the safe-mode prompt on the next start.
+app.on('render-process-gone', (_e, _wc, details) => {
+  if (['crashed', 'oom', 'launch-failed', 'integrity-failure'].includes(details.reason)) noteProcessCrash(`Renderer (${details.reason})`);
+});
+app.on('child-process-gone', (_e, details) => {
+  if (details.type === 'GPU' && ['crashed', 'oom', 'launch-failed'].includes(details.reason)) noteProcessCrash(`GPU process (${details.reason})`);
+});
+
 app.whenReady().then(async () => {
   electronLog.log('[KRH] App ready');
 
@@ -460,6 +476,11 @@ app.whenReady().then(async () => {
   // before the main window exists quits the app (window-all-closed).
   createSplash(appVersion);
 
+  // Crash-loop guard: decides between normal and safe mode before any feature loads
+  await beginLaunchGuard();
+  safeMode = isSafeMode();
+  if (!splashAlive()) return; // closed while the safe-mode dialog was open
+
   // ── Update check ──
   // Only Windows NSIS self-installs: the Setup.exe swaps the app while it's closed.
   // macOS, Linux (AppImage), and Windows-portable can't swap a running app, so they
@@ -471,6 +492,8 @@ app.whenReady().then(async () => {
 
   if (isDev) {
     electronLog.log('[KRH] Skipping update check (dev mode)');
+  } else if (isNsisInstall && (config.get('extras') as Partial<ExtrasConfig> | undefined)?.updateMode === 'background') {
+    electronLog.log('[KRH] Update mode is background: no check at launch (see update-manager.ts)');
   } else if (isNsisInstall) {
     try {
       electronLog.log('[KRH] Checking for updates...');
@@ -595,13 +618,16 @@ async function launchApp(): Promise<void> {
 
   registerSwapperFileProtocol(ses, swapDir);
 
-  const swapper = swapperConfig.enabled ? new ResourceSwapper(swapDir) : null;
-  electronLog.log(`[KRH] Resource swapper: ${swapper ? 'enabled' : 'disabled'} (${swapDir})`);
+  // The swapper also runs for switched-on resource packs, even when the user's own swapper folder is off.
+  const startupPacks = safeMode ? [] : (((config.get('extras') as Partial<ExtrasConfig> | undefined)?.packs?.enabled) || []);
+  const userSwapper = swapperConfig.enabled && !safeMode;
+  const swapper = userSwapper || startupPacks.length ? new ResourceSwapper(swapDir, { userFiles: userSwapper, packs: startupPacks }) : null;
+  electronLog.log(`[KRH] Resource swapper: ${swapper ? 'enabled' : 'disabled'} (${swapDir}), packs: ${startupPacks.length}${safeMode ? ' [safe mode]' : ''}`);
 
   // ── Userscript manager ──
   const usConfig = config.get('userscripts') || { enabled: true, path: '' };
   const usDir = usConfig.path || join(app.getPath('userData'), 'KRH Client');
-  const userscriptManager = usConfig.enabled ? new UserscriptManager(usDir) : null;
+  const userscriptManager = usConfig.enabled && !safeMode ? new UserscriptManager(usDir) : null;
   electronLog.log(`[KRH] Userscripts: ${userscriptManager ? 'enabled' : 'disabled'} (${usDir})`);
 
   // ── Ad blocking + resource swapper (single onBeforeRequest — Electron only allows one) ──
@@ -722,7 +748,7 @@ async function launchApp(): Promise<void> {
   // client) stays hidden and unloaded until Play is pressed on the hub. Editor / Games / Viewer /
   // Docs / Guides open in their own window.
   let appQuitting = false;
-  app.on('before-quit', () => { appQuitting = true; stopRecording(); });
+  app.on('before-quit', () => { appQuitting = true; stopRecording(); stopReplayBuffer(); });
 
   let gameActive = false;
 
@@ -806,6 +832,16 @@ async function launchApp(): Promise<void> {
     if (e.sender !== win.webContents || !gameActive) return;
     if (action === 'toggle' || action === 'next' || action === 'previous') void spotify.control(action as SpotifyAction);
   });
+  // Instant replay: keeps the newest seconds of the game in memory (see recorder.ts). Runs only while the game is open.
+  const applyReplay = (): void => {
+    const ir = getExtras().instantReplay;
+    if (gameActive && ir.enabled && !safeMode && !win.isDestroyed()) {
+      setReplaySeconds(ir.seconds);
+      if (!replayActive()) void startReplayBuffer(win, ir.seconds);
+    } else if (replayActive()) {
+      stopReplayBuffer();
+    }
+  };
   const showGameWindow = (): void => {
     if (win.isDestroyed()) return;
     if (!win.isVisible()) {
@@ -824,6 +860,7 @@ async function launchApp(): Promise<void> {
       void win.loadURL(url);
       applyTwitch(config.get('twitch'));
       applySpotify(config.get('spotify'));
+      setTimeout(() => applyReplay(), 8000); // after the first page has loaded
     } else if (url !== 'https://krunker.io') {
       void win.loadURL(url); // a specific game link (e.g. from the editor or a join link)
     }
@@ -870,6 +907,15 @@ async function launchApp(): Promise<void> {
     onHubToggle: toggleHub,
   });
   hub.on('blur', () => { if (!hub.isDestroyed()) hub.setAlwaysOnTop(false); });
+  // Background updates (Settings > Extras > Updates): quiet download, then a "Restart to update" badge in the hub
+  wireHubBadge(hub);
+  startBackgroundUpdates({
+    appVersion,
+    settings: () => ({ mode: getExtras().updateMode, installOnQuit: getExtras().updateInstallOnQuit }),
+    skippedVersion: () => config.get('ui')?.skippedUpdateVersion || '',
+    hub: () => (hub.isDestroyed() ? null : hub),
+    toastGame: (m) => { if (gameActive && !win.isDestroyed()) win.webContents.send('krh-toast', m); },
+  }, app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_DIR && !process.env.APPIMAGE);
   // Game window focused -> freeze the hub; hub focused -> it resumes itself (see hub-window.ts).
   win.on('focus', () => {
     if (gameActive && !hub.isDestroyed()) void setHubSuspended(hub, true);
@@ -926,6 +972,11 @@ async function launchApp(): Promise<void> {
     const discordConf = config.get('discord') || { enabled: false };
     if (discordConf.enabled) {
       discordRpc = new DiscordRPC();
+      discordRpc.onJoin = (secret) => {
+        if (!getExtras().rpcRich.join) return;
+        electronLog.log('[KRH] Joining a friend\'s match from Discord');
+        launchGame('https://krunker.io/?game=' + secret);
+      };
       discordRpc.connect();
       electronLog.log('[KRH] Discord Rich Presence enabled');
     }
@@ -1138,7 +1189,7 @@ async function launchApp(): Promise<void> {
 
     // Inject user CSS theme via <style> tag so @import rules work
     const uiConf = config.get('ui');
-    const themeId = uiConf?.cssTheme || 'disabled';
+    const themeId = safeMode ? 'disabled' : (uiConf?.cssTheme || 'disabled');
     const themeCSS = getThemeCSS(themeId, swapDir);
     electronLog.log(`[KRH] CSS theme: id=${themeId}, css=${themeCSS ? themeCSS.length + ' chars' : 'none'}`);
     if (themeCSS) {
@@ -1152,7 +1203,7 @@ async function launchApp(): Promise<void> {
     }
 
     // Inject loading screen background
-    const loadingCSS = getLoadingScreenCSS(uiConf?.loadingTheme || 'disabled', uiConf?.backgroundUrl || '', swapDir);
+    const loadingCSS = getLoadingScreenCSS(safeMode ? 'disabled' : (uiConf?.loadingTheme || 'disabled'), uiConf?.backgroundUrl || '', swapDir);
     if (loadingCSS) cssInjections.push(win.webContents.insertCSS(loadingCSS));
 
     Promise.all(cssInjections).catch((err) => electronLog.warn('[KRH] CSS injection failed:', err));
@@ -1161,6 +1212,9 @@ async function launchApp(): Promise<void> {
     win.webContents.executeJavaScript(CONSENT_DISMISS_JS).catch((err) => electronLog.warn('[KRH] Consent dismiss inject failed:', err));
     // Notify preload to start hooking settings (matches Crankshaft's timing)
     win.webContents.send('main_did-finish-load');
+    if (safeMode) setTimeout(() => { if (!win.isDestroyed()) win.webContents.send('krh-toast', 'Safe Mode: userscripts, swapper, themes and extras are off'); }, 2500);
+    // A new match loads a new page, which ends the replay capture: start it again
+    if (gameActive && getExtras().instantReplay.enabled) { stopReplayBuffer(); setTimeout(() => applyReplay(), 3000); }
   });
 
   // Window focus gates social-hub music — see social-music.ts. Guarded because
@@ -1228,6 +1282,12 @@ async function launchApp(): Promise<void> {
     const bool = (x: unknown, def: boolean): boolean => (typeof x === 'boolean' ? x : def);
     const rb = (v.rpcButtons && typeof v.rpcButtons === 'object' ? v.rpcButtons : d.rpcButtons) as ExtrasConfig['rpcButtons'];
     const mb = (v.motionBlur && typeof v.motionBlur === 'object' ? v.motionBlur : d.motionBlur) as Partial<ExtrasConfig['motionBlur']>;
+    const obj = (x: unknown): Record<string, unknown> => (x && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, unknown>) : {});
+    const numIn = (x: unknown, def: number, lo: number, hi: number): number => (typeof x === 'number' && isFinite(x) ? Math.min(hi, Math.max(lo, Math.round(x))) : def);
+    const rr = obj(v.rpcRich) as Partial<ExtrasConfig['rpcRich']>;
+    const ir = obj(v.instantReplay) as Partial<ExtrasConfig['instantReplay']>;
+    const ss = obj(v.sessionStats) as Partial<ExtrasConfig['sessionStats']>;
+    const pk = obj(v.packs) as Partial<ExtrasConfig['packs']>;
     return {
       rankedBadges: bool(v.rankedBadges, d.rankedBadges),
       modDownloader: bool(v.modDownloader, d.modDownloader),
@@ -1257,6 +1317,36 @@ async function launchApp(): Promise<void> {
       rankedAlert: bool(v.rankedAlert, d.rankedAlert),
       chatDraft: bool(v.chatDraft, d.chatDraft),
       accountEndMessage: bool(v.accountEndMessage, d.accountEndMessage),
+      rpcRich: {
+        classIcon: bool(rr.classIcon, d.rpcRich.classIcon),
+        mapArt: bool(rr.mapArt, d.rpcRich.mapArt),
+        join: bool(rr.join, d.rpcRich.join),
+      },
+      updateMode: v.updateMode === 'background' ? 'background' : 'ask',
+      updateInstallOnQuit: bool(v.updateInstallOnQuit, d.updateInstallOnQuit),
+      streamerMode: bool(v.streamerMode, d.streamerMode),
+      streamerKey: str(v.streamerKey, d.streamerKey, 30),
+      instantReplay: {
+        enabled: bool(ir.enabled, d.instantReplay.enabled),
+        seconds: numIn(ir.seconds, d.instantReplay.seconds, 10, 120),
+        key: str(ir.key, d.instantReplay.key, 30),
+        autoStreak: numIn(ir.autoStreak, d.instantReplay.autoStreak, 0, 100),
+      },
+      sessionStats: {
+        enabled: bool(ss.enabled, d.sessionStats.enabled),
+        summary: bool(ss.summary, d.sessionStats.summary),
+        key: str(ss.key, d.sessionStats.key, 30),
+      },
+      packs: {
+        enabled: Array.isArray(pk.enabled) ? pk.enabled.filter((x) => typeof x === 'string' && PACK_ID_RE.test(x)).slice(0, 200) : [],
+        loadouts: Array.isArray(pk.loadouts)
+          ? pk.loadouts
+              .filter((l) => l && typeof l.name === 'string' && Array.isArray(l.ids))
+              .slice(0, 30)
+              .map((l) => ({ name: l.name.slice(0, 60), ids: l.ids.filter((x) => typeof x === 'string' && PACK_ID_RE.test(x)).slice(0, 200) }))
+          : [],
+      },
+      layoutEditorKey: str(v.layoutEditorKey, d.layoutEditorKey, 30),
       settingsProfiles: Array.isArray(v.settingsProfiles)
         ? v.settingsProfiles
             .filter((p) => p && typeof p.name === 'string' && typeof p.data === 'string' && p.data.length < 2_000_000)
@@ -1486,10 +1576,19 @@ async function launchApp(): Promise<void> {
     if (!ALLOWED_CONFIG_KEYS.has(key)) return;
     value = keepFolderPath(key, value);
     if (key === 'extras') {
+      const prev = getExtras();
       const clean = sanitizeExtras(value);
+      // Streamer mode and the switched-on packs change through their own calls; a settings page holding
+      // an older copy must not undo them.
+      clean.streamerMode = prev.streamerMode;
+      clean.packs.enabled = prev.packs.enabled;
       config.set('extras', clean);
       disableVideoSkins = clean.disableVideoSkins;
       applyDisplayMode(clean.displayMode);
+      if (clean.updateMode === 'background' && prev.updateMode !== 'background') pokeBackgroundUpdates();
+      const irNow = clean.instantReplay, irWas = prev.instantReplay;
+      if (irNow.enabled !== irWas.enabled || irNow.seconds !== irWas.seconds) applyReplay();
+      if (!win.isDestroyed()) { win.webContents.send('streamer-key', clean.streamerKey); win.webContents.send('layout-editor-key', clean.layoutEditorKey); }
       return;
     }
     // Flush immediately for keys that have side effects
@@ -1709,12 +1808,118 @@ async function launchApp(): Promise<void> {
 
   ipcMain.handle('resolve-social-music', (_e, setting: string) => resolveSocialMusic(setting));
 
+
+  // ── Safe mode flag (the preload reads it once at startup) ──
+  ipcMain.on('is-safe-mode', (e) => { e.returnValue = safeMode; });
+
+  // ── Resource packs (Settings > Extras > Resource Packs) ──
+  const packsDir = join(swapDir, '_packs');
+  const packsView = () => ({ packs: listPacks(swapDir), enabled: getExtras().packs.enabled, dir: packsDir, swapperRunning: !!swapper, safeMode });
+  const applyPackChange = async (): Promise<boolean> => {
+    if (!swapper) return false;
+    swapper.setEnabledPacks(getExtras().packs.enabled);
+    await swapper.rescan();
+    return true;
+  };
+  const saveEnabledPacks = (ids: string[]): void => {
+    const ex = getExtras();
+    config.set('extras', sanitizeExtras({ ...ex, packs: { ...ex.packs, enabled: ids } }));
+  };
+  ipcMain.handle('packs-list', () => packsView());
+  ipcMain.handle('packs-install-url', async (_e, url: unknown) => {
+    if (typeof url !== 'string' || url.length > 1000) return { ok: false, error: 'That is not a valid link' };
+    return installPackFromUrl(swapDir, url.trim());
+  });
+  ipcMain.handle('packs-install-file', async () => {
+    const parent = BrowserWindow.getFocusedWindow() || win;
+    const r = await dialog.showOpenDialog(parent, { title: 'Install a resource pack', properties: ['openFile'], filters: [{ name: 'Zip files', extensions: ['zip'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, error: 'cancelled' };
+    return installPackFromFile(swapDir, r.filePaths[0]);
+  });
+  ipcMain.handle('packs-set-enabled', async (_e, ids: unknown) => {
+    const valid = new Set(listPacks(swapDir).map((p) => p.id));
+    const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string' && valid.has(x)).slice(0, 200) : [];
+    saveEnabledPacks(list);
+    const live = await applyPackChange();
+    return { ok: true, needsRestart: !live && list.length > 0, enabled: list };
+  });
+  ipcMain.handle('packs-delete', async (_e, id: unknown) => {
+    if (typeof id !== 'string' || !PACK_ID_RE.test(id)) return { ok: false };
+    const done = await deletePack(swapDir, id);
+    const ex = getExtras();
+    const loadouts = ex.packs.loadouts.map((l) => ({ ...l, ids: l.ids.filter((x) => x !== id) }));
+    config.set('extras', sanitizeExtras({ ...ex, packs: { enabled: ex.packs.enabled.filter((x) => x !== id), loadouts } }));
+    await applyPackChange();
+    return { ok: done };
+  });
+  ipcMain.handle('packs-open-folder', () => { mkdirSync(packsDir, { recursive: true }); return shell.openPath(packsDir); });
+
+  // ── Share codes (profiles, crosshair, pack loadouts) ──
+  ipcMain.handle('share-encode', (_e, kind: unknown, name: unknown, data: unknown) => {
+    try { return { ok: true, code: encodeShare(kind as 'profile' | 'crosshair' | 'loadout', String(name || ''), data) }; }
+    catch (err) { return { ok: false, error: (err as Error).message }; }
+  });
+  ipcMain.handle('share-decode', (_e, code: unknown) => {
+    const r = decodeShare(String(code || ''));
+    if (!r.ok) return r;
+    if (r.kind === 'profile') {
+      const d = r.data as { data?: unknown } | null;
+      if (!d || typeof d.data !== 'string' || d.data.length < 2 || d.data.length > 1_900_000) return { ok: false, error: 'The profile in this code is not valid' };
+      return { ok: true, kind: 'profile', name: r.name || 'Shared profile', data: d.data };
+    }
+    if (r.kind === 'crosshair') return { ok: true, kind: 'crosshair', name: r.name, data: sanitizeCrosshair(r.data) };
+    const arr = (r.data as { packs?: unknown } | null)?.packs;
+    if (!Array.isArray(arr)) return { ok: false, error: 'The loadout in this code is not valid' };
+    const packs = arr.slice(0, 50)
+      .map((x: { name?: unknown; source?: unknown }) => ({ name: String(x?.name || '').slice(0, 60), source: String(x?.source || '').slice(0, 500) }))
+      .filter((x) => x.name);
+    return { ok: true, kind: 'loadout', name: r.name || 'Shared loadout', packs };
+  });
+
+  // ── Streamer mode ──
+  const setStreamer = (on: boolean): void => {
+    const ex = getExtras();
+    config.set('extras', sanitizeExtras({ ...ex, streamerMode: on }));
+    if (on) discordRpc?.clearActivity(); else discordRpc?.restoreActivity();
+    for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('streamer-mode', on);
+  };
+  ipcMain.handle('streamer-set', (e, on: unknown) => {
+    if (e.sender !== win.webContents) return getExtras().streamerMode;
+    setStreamer(on === true);
+    return getExtras().streamerMode;
+  });
+
+  // ── Session stats ──
+  ipcMain.on('session-stats-delta', (e, d: unknown) => {
+    if (e.sender !== win.webContents || !getExtras().sessionStats.enabled) return;
+    addDelta(d as Parameters<typeof addDelta>[0]);
+  });
+  ipcMain.handle('session-stats-get', (e) => (e.sender === win.webContents ? getStats() : null));
+  ipcMain.handle('session-stats-clear', (e) => { if (e.sender === win.webContents) clearStats(); });
+
+  // ── Instant replay ──
+  ipcMain.handle('replay-save', async (e) => {
+    if (e.sender !== win.webContents || !gameActive || !getExtras().instantReplay.enabled) return false;
+    await saveReplayClip();
+    return true;
+  });
+
+  // ── Updates: state for the settings page ──
+  ipcMain.handle('update-ready-info', () => { const r = getReadyUpdate(); return r ? { version: r.version } : null; });
+  ipcMain.handle('update-install-now', () => installReadyUpdate());
+
   // ── Discord Rich Presence IPC handler ──
   ipcMain.on('discord-update', (_e, activity: any) => {
     const buttons = rpcButtons();
     if (activity && typeof activity === 'object') {
       if (buttons.length) activity.buttons = buttons; else delete activity.buttons;
+      // Settings gate the extra presence features here too, so a page can never switch them on by itself
+      const rich = getExtras().rpcRich;
+      if (!rich.join) { delete activity.joinSecret; delete activity.partyId; delete activity.partySize; }
+      if (!rich.classIcon) { delete activity.smallImageKey; delete activity.smallImageText; }
     }
+    // Streamer mode keeps the presence hidden but remembers it for when the mode is switched off
+    if (getExtras().streamerMode) { discordRpc?.holdActivity(activity); return; }
     discordRpc?.setActivity(activity);
   });
 
@@ -2040,6 +2245,11 @@ async function launchApp(): Promise<void> {
   // If the hub is gone (it was closed while playing), closing the game quits the app.
   win.on('close', (event) => {
     stopRecording();
+    stopReplayBuffer();
+    const ended = endSession();
+    if (ended && getExtras().sessionStats.summary && Notification.isSupported()) {
+      new Notification({ title: 'KRH session summary', body: summaryText(ended), silent: true }).show();
+    }
     win.webContents.setAudioMuted(true);
     win.webContents.stop();
     stopServerPing();
@@ -2057,6 +2267,9 @@ async function launchApp(): Promise<void> {
 
   // ── Shutdown: disconnect Discord, then close log streams ──
   app.on('will-quit', () => {
+    flushStats();
+    installOnQuitIfWanted();
+    markCleanQuit();
     discordRpc?.disconnect();
     spotify.shutdown();
     electronLog.log('[KRH] Shutting down');

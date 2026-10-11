@@ -67,6 +67,15 @@ function buildSplashHTML(version: string): string {
   }
   #close:hover { color: #fff; background: rgba(8,14,32,0.8); }
 
+  /* a different tip each launch, changing every few seconds */
+  #tip {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2;
+    max-width: 82%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12px; font-weight: 500; padding: 6px 16px;
+    transition: opacity 0.35s ease;
+  }
+  #tip.fade { opacity: 0; }
+
   /* progress line along the bottom edge */
   .progress-container {
     position: absolute; left: 0; right: 0; bottom: 0; height: 4px; z-index: 2;
@@ -147,7 +156,7 @@ function buildSplashHTML(version: string): string {
   /* prompting: dim + blur the poster, hide the pill, open the card */
   body.prompting #poster { filter: blur(5px) brightness(0.5); transform: scale(1.03); }
   body.prompting #shade { background: rgba(4,8,20,0.25); }
-  body.prompting #status { display: none; }
+  body.prompting #status, body.prompting #tip { display: none; }
   body.prompting #card { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
 
   @keyframes krh-indet {
@@ -164,6 +173,7 @@ function buildSplashHTML(version: string): string {
     <div class="chip" id="status">Starting...</div>
     <div id="close" title="Close">&#10005;</div>
   </div>
+  <div class="chip" id="tip"></div>
   <div class="progress-container" id="progress">
     <div class="progress-bar" id="progressBar"></div>
   </div>
@@ -179,6 +189,32 @@ function buildSplashHTML(version: string): string {
     <label id="skipRow"><input type="checkbox" id="skipChk"><span>Don't ask again for this version</span></label>
   </div>
   <script>
+    // Tips (keys are the defaults; they can be changed in Settings)
+    const TIPS = [
+      'Press F2 for Quick Play: pick regions, modes and maps in one screen',
+      'Ctrl+Alt+L opens the layout editor: drag your overlays where you want them',
+      'Turn on Instant Replay in Settings > Extras, then press Ctrl+Alt+R to save the last seconds',
+      'Ctrl+Alt+M switches Streamer Mode on and off',
+      'Ctrl+Alt+K shows your session stats: kills, deaths and play time',
+      'Resource Packs in Settings > Extras: install a zip and switch it on or off any time',
+      'Ctrl+H brings the KRH Hub back over the game without closing it',
+      'F1 opens the chat logs, F3 cycles the chat filters',
+      'Save your Krunker settings as a profile and share it with a short code',
+      'Ctrl+Alt+T shows or hides the Twitch chat overlay',
+      'Background updates in Settings > Extras download new versions while you play',
+      'If the client keeps crashing, Safe Mode starts it without scripts and extras'
+    ];
+    (function () {
+      const el = document.getElementById('tip');
+      if (!el) return;
+      let i = Math.floor(Math.random() * TIPS.length);
+      const show = () => { el.textContent = 'Tip: ' + TIPS[i % TIPS.length]; };
+      show();
+      setInterval(() => {
+        el.classList.add('fade');
+        setTimeout(() => { i++; show(); el.classList.remove('fade'); }, 350);
+      }, 5000);
+    })();
     document.getElementById('close').addEventListener('click', () => console.log('KRH_SPLASH:close'));
     document.getElementById('btnPrimary').addEventListener('click', () => console.log('KRH_SPLASH:primary'));
     document.getElementById('btnSecondary').addEventListener('click', () =>

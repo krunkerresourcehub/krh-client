@@ -21,7 +21,14 @@ export interface ActivityPayload {
     startTimestamp?: number;
     largeImageKey?: string;
     largeImageText?: string;
+    /** Small corner image (asset key in the Discord app), e.g. the class icon. */
+    smallImageKey?: string;
+    smallImageText?: string;
     buttons?: Array<{ label: string; url: string }>;
+    /** Join button: party id + join secret (the game id). Size is optional. */
+    partyId?: string;
+    partySize?: [number, number];
+    joinSecret?: string;
 }
 
 function getPipePath(id: number): string {
@@ -54,6 +61,8 @@ export class DiscordRPC {
     private nonce = 0;
     private destroyed = false;
     private recvBuf = Buffer.alloc(0);
+    /** Called when somebody presses Join on our presence (the secret is the game id we sent). */
+    onJoin: ((secret: string) => void) | null = null;
     private pendingActivity: ActivityPayload | null = null;
     // Last activity the game asked for. Kept so it can be re-sent after a (re)connect:
     // the preload only sends on change, so without this the presence vanishes for good
@@ -155,6 +164,18 @@ export class DiscordRPC {
                 const toSend = this.pendingActivity ?? this.lastActivity;
                 this.pendingActivity = null;
                 if (toSend) this.sendActivity(toSend);
+                // Discord only tells us about Join clicks when we ask for the event
+                try {
+                    this.socket?.write(encodeFrame(OP_FRAME, { cmd: 'SUBSCRIBE', evt: 'ACTIVITY_JOIN', args: {}, nonce: String(++this.nonce) }));
+                } catch (err) {
+                    electronLog.warn('[KRH-Discord] Could not subscribe to join events:', (err as Error).message);
+                }
+            } else if (payload.cmd === 'DISPATCH' && payload.evt === 'ACTIVITY_JOIN') {
+                const secret = payload.data && typeof payload.data.secret === 'string' ? payload.data.secret : '';
+                if (/^[A-Za-z0-9:_-]{3,64}$/.test(secret)) {
+                    electronLog.log('[KRH-Discord] Join requested');
+                    try { this.onJoin?.(secret); } catch (err) { electronLog.warn('[KRH-Discord] Join handler failed:', (err as Error).message); }
+                }
             } else if (payload.evt === 'ERROR' || (payload.data && payload.data.code && payload.evt === 'ERROR')) {
                 electronLog.warn('[KRH-Discord] Discord rejected a command:', payload.data?.code, payload.data?.message || '');
             }
@@ -239,12 +260,25 @@ export class DiscordRPC {
             const ts = activity.startTimestamp > 1e12 ? Math.floor(activity.startTimestamp / 1000) : activity.startTimestamp;
             activityObj.timestamps = { start: ts };
         }
-        if (activity.buttons && activity.buttons.length) activityObj.buttons = activity.buttons.slice(0, 2);
+        // A Join button replaces the custom link buttons while it is shown (Discord does not mix them)
+        const joinable = !!activity.joinSecret && !!activity.partyId && /^[A-Za-z0-9:_-]{3,64}$/.test(activity.joinSecret);
+        if (!joinable && activity.buttons && activity.buttons.length) activityObj.buttons = activity.buttons.slice(0, 2);
         if (activity.largeImageKey) {
             activityObj.assets = {
                 large_image: activity.largeImageKey,
                 large_text: activity.largeImageText || 'Krunker Resource Hub Client',
             };
+            if (activity.smallImageKey) {
+                activityObj.assets.small_image = activity.smallImageKey;
+                if (activity.smallImageText) activityObj.assets.small_text = activity.smallImageText.slice(0, 128);
+            }
+        }
+        if (joinable) {
+            const party: { id: string; size?: [number, number] } = { id: String(activity.partyId).slice(0, 128) };
+            const sz = activity.partySize;
+            if (sz && Number.isInteger(sz[0]) && Number.isInteger(sz[1]) && sz[0] >= 1 && sz[1] >= sz[0] && sz[1] <= 1000) party.size = [sz[0], sz[1]];
+            activityObj.party = party;
+            activityObj.secrets = { join: activity.joinSecret };
         }
 
         const frame = encodeFrame(OP_FRAME, {
@@ -261,6 +295,18 @@ export class DiscordRPC {
         } catch (err) {
             electronLog.warn('[KRH-Discord] Write error:', (err as Error).message);
         }
+    }
+
+    /** Remember an activity without sending it (streamer mode keeps presence hidden but ready to come back). */
+    holdActivity(activity: ActivityPayload): void {
+        this.lastActivity = activity;
+        this.pendingActivity = null;
+    }
+
+    /** Send the remembered activity again (streamer mode switched off). */
+    restoreActivity(): void {
+        if (!this.connected || !this.socket || this.destroyed || !this.lastActivity) return;
+        this.sendActivity(this.lastActivity);
     }
 
     clearActivity(): void {

@@ -17,6 +17,7 @@ import {
 } from './settings-controls';
 import { setHiddenMenu, HIDE_ITEMS } from './menu-hider';
 import { setCrosshair } from './crosshair';
+import { buildV11Section } from './settings-v11';
 import { setClassicSocial, startHidePopups, stopHidePopups, setCleanMenu, setSelectableChat, setQuickClassPicker, setClassicMenu } from './menu-tweaks';
 import { setMotionBlur } from './motion-blur';
 import { setChatDraft } from './chat-draft';
@@ -1721,6 +1722,13 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     rpcButtons: { ...DEFAULT_CONFIG.extras.rpcButtons, ...(exConf?.rpcButtons || {}) },
     crosshair: { ...DEFAULT_CONFIG.extras.crosshair, ...(exConf?.crosshair || {}) },
     motionBlur: { ...DEFAULT_CONFIG.extras.motionBlur, ...(exConf?.motionBlur || {}) },
+    rpcRich: { ...DEFAULT_CONFIG.extras.rpcRich, ...(exConf?.rpcRich || {}) },
+    instantReplay: { ...DEFAULT_CONFIG.extras.instantReplay, ...(exConf?.instantReplay || {}) },
+    sessionStats: { ...DEFAULT_CONFIG.extras.sessionStats, ...(exConf?.sessionStats || {}) },
+    packs: {
+      enabled: [...(exConf?.packs?.enabled || [])],
+      loadouts: (exConf?.packs?.loadouts || []).map((l: { name: string; ids: string[] }) => ({ name: l.name, ids: [...l.ids] })),
+    },
   };
   const save = (): void => { void ipcRenderer.invoke('set-config', 'extras', ex); };
 
@@ -2012,4 +2020,7 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     } }),
   );
   prof.appendChild(actions.row);
+
+  // ── Version 1.1: updates, presence extras, streamer mode, replay, stats, layout, packs, share codes ──
+  buildV11Section(body, ex, save);
 }

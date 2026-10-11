@@ -86,6 +86,15 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
   - your login stays on your computer (encrypted with the system keychain when available) and is never visible to the game page; it only polls while the game window is open
 - **Quick alt login** (`Ctrl+Alt+1-3`) and a **temporary CSS toggle** (`Ctrl+Shift+F1`)
 - **Custom URL blocklist and Chromium flags** through `user_blocklist.json` and `user_flags.json` (Settings > Advanced > Custom Blocklist & Flags)
+- **Resource packs** (Settings > Extras): install a zip of textures, sounds or models from a link or a file and switch it on or off any time, with saved loadouts. Packs never run code, and your own swapper files always win
+- **Share codes**: copy a Krunker settings profile, your crosshair or a pack loadout as a piece of text and import a code from someone else. No server involved
+- **Discord Presence+**: class icon, map picture and a Join button on your presence (needs matching Art Assets, see `DISCORD-ART.md`)
+- **Background updates**: the client starts at once, downloads a new version quietly and offers "Restart to update" in the KRH Hub (optionally installs when you close it)
+- **Instant replay**: keeps the last 10-120 seconds in memory and saves a clip on a key or at a kill streak
+- **Session stats**: kills, deaths, play time, matches and maps for the session and all time, kept on your computer, with a summary when you leave the game
+- **Overlay layout editor**: drag the nuke counter, Spotify card and Twitch chat where you want them
+- **Streamer mode**: hides your Discord presence, saved accounts and the Spotify card with one key
+- **Safe Mode**: after repeated crashes (or `--safe-mode`) the client offers to start without userscripts, swapper, themes and extras, or to reset the settings with a backup
 - **Better performance on NVIDIA systems**
   - Linux: PRIME render offload is enabled automatically on hybrid-graphics laptops when the NVIDIA driver is loaded
   - Windows: KRH Client is registered for the high-performance GPU on hybrid-graphics laptops
@@ -162,6 +171,10 @@ The game hotkeys can be rebound in the settings. The tab shortcuts (`Ctrl+T`/`W`
 | `Ctrl+Alt+N` | Spotify next track |
 | `Ctrl+Alt+B` | Spotify previous track |
 | `Ctrl+Alt+S` | Show / hide the Spotify overlay |
+| `Ctrl+Alt+M` | Streamer mode on / off (configurable) |
+| `Ctrl+Alt+R` | Save an instant replay clip (configurable, needs Instant Replay on) |
+| `Ctrl+Alt+K` | Session stats panel (configurable) |
+| `Ctrl+Alt+L` | Overlay layout editor (configurable) |
 | `F1` | Chat Logs window (configurable in Settings > Extras) |
 | `F2` | Quick Play tile picker (configurable) |
 | `F3` | Cycle the chat filter (configurable) |

@@ -3,6 +3,7 @@ import { join, resolve, sep } from 'path';
 import { pathToFileURL } from 'url';
 import { protocol, net, Session } from 'electron';
 import { electronLog } from './logger';
+import { PACKS_DIR, PACK_ID_RE } from './packs';
 
 const PROTOCOL_NAME = 'krh-swap';
 const TARGET_DOMAIN = 'krunker.io';
@@ -90,12 +91,31 @@ export class ResourceSwapper {
   private externalMap = new Map<string, string>();
   private ready = false;
   private scanPromise: Promise<void>;
+  /** Switched-on resource packs, lowest priority first (a later pack wins over an earlier one). */
+  private enabledPacks: string[] = [];
+  /** false = only packs are swapped; the user's own swapper folder is ignored (swapper switched off in settings). */
+  private userFiles: boolean;
 
-  constructor(swapDir: string) {
+  constructor(swapDir: string, opts: { userFiles?: boolean; packs?: string[] } = {}) {
     this.swapDir = swapDir;
+    this.userFiles = opts.userFiles !== false;
+    this.enabledPacks = (opts.packs || []).filter((id) => PACK_ID_RE.test(id));
     if (!existsSync(this.swapDir)) mkdirSync(this.swapDir, { recursive: true });
     this.loadExternal();
-    this.scanPromise = this.scanAsync('');
+    this.scanPromise = this.scanAll();
+  }
+
+  /** Pick which packs are switched on; call rescan() afterwards. */
+  setEnabledPacks(ids: string[]): void {
+    this.enabledPacks = ids.filter((id) => PACK_ID_RE.test(id));
+  }
+
+  /** Packs first (in order), then the user's own files, so the user's files always win. */
+  private async scanAll(): Promise<void> {
+    for (const id of this.enabledPacks) {
+      await this.scanAsync('', join(this.swapDir, PACKS_DIR, id, 'files'));
+    }
+    if (this.userFiles) await this.scanAsync('', this.swapDir, true);
   }
 
   /** (Re)read externalResourceSwapper.json from the swap folder (created with an example when missing). */
@@ -130,7 +150,7 @@ export class ResourceSwapper {
   async rescan(): Promise<void> {
     this.swapFiles.clear();
     this.loadExternal();
-    await this.scanAsync('');
+    await this.scanAll();
     this.ready = true;
   }
 
@@ -164,16 +184,18 @@ export class ResourceSwapper {
     return null;
   }
 
-  /** Recursively scan the swap directory and build the file map (async) */
-  private async scanAsync(prefix: string): Promise<void> {
+  /** Recursively scan a folder and add its files to the map (async). Keys are paths relative to that folder. */
+  private async scanAsync(prefix: string, base: string, isUserRoot = false): Promise<void> {
     try {
-      const entries = await fsp.readdir(join(this.swapDir, prefix), { withFileTypes: true });
+      const entries = await fsp.readdir(join(base, prefix), { withFileTypes: true });
       for (const dirent of entries) {
         const name = `${prefix}/${dirent.name}`;
         if (dirent.isDirectory()) {
-          await this.scanAsync(name);
+          // The packs folder holds the installed packs; they only count while switched on (scanAll)
+          if (isUserRoot && prefix === '' && dirent.name === PACKS_DIR) continue;
+          await this.scanAsync(name, base, isUserRoot);
         } else {
-          this.swapFiles.set(name, join(this.swapDir, name));
+          this.swapFiles.set(name, join(base, name));
         }
       }
     } catch (err) {

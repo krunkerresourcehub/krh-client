@@ -90,6 +90,42 @@ export interface ExtrasConfig {
   chatDraft: boolean;
   /** Remember Krunker's Match End Message separately for every account (adapted from Kute). */
   accountEndMessage: boolean;
+  /** Extra Discord presence features. Each needs matching Art Assets in the Discord app (see DISCORD-ART.md). */
+  rpcRich: {
+    /** Small class icon on the presence (asset key class_<name>). */
+    classIcon: boolean;
+    /** Big map picture instead of the KRH logo (asset key map_<name>). */
+    mapArt: boolean;
+    /** Join button: friends can join your match straight from your Discord profile. */
+    join: boolean;
+  };
+  /** ask = prompt at launch (default). background = keep playing, download quietly, then offer a restart. */
+  updateMode: 'ask' | 'background';
+  /** Background mode: install a downloaded update by itself when the client is closed. */
+  updateInstallOnQuit: boolean;
+  /** Streamer mode: hides Discord presence, saved account names and the Spotify card. */
+  streamerMode: boolean;
+  streamerKey: string;
+  /** Instant replay: keeps the last seconds of the game in memory and saves them on a key. */
+  instantReplay: {
+    enabled: boolean;
+    /** How many seconds are kept (10 - 120). */
+    seconds: number;
+    key: string;
+    /** Also save a clip by itself at this kill streak (0 = off). */
+    autoStreak: number;
+  };
+  /** Session stats: kills, deaths, play time and maps, kept on this computer. */
+  sessionStats: {
+    enabled: boolean;
+    /** Show a summary notification when the game window is closed. */
+    summary: boolean;
+    key: string;
+  };
+  /** Installed resource packs that are switched on (in order) and saved sets of packs. */
+  packs: { enabled: string[]; loadouts: Array<{ name: string; ids: string[] }> };
+  /** Key that opens the drag-and-drop overlay layout editor. */
+  layoutEditorKey: string;
 }
 
 export interface AppConfig {
@@ -423,6 +459,15 @@ export const DEFAULT_CONFIG: AppConfig = {
     rankedAlert: true,
     chatDraft: true,
     accountEndMessage: false,
+    rpcRich: { classIcon: false, mapArt: false, join: false },
+    updateMode: 'ask',
+    updateInstallOnQuit: false,
+    streamerMode: false,
+    streamerKey: 'Ctrl+Alt+M',
+    instantReplay: { enabled: false, seconds: 30, key: 'Ctrl+Alt+R', autoStreak: 0 },
+    sessionStats: { enabled: true, summary: true, key: 'Ctrl+Alt+K' },
+    packs: { enabled: [], loadouts: [] },
+    layoutEditorKey: 'Ctrl+Alt+L',
   },
   spotifyAuth: '',
   endMessages: {},

@@ -4,7 +4,7 @@
 // MediaRecorder and streams the encoded data back to the main process, which writes it to disk.
 import { ipcRenderer } from 'electron';
 
-interface StartOpts { fps: number; bps: number; audio: boolean; mic?: boolean }
+interface StartOpts { fps: number; bps: number; audio: boolean; mic?: boolean; /** IPC channel prefix: 'krh-rec' (recording, default) or 'krh-rbuf' (instant replay buffer) */ prefix?: string }
 
 let rec: MediaRecorder | null = null;
 let stream: MediaStream | null = null;     // what the browser gave us (video + maybe game/system audio)
@@ -12,6 +12,7 @@ let micStream: MediaStream | null = null;
 let audioCtx: AudioContext | null = null;
 let queue: Promise<void> = Promise.resolve();
 let stopping = false;
+let P = 'krh-rec';
 
 function cleanup(): void {
   try { stream?.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
@@ -24,6 +25,7 @@ function cleanup(): void {
 }
 
 ipcRenderer.on('krh-rec-start', async (_e, o: StartOpts) => {
+  P = o.prefix === 'krh-rbuf' ? 'krh-rbuf' : 'krh-rec';
   try {
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: { ideal: o.fps, max: o.fps } },
@@ -74,25 +76,25 @@ ipcRenderer.on('krh-rec-start', async (_e, o: StartOpts) => {
     rec.ondataavailable = (ev: BlobEvent) => {
       if (!ev.data.size) return;
       // Chain the sends so chunks reach the main process in order.
-      queue = queue.then(async () => { ipcRenderer.send('krh-rec-chunk', await ev.data.arrayBuffer()); });
+      queue = queue.then(async () => { ipcRenderer.send(P + '-chunk', await ev.data.arrayBuffer()); });
     };
-    rec.onerror = () => { ipcRenderer.send('krh-rec-error', 'MediaRecorder error'); };
+    rec.onerror = () => { ipcRenderer.send(P + '-error', 'MediaRecorder error'); };
     rec.onstop = () => {
-      queue.then(() => { cleanup(); ipcRenderer.send('krh-rec-stopped'); });
+      queue.then(() => { cleanup(); ipcRenderer.send(P + '-stopped'); });
     };
     // If the captured window goes away (game window closed), finish cleanly.
     stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (!stopping && rec?.state === 'recording') rec.stop(); });
     stopping = false;
     rec.start(1000);
     const vs = stream.getVideoTracks()[0]?.getSettings() ?? {};
-    ipcRenderer.send('krh-rec-started', {
+    ipcRenderer.send(P + '-started', {
       width: vs.width ?? 0, height: vs.height ?? 0, hasAudio: recordStream.getAudioTracks().length > 0,
       mic: !!micStream, micFailed,
       mime: rec.mimeType || mime || '',
     });
   } catch (err) {
     cleanup();
-    ipcRenderer.send('krh-rec-error', String(err));
+    ipcRenderer.send(P + '-error', String(err));
   }
 });
 
@@ -107,5 +109,5 @@ ipcRenderer.on('krh-rec-resume', () => {
 ipcRenderer.on('krh-rec-stop', () => {
   stopping = true;
   if (rec && rec.state !== 'inactive') rec.stop();
-  else { cleanup(); ipcRenderer.send('krh-rec-stopped'); }
+  else { cleanup(); ipcRenderer.send(P + '-stopped'); }
 });
