@@ -3,7 +3,7 @@
 // operations, the settings-panel section, and the in-game header popup.
 
 import { ipcRenderer } from 'electron';
-import { escapeHtml } from './utils';
+import { escapeHtml, showToast } from './utils';
 import { savedConsole as _console } from './saved-console';
 import { showConfirm } from './confirm-dialog';
 import { createRowShell } from './settings-controls';
@@ -91,6 +91,18 @@ function altRemove(index: number): Promise<unknown> {
   return ipcRenderer.invoke('alt-remove', index);
 }
 
+const isSignedIn = (): boolean => !!document.querySelector('#signedInHeaderBar');
+
+/** Poll until check() is true (checked right away, then every stepMs). Resolves false on timeout. */
+async function waitFor(check: () => boolean, timeoutMs: number, stepMs = 250): Promise<boolean> {
+  const end = Date.now() + timeoutMs;
+  for (;;) {
+    if (check()) return true;
+    if (Date.now() >= end) return false;
+    await new Promise<void>((r) => setTimeout(r, stepMs));
+  }
+}
+
 async function altSwitch(index: number): Promise<void> {
   try {
     const creds: { username: string; password: string } | null = await ipcRenderer.invoke('alt-get-credentials', index);
@@ -103,9 +115,25 @@ async function altSwitch(index: number): Promise<void> {
       _console.warn('[KRH-Alt] loginOrRegister unavailable; cannot switch account');
       return;
     }
-    if (document.querySelector('#signedInHeaderBar') && typeof w.logoutAcc === 'function') w.logoutAcc();
+    const wasSignedIn = isSignedIn();
+    const canLogout = typeof w.logoutAcc === 'function';
+    if (wasSignedIn && canLogout) w.logoutAcc();
+    // The header bar disappears on logout. Seeing that happen is what lets us tell the NEW login apart from
+    // the old one, so a refresh is never triggered by the account we are leaving.
+    const loggedOut = wasSignedIn ? (canLogout && await waitFor(() => !isSignedIn(), 3000, 100)) : true;
     await ensureFrvrSession();
     submitLogin(creds);
+    if (!loggedOut) return; // cannot tell old from new login: the refresh stays manual, as before
+
+    // Wait for the login to go through, then reload so the whole page (menu, stats, socials) is the new account's
+    if (!(await waitFor(isSignedIn, 20000))) {
+      showToast('Could not confirm the login. Refresh the page if the account did not change.');
+      return;
+    }
+    // give the header a moment to draw the avatar so it can still be saved for the account list
+    await waitFor(() => !!(document.querySelector('.ph-avatar') as HTMLImageElement | null)?.src, 2500);
+    await linkCurrentAccount();
+    location.reload();
   } catch (err) {
     _console.error('[KRH-Alt] Account switch failed:', err);
   }
