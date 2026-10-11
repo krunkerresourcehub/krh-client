@@ -16,24 +16,25 @@ Upload the pictures in the Discord Developer Portal under your application:
 
 | Class | Key |
 |---|---|
-| Triggerman | `class_triggerman` |
-| Hunter | `class_hunter` |
-| Run N Gun | `class_run_n_gun` |
-| Spray N Pray | `class_spray_n_pray` |
-| Vince | `class_vince` |
-| Detective | `class_detective` |
-| Marksman | `class_marksman` |
-| Rocketeer | `class_rocketeer` |
 | Agent | `class_agent` |
-| Runner | `class_runner` |
 | Bowman | `class_bowman` |
 | Commando | `class_commando` |
-| Trooper | `class_trooper` |
+| Deagler | `class_deagler` |
+| Detective | `class_detective` |
+| Hunter | `class_hunter` |
 | Infiltrator | `class_infiltrator` |
-| Kid Fish | `class_kid_fish` |
+| Marksman | `class_marksman` |
+| Rocketeer | `class_rocketeer` |
+| Run N Gun | `class_run_n_gun` |
+| Runner | `class_runner` |
+| Spray N Pray | `class_spray_n_pray` |
+| Survivor | `class_survivor` |
+| Triggerman | `class_triggerman` |
+| Trooper | `class_trooper` |
+| Vince | `class_vince` |
 
-This list is only a starting point. The client builds the key from the class name the game reports,
-so a class that is not listed here works the same way: upload it as `class_<name>`.
+These 16 are the ones prepared in `discord-art.zip`. A class that is not listed works the same way: the client builds
+the key from the class name the game reports, so upload it as `class_<name>`.
 
 ## Map pictures (`map_<name>`)
 
@@ -85,6 +86,28 @@ so a class that is not listed here works the same way: upload it as `class_<name
 | Bastion | `map_bastion` |
 | Piazza | `map_piazza` |
 | Barnyard | `map_barnyard` |
+
+### Ready-made pictures
+
+`discord-art.zip` has everything prepared: 46 maps, 16 classes and `krh_logo`, all named with the right keys and
+sized 1024x1024. Upload them all at once (Add Image(s) accepts many files). The maps were made from the small
+200x80 originals, placed in the middle of a blurred copy of themselves so they fit the square, so they are a bit
+soft. The class icons are the 8x8 pixel faces scaled up without blur.
+
+### Getting the map pictures yourself
+
+The pictures are not part of the repo (the client loads them from `assets.krunker.io`). A script downloads all
+official ones and names them correctly:
+
+```
+node scripts/make-discord-map-art.mjs
+```
+
+It creates a `discord-map-art` folder with `map_burg.png`, `map_sandstorm.png` and so on. Upload every file there
+(Developer Portal > Rich Presence > Art Assets > Add Image(s)); the file name without `.png` becomes the key.
+Discord wants square pictures. For automatic 1024x1024 cropping run `npm i --no-save sharp` first.
+`DRY=1 node scripts/make-discord-map-art.mjs` only lists what would be downloaded.
+This needs internet access and was not run against the real server, so check that the files come out right.
 
 Custom maps use the same rule (their name in lowercase with `_`), for example `map_my_cool_map`.
 
