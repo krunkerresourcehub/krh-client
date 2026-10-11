@@ -216,6 +216,11 @@ initSwapperProtocol();
 
 app.setAsDefaultProtocolClient('krh');
 
+// krh://open is what the website's "Open KRH Client" button uses. It only brings the app to the
+// front (no game launch, nothing forwarded to the game window). Starting the app cold with it
+// simply opens the hub as usual.
+const isOpenOnlyUrl = (url: string): boolean => /^krh:\/\/open\/?(?:[?#].*)?$/i.test(url);
+
 let pendingProtocolUrl: string | null = null;
 let mainWindowForProtocol: BrowserWindow | null = null;
 // Set once the windows exist (launchApp): open the game window / focus whichever KRH window is relevant.
@@ -227,7 +232,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (_event, argv) => {
     const krhUrl = argv.find((arg: string) => typeof arg === 'string' && arg.startsWith('krh://'));
-    if (!krhUrl) {
+    if (!krhUrl || isOpenOnlyUrl(krhUrl)) {
       focusAppHook?.();
     } else {
       startGameHook?.();
@@ -245,7 +250,9 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith('krh://')) {
+  if (isOpenOnlyUrl(url)) {
+    focusAppHook?.();
+  } else if (url.startsWith('krh://')) {
     startGameHook?.();
     if (mainWindowForProtocol && !mainWindowForProtocol.isDestroyed()) {
       mainWindowForProtocol.show();
