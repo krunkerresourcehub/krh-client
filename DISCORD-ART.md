@@ -33,7 +33,7 @@ Upload the pictures in the Discord Developer Portal under your application:
 | Trooper | `class_trooper` |
 | Vince | `class_vince` |
 
-These 16 are the ones prepared in `discord-art.zip`. A class that is not listed works the same way: the client builds
+These 16 are the ones prepared in `assets/discord-art/`. A class that is not listed works the same way: the client builds
 the key from the class name the game reports, so upload it as `class_<name>`.
 
 ## Map pictures (`map_<name>`)
@@ -89,8 +89,9 @@ the key from the class name the game reports, so upload it as `class_<name>`.
 
 ### Ready-made pictures
 
-`discord-art.zip` has everything prepared: 46 maps, 16 classes and `krh_logo`, all named with the right keys and
-sized 1024x1024. Upload them all at once (Add Image(s) accepts many files). The maps were made from the small
+The folder `assets/discord-art/` has everything prepared: 46 maps, 16 classes and `krh_logo`, all named with the
+right keys and sized 1024x1024. Upload them all at once (Add Image(s) accepts many files). The folder is only
+for you: it is not packaged into the installer. The maps were made from the small
 200x80 originals, placed in the middle of a blurred copy of themselves so they fit the square, so they are a bit
 soft. The class icons are the 8x8 pixel faces scaled up without blur.
 
