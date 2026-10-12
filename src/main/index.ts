@@ -16,7 +16,7 @@ import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
 import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
-import { createHubWindow, openSiteWindow, showWindow, setHubSuspended } from './hub-window';
+import { createHubWindow, openSiteWindow, showWindow, setHubSuspended, authDeepLinkToHubUrl } from './hub-window';
 import { loadBlocklist, userListsDir } from './user-lists';
 import { createSplash, splashStatus, splashPrompt, splashAlive, splashElapsed, getSplash, onSplashUserClosed, closeSplash } from './splash';
 import { DiscordRPC } from './discord-rpc';
@@ -228,6 +228,17 @@ app.setAsDefaultProtocolClient('krh');
 // simply opens the hub as usual.
 const isOpenOnlyUrl = (url: string): boolean => /^krh:\/\/open\/?(?:[?#].*)?$/i.test(url);
 
+// krh://auth?code=… is how the site sends a Google / Discord login that was done in the system browser
+// (login / sign up / link account) back to the client. It is never forwarded to the game window: the hub
+// window just opens the site's "finish login" page. A cold start with this link keeps it until the hub exists.
+const isAuthUrl = (url: string): boolean => /^krh:\/\/auth(?:[/?#]|$)/i.test(url);
+let pendingAuthUrl: string | null = process.argv.find((arg) => typeof arg === 'string' && isAuthUrl(arg)) ?? null;
+let handleAuthUrlHook: ((url: string) => void) | null = null;
+const handleAuthUrl = (url: string): void => {
+  if (handleAuthUrlHook) handleAuthUrlHook(url);
+  else pendingAuthUrl = url;
+};
+
 let pendingProtocolUrl: string | null = null;
 let mainWindowForProtocol: BrowserWindow | null = null;
 // Set once the windows exist (launchApp): open the game window / focus whichever KRH window is relevant.
@@ -239,7 +250,9 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (_event, argv) => {
     const krhUrl = argv.find((arg: string) => typeof arg === 'string' && arg.startsWith('krh://'));
-    if (!krhUrl || isOpenOnlyUrl(krhUrl)) {
+    if (krhUrl && isAuthUrl(krhUrl)) {
+      handleAuthUrl(krhUrl);
+    } else if (!krhUrl || isOpenOnlyUrl(krhUrl)) {
       focusAppHook?.();
     } else {
       startGameHook?.();
@@ -257,7 +270,9 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (isOpenOnlyUrl(url)) {
+  if (isAuthUrl(url)) {
+    handleAuthUrl(url);
+  } else if (isOpenOnlyUrl(url)) {
     focusAppHook?.();
   } else if (url.startsWith('krh://')) {
     startGameHook?.();
@@ -935,6 +950,18 @@ async function launchApp(): Promise<void> {
     if (gameActive && !hub.isDestroyed()) void setHubSuspended(hub, true);
   });
   startGameHook = () => launchGame();
+  // Website login finished in the browser -> bring the hub forward and let the site finish it.
+  handleAuthUrlHook = (url: string) => {
+    const target = authDeepLinkToHubUrl(url);
+    if (!target || hub.isDestroyed()) return;
+    void hub.loadURL(target);
+    showWindow(hub);
+  };
+  if (pendingAuthUrl) {
+    const u = pendingAuthUrl;
+    pendingAuthUrl = null;
+    handleAuthUrlHook(u);
+  }
   focusAppHook = () => {
     if (!win.isDestroyed() && (win.isVisible() || win.isMinimized())) showWindow(win);
     else showWindow(hub);

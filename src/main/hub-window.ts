@@ -13,12 +13,15 @@ import { devWindowIcon } from './platform';
  *   - other websites                 -> default browser
  *   - docs.krunker.io, community.krunker.io (Polls), krunkerio.fandom.com (Wiki) -> their own window each
  *   - krunker-resources-hub.pages.dev -> stays inside the hub window
+ *   - Google / Discord sign-in goes to the system browser like any other site; the site then sends the
+ *     user back with krh://auth (see authDeepLinkToHubUrl) and the hub window finishes the login
  */
 
 export const HUB_URL = 'https://krunker-resources-hub.pages.dev/';
 const HUB_HOSTNAME = 'krunker-resources-hub.pages.dev';
 
 export type HubRoute = 'hub' | 'site-window' | 'play' | 'window' | 'external' | 'blocked';
+
 
 export function routeHubUrl(raw: string): HubRoute {
   let u: URL;
@@ -168,6 +171,25 @@ export function openSiteWindow(url: string, opts: Pick<HubWindowOptions, 'onPlay
   });
   win.once('ready-to-show', () => { if (!win.isDestroyed()) win.show(); });
   void win.loadURL(url);
+}
+
+/**
+ * krh://auth?code=…  — the "go back to the client" link the site shows after a login that was done in the
+ * system browser (login / sign up / link account). Returns the hub page that finishes the login with the
+ * PKCE verifier stored in the hub's own storage, or null when the link isn't a valid auth link.
+ */
+export function authDeepLinkToHubUrl(raw: string): string | null {
+  let u: URL;
+  try { u = new URL(raw); } catch { return null; }
+  if (u.protocol !== 'krh:' || u.hostname.toLowerCase() !== 'auth') return null;
+  const code = u.searchParams.get('code') || '';
+  const error = u.searchParams.get('error') || '';
+  const out = new URL('community/client-return.html', HUB_URL);
+  out.searchParams.set('finish', '1');
+  if (/^[A-Za-z0-9._~-]{8,512}$/.test(code)) out.searchParams.set('code', code);
+  else if (error) out.searchParams.set('error', error.slice(0, 200));
+  else return null;
+  return out.href;
 }
 
 export function createHubWindow(opts: HubWindowOptions): BrowserWindow {

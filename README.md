@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-1.2.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-1.2.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-1.2.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-1.2.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-1.2.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-1.2.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-1.2.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-1.2.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -273,3 +273,10 @@ The source code of KRH Client is released under the [GPL-3.0](LICENSE) license. 
 **Name and logo:** "KRH", "KRH Client", the KRH logo and the artwork of the Krunker Resource Hub are not covered by the GPL. They may not be used for a modified or redistributed version in a way that suggests it is the official KRH Client. A fork has to use its own name and logo.
 
 KRH Client is an unofficial community project. It is not affiliated with or endorsed by FRVR or Krunker.
+
+## Website login (Google / Discord)
+
+"Continue with Google / Discord" and "Link account" open the system browser. The site detects it was started from the
+client (user agent `KRHClient/`), and after the browser login it asks to go back with `krh://auth?code=...`
+(handled in `src/main/index.ts`, `authDeepLinkToHubUrl` in `src/main/hub-window.ts`). The hub window then finishes the
+login, sign up or account link.
