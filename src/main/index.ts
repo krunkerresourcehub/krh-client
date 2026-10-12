@@ -1,11 +1,11 @@
-import { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, session, shell, webContents } from 'electron';
+import { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, screen, session, shell, webContents } from 'electron';
 import { join, extname, basename, dirname, resolve as resolvePath } from 'path';
 import { existsSync, mkdirSync, writeFileSync, watch as fsWatch, promises as fsp } from 'fs';
 import { get as httpsGet } from 'https';
 import { execFile } from 'child_process';
 import * as os from 'os';
 import { Socket } from 'net';
-import { detectPlatform, applyPlatformFlags, getValidAngleBackends, devWindowIcon, clampFrameCap, ensureHighPerformanceGpu } from './platform';
+import { detectPlatform, applyPlatformFlags, getValidAngleBackends, devWindowIcon, clampFrameCap, ensureHighPerformanceGpu, getGpuProfileInfo, GPU_PROFILES } from './platform';
 import type { ExtrasConfig } from './config-defaults';
 import { config, Keybind, DEFAULT_KEYBINDS, SavedAccount, DEFAULT_CONFIG, SocialMusicSource } from './config';
 import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL, EXTERNAL_SWAP_FILE, EXTERNAL_EXAMPLE } from './swapper';
@@ -193,6 +193,13 @@ if (advancedConfig.angleBackend && !validBackends.includes(advancedConfig.angleB
 
 applyPlatformFlags(platformInfo, advancedConfig, perfConfig);
 ensureHighPerformanceGpu();
+{
+  const g = getGpuProfileInfo();
+  if (g) {
+    const list = g.summary.gpus.map((x) => `${x.name} [${x.vendor}/${x.tier}${x.integrated ? '/iGPU' : ''}]`).join(' + ') || 'none detected';
+    electronLog.log(`[KRH] GPU: ${list}${g.summary.hybrid ? ' (hybrid)' : ''} -> profile ${g.setting}/${g.effective}`);
+  }
+}
 
 // Live frame-cap changes are safe only in sessions launched without
 // CustomMaxPendingFrames (cap and deeper frame queue are mutually exclusive —
@@ -1579,9 +1586,87 @@ async function launchApp(): Promise<void> {
   });
   ipcMain.handle('open-user-lists-folder', () => shell.openPath(userListsDir()));
 
+  // ── GPU profile: info for the settings page, the Low-End preset, and a one-time suggestion ──
+  ipcMain.handle('get-gpu-info', () => {
+    const g = getGpuProfileInfo();
+    if (!g) return null;
+    return {
+      setting: g.setting,
+      effective: g.effective,
+      hybrid: g.summary.hybrid,
+      gpus: g.summary.gpus.map((x) => ({ name: x.name, vendor: x.vendor, tier: x.tier })),
+    };
+  });
+
+  // One click that turns off the extras that cost GPU / CPU time and picks the weak-GPU flags.
+  // Everything it changes can be switched back on in the normal settings.
+  const applyLowEndPreset = (): void => {
+    const ex = getExtras();
+    const clean = sanitizeExtras({
+      ...ex,
+      disableVideoSkins: true,
+      motionBlur: { ...ex.motionBlur, enabled: false },
+      instantReplay: { ...ex.instantReplay, enabled: false },
+    });
+    clean.streamerMode = ex.streamerMode;
+    clean.packs.enabled = ex.packs.enabled;
+    config.set('extras', clean);
+    disableVideoSkins = clean.disableVideoSkins;
+    applyReplay();
+    config.set('ui', { ...DEFAULT_CONFIG.ui, ...config.get('ui'), deathscreenAnimation: false });
+    config.set('performance', { ...DEFAULT_CONFIG.performance, ...config.get('performance'), higherMaxFps: false });
+    let hiDpi = false;
+    try { hiDpi = screen.getPrimaryDisplay().scaleFactor > 1; } catch { /* keep false */ }
+    const adv = { ...DEFAULT_CONFIG.advanced, ...config.get('advanced') };
+    config.set('advanced', { ...adv, gpuProfile: 'low', ignoreDisplayScaling: adv.ignoreDisplayScaling || hiDpi, lowEndPrompted: true });
+  };
+  ipcMain.handle('apply-low-end-preset', () => {
+    applyLowEndPreset();
+    return { ok: true, needsRestart: true };
+  });
+
+  // First start on a machine whose GPU was recognised as weak: offer the preset once.
+  const maybeSuggestLowEnd = async (): Promise<void> => {
+    const adv = { ...DEFAULT_CONFIG.advanced, ...config.get('advanced') };
+    const g = getGpuProfileInfo();
+    if (adv.lowEndPrompted || !g || g.setting !== 'auto' || (g.effective !== 'low' && g.effective !== 'legacy')) return;
+    if (hub.isDestroyed() || !hub.isVisible()) return;
+    config.set('advanced', { ...adv, lowEndPrompted: true });
+    const gpuName = g.summary.primary?.name || 'your graphics card';
+    const { response } = await dialog.showMessageBox(hub, {
+      type: 'question',
+      title: 'KRH Client',
+      message: `Low-end graphics detected: ${gpuName}`,
+      detail: 'Apply the Low-End preset for more FPS? It turns off animated video skins, motion blur, instant replay and the death-screen animation, and uses lighter graphics settings. You can undo any of it in Settings > Performance.',
+      buttons: ['Apply & restart', 'Not now'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (response === 0) {
+      applyLowEndPreset();
+      app.relaunch();
+      app.exit(0);
+    }
+  };
+  const scheduleLowEndSuggestion = (): void => { setTimeout(() => { void maybeSuggestLowEnd(); }, 6000); };
+  if (hub.webContents.isLoading()) hub.webContents.once('did-finish-load', scheduleLowEndSuggestion);
+  else scheduleLowEndSuggestion();
+
   ipcMain.handle('set-config', (_e, key: string, value: unknown) => {
     if (!ALLOWED_CONFIG_KEYS.has(key)) return;
     value = keepFolderPath(key, value);
+    if (key === 'advanced') {
+      // Validate the GPU options; lowEndPrompted is owned by main (a settings page with an older copy must not reset it).
+      const v = (value ?? {}) as Record<string, unknown>;
+      const prev = { ...DEFAULT_CONFIG.advanced, ...config.get('advanced') };
+      value = {
+        ...v,
+        gpuProfile: (GPU_PROFILES as readonly unknown[]).includes(v.gpuProfile) ? v.gpuProfile : 'auto',
+        ignoreDisplayScaling: v.ignoreDisplayScaling === true,
+        lowEndPrompted: prev.lowEndPrompted || v.lowEndPrompted === true,
+      };
+    }
     if (key === 'extras') {
       const prev = getExtras();
       const clean = sanitizeExtras(value);

@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-1.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-1.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-1.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-1.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-1.2.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-1.2.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-1.2.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-1.2.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -34,6 +34,13 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
 
 ### Added in KRH Client
 
+- **GPU-aware performance** (NVIDIA, Intel and weak GPUs): at startup the client reads your graphics adapters from the OS and picks matching Chromium settings
+  - **Auto GPU profile** (Settings > Performance > System > GPU Profile): Standard, Low-End (weak or old GPUs) or Off. The detected GPU is shown under the dropdown and written to the log
+  - **Hybrid laptops** (Intel/AMD iGPU + NVIDIA): the discrete GPU is selected from the very first launch
+  - **Intel graphics**: hardware rasterization and zero-copy uploads; the risky "Extra Performance Tweaks" switches (driver workarounds off, no software fallback) are skipped automatically on Intel and on weak GPUs, where they are a common cause of black screens
+  - **Low-End PC preset**: one button (also offered once at first start when a weak GPU is detected) that turns off animated video skins, motion blur, instant replay and the death-screen animation
+  - **Ignore Display Scaling**: renders at 100% on 125% / 150% Windows scaling, which cuts the pixel count a lot on laptops
+  - Linux: Mesa GL threading for Intel/AMD and a persistent NVIDIA shader cache. For NVIDIA Optimus on Linux, start the client with `prime-run` / `__NV_PRIME_RENDER_OFFLOAD=1`
 - **Gameplay recording** (`F8` to start/stop, `F7` to pause/resume)
   - MP4 (H.264) output, with an automatic WebM fallback if H.264 is not available
   - choose the source: game window only, or the entire screen (other windows included)

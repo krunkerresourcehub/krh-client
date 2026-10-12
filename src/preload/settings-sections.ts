@@ -679,6 +679,44 @@ export function buildPerformanceSection(
     onChange: (v) => { perf.cpuThrottleMenu = v; applyPerf(false); },
   }));
 
+  // GPU profile: auto-detects NVIDIA / Intel / weak GPUs at startup (see main/gpu-detect.ts + platform.ts)
+  const gpuRow = createSelectRow({
+    label: 'GPU Profile',
+    desc: 'Auto detects your graphics card (NVIDIA, Intel, hybrid laptops) and picks safe flags for it. Low-End uses lighter settings for weak or old GPUs. Off restores the old generic behaviour',
+    options: [
+      { value: 'auto', label: 'Auto (recommended)' },
+      { value: 'standard', label: 'Standard' },
+      { value: 'low', label: 'Low-End' },
+      { value: 'off', label: 'Off' },
+    ],
+    value: adv.gpuProfile || 'auto', restart: true,
+    onChange: (v) => { adv.gpuProfile = v as typeof adv.gpuProfile; saveAdv(); },
+  });
+  sysGroup.appendChild(gpuRow);
+  // Show what was detected under the dropdown (filled in asynchronously)
+  const gpuDesc = gpuRow.querySelector('.krh-row-desc') as HTMLElement | null;
+  ipcRenderer.invoke('get-gpu-info').then((g: any) => {
+    if (!g || !gpuDesc) return;
+    const names = (g.gpus || []).map((x: any) => x.name).join(' + ') || 'no GPU detected';
+    const how = g.effective === 'off' ? 'profile off' : `using the ${g.effective} profile${g.hybrid ? ', hybrid graphics' : ''}`;
+    gpuDesc.textContent += `. Detected: ${names} (${how})`;
+  }).catch(() => { /* detection info is optional */ });
+
+  sysGroup.appendChild(createToggleRow({
+    label: 'Ignore Display Scaling',
+    desc: 'Renders at 100% even when Windows scaling is 125% / 150%. Far fewer pixels for the GPU (big FPS gain on laptops) but the UI looks slightly softer',
+    checked: !!adv.ignoreDisplayScaling, restart: true, safety: 1,
+    onChange: (v) => { adv.ignoreDisplayScaling = v; saveAdv(); },
+  }));
+
+  sysGroup.appendChild(createButtonRow({
+    label: 'Low-End PC Preset',
+    desc: 'One click for weak GPUs: turns off animated video skins, motion blur, instant replay and the death-screen animation, and switches to the Low-End GPU profile. Every option can be switched back on',
+    buttons: [{ icon: 'speed', label: 'Apply', title: 'Apply the Low-End preset', onClick: () => {
+      ipcRenderer.invoke('apply-low-end-preset').then(() => onSettingChanged('restart'));
+    } }],
+  }).row);
+
   const angleOptions: Array<{ value: string; label: string }> = isWindows
     ? [
         { value: 'default', label: 'Default (D3D11)' },
@@ -712,7 +750,7 @@ export function buildPerformanceSection(
 
   flagsGroup.appendChild(createToggleRow({
     label: 'Extra Performance Tweaks',
-    desc: 'Forces GPU rasterization past the driver blocklist, disables driver bug workarounds and the software fallback, prefers the high-performance GPU, and skips proxy resolution (breaks VPN/proxy setups)',
+    desc: 'Forces GPU rasterization past the driver blocklist, disables driver bug workarounds and the software fallback, prefers the high-performance GPU, and skips proxy resolution (breaks VPN/proxy setups). The two risky switches are skipped automatically on Intel graphics and weak GPUs',
     checked: !!adv.perfTweaks, restart: true, safety: 3,
     onChange: (v) => { adv.perfTweaks = v; saveAdv(); },
   }));

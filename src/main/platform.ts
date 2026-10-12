@@ -3,6 +3,7 @@ import { join } from 'path';
 import { execFile } from 'child_process';
 import { loadUserFlags } from './user-lists';
 import type { AppConfig } from './config';
+import { detectGpus, nvidiaProprietaryLoaded, type GpuSummary } from './gpu-detect';
 
 export type Platform = 'win32' | 'linux' | 'darwin';
 
@@ -63,6 +64,29 @@ export function ensureHighPerformanceGpu(): void {
   });
 }
 
+export type GpuProfileSetting = 'auto' | 'standard' | 'low' | 'off';
+export const GPU_PROFILES: readonly GpuProfileSetting[] = ['auto', 'standard', 'low', 'off'];
+/** What the flags below were actually built for: standard, low (weak GPU) or legacy (very old GPU). */
+export type EffectiveGpuProfile = 'standard' | 'low' | 'legacy' | 'off';
+
+export interface GpuProfileInfo {
+  setting: GpuProfileSetting;
+  effective: EffectiveGpuProfile;
+  summary: GpuSummary;
+}
+let lastGpuInfo: GpuProfileInfo | null = null;
+/** Result of the GPU detection / profile choice made at startup (null before applyPlatformFlags ran). */
+export function getGpuProfileInfo(): GpuProfileInfo | null { return lastGpuInfo; }
+
+export function resolveGpuProfile(setting: unknown, summary: GpuSummary): { setting: GpuProfileSetting; effective: EffectiveGpuProfile } {
+  const s: GpuProfileSetting = GPU_PROFILES.includes(setting as GpuProfileSetting) ? (setting as GpuProfileSetting) : 'auto';
+  if (s === 'off') return { setting: s, effective: 'off' };
+  if (s === 'standard') return { setting: s, effective: 'standard' };
+  if (s === 'low') return { setting: s, effective: 'low' };
+  const tier = summary.primary?.tier;
+  return { setting: s, effective: tier === 'legacy' ? 'legacy' : tier === 'low' ? 'low' : 'standard' };
+}
+
 export function applyPlatformFlags(info: PlatformInfo, advanced: AppConfig['advanced'], performance: AppConfig['performance']): void {
   // Chromium's CommandLine stores ONE value per switch name — every
   // `appendSwitch('enable-features', X)` call overwrites the previous one.
@@ -113,6 +137,47 @@ export function applyPlatformFlags(info: PlatformInfo, advanced: AppConfig['adva
   // On Chromium 134+ the blocklist is stricter and silently disables WebGL on many Linux GPUs.
   app.commandLine.appendSwitch('ignore-gpu-blocklist');
 
+  // ── GPU-aware tuning (NVIDIA / Intel / hybrid laptops / weak GPUs) ──
+  // Detected from the OS before the GPU process starts (see gpu-detect.ts). Settings > Performance >
+  // GPU Profile can force a profile; "Off" restores the old generic behaviour exactly.
+  const gpuSummary = detectGpus();
+  const { setting: gpuSetting, effective: gpuProfile } = resolveGpuProfile(advanced.gpuProfile, gpuSummary);
+  lastGpuInfo = { setting: gpuSetting, effective: gpuProfile, summary: gpuSummary };
+  const primaryVendor = gpuSummary.primary?.vendor;
+  // Force-style switches (driver workarounds off, no software fallback) are only kept for healthy
+  // modern non-Intel GPUs: on Intel iGPUs and weak/old cards they are the usual cause of black
+  // screens and crashes, and the 'low' / 'legacy' profiles exist to keep those machines working.
+  const forceSwitchesOk = gpuProfile === 'off' || (gpuProfile === 'standard' && primaryVendor !== 'intel');
+
+  if (gpuProfile !== 'off') {
+    // Laptops with an iGPU + a discrete card: make Chromium pick the discrete one right away
+    // (the registry preference in ensureHighPerformanceGpu() only works from the 2nd launch).
+    if (gpuSummary.hybrid) app.commandLine.appendSwitch('force-high-performance-gpu');
+
+    // Hardware raster + zero-copy upload: cheap wins on Intel iGPUs (shared memory) and fine on NVIDIA.
+    // Skipped on very old GPUs where they are more likely to misbehave than to help.
+    if (gpuProfile !== 'legacy') {
+      app.commandLine.appendSwitch('enable-gpu-rasterization');
+      if (primaryVendor === 'intel') app.commandLine.appendSwitch('enable-zero-copy');
+    }
+
+    // Weak GPU: halve the MSAA cost when the game's anti-aliasing is on (no effect when it is off).
+    if (gpuProfile === 'low' || gpuProfile === 'legacy') {
+      app.commandLine.appendSwitch('webgl-msaa-sample-count', '2');
+    }
+
+    if (info.isLinux) {
+      // Mesa (Intel / AMD): move GL command submission to its own thread. Only when the user has not set it.
+      if (primaryVendor !== 'nvidia' && !process.env.mesa_glthread) process.env.mesa_glthread = 'true';
+      // NVIDIA proprietary: never purge the driver shader cache, so shaders compile once instead of stuttering again.
+      if (nvidiaProprietaryLoaded() && !process.env.__GL_SHADER_DISK_CACHE_SKIP_CLEANUP) process.env.__GL_SHADER_DISK_CACHE_SKIP_CLEANUP = '1';
+    }
+  }
+
+  // Render at 1x even when Windows display scaling is 125% / 150%: far fewer pixels for the GPU
+  // (a big win on laptops), at the price of a slightly softer UI. Opt-in.
+  if (advanced.ignoreDisplayScaling) app.commandLine.appendSwitch('force-device-scale-factor', '1');
+
   // ── ANGLE backend ──
   // 'default' means platform default: D3D11 on Windows, no override on Linux
   if (advanced.angleBackend && advanced.angleBackend !== 'default') {
@@ -161,14 +226,14 @@ export function applyPlatformFlags(info: PlatformInfo, advanced: AppConfig['adva
   // on dual-GPU machines, 1ms Windows timer frequency, no best-effort task
   // deferral, and no proxy resolution (breaks proxied setups).
   if (advanced.perfTweaks) {
-    app.commandLine.appendSwitch('enable-gpu-rasterization');
+    if (gpuProfile !== 'legacy') app.commandLine.appendSwitch('enable-gpu-rasterization');
     // Keep Chromium's driver-bug workarounds ON for mac: disabling them makes
     // Krunker's draws fail command-buffer validation on ANGLE Metal
     // (GL_INVALID_OPERATION "Vertex buffer is not big enough" spam; confirmed
     // 2026-07-08 — errors vanish with workarounds active, Crankshaft never
     // disables them). Windows/Linux keep the switch.
-    if (info.os !== 'darwin') app.commandLine.appendSwitch('disable-gpu-driver-bug-workarounds');
-    app.commandLine.appendSwitch('disable-software-rasterizer');
+    if (info.os !== 'darwin' && forceSwitchesOk) app.commandLine.appendSwitch('disable-gpu-driver-bug-workarounds');
+    if (forceSwitchesOk) app.commandLine.appendSwitch('disable-software-rasterizer');
     app.commandLine.appendSwitch('force-high-performance-gpu');
     app.commandLine.appendSwitch('raise-timer-frequency');
     app.commandLine.appendSwitch('disable-best-effort-tasks');

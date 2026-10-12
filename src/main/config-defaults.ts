@@ -320,6 +320,12 @@ export interface AppConfig {
     perfTweaks: boolean;
     angleBackend: string;
     verboseLogging: boolean;
+    /** GPU-aware tuning: auto-detect NVIDIA / Intel / weak GPUs (auto), force a profile, or turn it off. */
+    gpuProfile: 'auto' | 'standard' | 'low' | 'off';
+    /** Render at 1x even when Windows display scaling is above 100% (fewer pixels, softer UI). */
+    ignoreDisplayScaling: boolean;
+    /** The one-time "weak GPU detected, apply the Low-End preset?" question has been shown. */
+    lowEndPrompted: boolean;
   };
   accounts: SavedAccount[];
   tabWindow: {
@@ -541,6 +547,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     perfTweaks: false,
     angleBackend: 'default',
     verboseLogging: false,
+    gpuProfile: 'auto',
+    ignoreDisplayScaling: false,
+    lowEndPrompted: false,
   },
   accounts: [],
   tabWindow: {
