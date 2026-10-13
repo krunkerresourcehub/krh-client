@@ -1358,6 +1358,7 @@ async function launchApp(): Promise<void> {
       rankedAlert: bool(v.rankedAlert, d.rankedAlert),
       chatDraft: bool(v.chatDraft, d.chatDraft),
       accountEndMessage: bool(v.accountEndMessage, d.accountEndMessage),
+      accountSkins: bool(v.accountSkins, d.accountSkins),
       rpcRich: {
         classIcon: bool(rr.classIcon, d.rpcRich.classIcon),
         mapArt: bool(rr.mapArt, d.rpcRich.mapArt),
@@ -1491,6 +1492,46 @@ async function launchApp(): Promise<void> {
       delete all[account];
     }
     config.set('endMessages', all);
+    return true;
+  });
+
+  // Skins per account: the equipped-skin entries of every account name, edited only through these two handlers.
+  const SKIN_KEY_RE = /^[\w.:-]{1,80}$/;
+  const SKIN_MAX_KEYS = 60;
+  const SKIN_MAX_VALUE = 4000;
+  const SKIN_MAX_TOTAL = 60_000;
+  const cleanSkinSnap = (raw: unknown): Record<string, string> => {
+    const out: Record<string, string> = {};
+    if (!raw || typeof raw !== 'object') return out;
+    let total = 0;
+    for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+      if (k === '__proto__' || !SKIN_KEY_RE.test(k) || typeof val !== 'string' || val.length > SKIN_MAX_VALUE) continue;
+      total += k.length + val.length;
+      if (Object.keys(out).length >= SKIN_MAX_KEYS || total > SKIN_MAX_TOTAL) break;
+      out[k] = val;
+    }
+    return out;
+  };
+  const skinSetsOf = (): Record<string, Record<string, string>> => {
+    const raw = config.get('accountSkinSets') as unknown;
+    const out: Record<string, Record<string, string>> = {};
+    if (raw && typeof raw === 'object') {
+      for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
+        if (k !== '__proto__' && END_MESSAGE_ACCOUNT_RE.test(k)) out[k] = cleanSkinSnap(val);
+      }
+    }
+    return out;
+  };
+  ipcMain.handle('account-skins-get', (e) => (e.sender === win.webContents ? skinSetsOf() : {}));
+  ipcMain.handle('account-skins-set', (e, account: unknown, snap: unknown) => {
+    if (e.sender !== win.webContents) return false;
+    if (typeof account !== 'string' || account === '__proto__' || !END_MESSAGE_ACCOUNT_RE.test(account)) return false;
+    const all = skinSetsOf();
+    const clean = cleanSkinSnap(snap);
+    if (!Object.keys(clean).length) return false; // never replace a saved set with nothing
+    if (!(account in all) && Object.keys(all).length >= END_MESSAGE_MAX_ACCOUNTS) return false;
+    all[account] = clean;
+    config.set('accountSkinSets', all);
     return true;
   });
 

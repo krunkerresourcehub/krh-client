@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-1.2.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-1.2.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-1.2.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-1.2.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-1.2.1.0-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-1.2.1.0-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-1.2.1.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-1.2.1.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 

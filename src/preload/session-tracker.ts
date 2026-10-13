@@ -4,7 +4,7 @@
 //   kills   - the game's own "you got a kill" frame (event 6, same signal the headshot sound uses)
 //   deaths  - #uiBase gets the onDeathScrn class when you die
 //   seconds - time spent in a match (not in the menu, not spectating)
-//   matches - a new ?game= id while in a match; its map is counted once
+//   matches - a new ?game= id while in a match, then one more every 4 min match + 20 s break in the same lobby; each map is counted once
 // Also fires the optional kill-streak clip (instant replay) and shows the stats panel on a key.
 
 import { ipcRenderer } from 'electron';
@@ -33,6 +33,13 @@ let streak = 0;
 let wasDead = false;
 let lastGame = '';
 let mapPending = false;
+// Krunker plays matches of 4 minutes with a 20 second break, again and again in the same lobby, so the page (and
+// the ?game= id) does not change between them. Matches are counted from the time spent in the lobby instead.
+const MATCH_CYCLE_MS = (240 + 20) * 1000;
+const MAP_SETTLE_MS = 8000; // a new match picks its map right when it starts: read it a few seconds later
+let gameJoinedAt = 0;
+let matchesCounted = 0;
+let mapAt = 0;
 
 function fresh(): Delta { return { kills: 0, deaths: 0, seconds: 0, matches: 0, bestStreak: 0, maps: {} }; }
 
@@ -72,11 +79,23 @@ function tick(): void {
   const dead = !!ui && ui.classList.contains('onDeathScrn');
   if (match && dead && !wasDead) { delta.deaths++; streak = 0; }
   wasDead = dead;
-  if (!match) { lastGame = ''; mapPending = false; return; }
+  if (!match) { lastGame = ''; mapPending = false; matchesCounted = 0; return; }
   if (document.visibilityState === 'visible') delta.seconds++;
+  const now = Date.now();
   const gid = new URLSearchParams(location.search).get('game') || '';
-  if (gid && gid !== lastGame) { lastGame = gid; delta.matches++; mapPending = true; }
-  if (mapPending) {
+  if (gid && gid !== lastGame) {
+    lastGame = gid; gameJoinedAt = now; matchesCounted = 1; delta.matches++; mapPending = true; mapAt = now;
+  } else if (gid && gameJoinedAt) {
+    // every full cycle (4 min match + 20 s break) a new match has started in this lobby
+    const should = 1 + Math.floor((now - gameJoinedAt) / MATCH_CYCLE_MS);
+    if (should > matchesCounted) {
+      delta.matches += Math.min(should - matchesCounted, 5);
+      matchesCounted = should;
+      mapPending = true;
+      mapAt = now + MAP_SETTLE_MS;
+    }
+  }
+  if (mapPending && now >= mapAt) {
     const m = currentMap();
     if (m) { delta.maps[m] = (delta.maps[m] || 0) + 1; mapPending = false; }
   }

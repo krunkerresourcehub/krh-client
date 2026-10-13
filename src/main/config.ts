@@ -25,3 +25,15 @@ try {
     config.set('overlayLayout', OVERLAY_LAYOUT);
   }
 } catch { /* a broken config file must never stop the client from starting */ }
+
+// One-time: the Discord Presence+ pictures (class icon + map picture) used to be off by default, so a presence
+// stayed on the plain KRH logo even when the art assets were uploaded. They are on by default now; switch them on
+// once for configs created before that. (Join button stays as the user set it. After this the user's choice is kept.)
+const RPC_RICH_DEFAULTS = 1;
+try {
+  if ((Number(config.get('rpcRichDefaults')) || 0) < RPC_RICH_DEFAULTS) {
+    const ex: any = config.get('extras') || {};
+    config.set('extras', { ...ex, rpcRich: { ...DEFAULT_CONFIG.extras.rpcRich, ...(ex.rpcRich || {}), classIcon: true, mapArt: true } });
+    config.set('rpcRichDefaults', RPC_RICH_DEFAULTS);
+  }
+} catch { /* a broken config file must never stop the client from starting */ }

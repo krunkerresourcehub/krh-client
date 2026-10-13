@@ -43,6 +43,7 @@ import { setMotionBlur } from './motion-blur';
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
+import { setAccountSkins } from './account-skins';
 import { setHiddenMenu } from './menu-hider';
 import { initSuspectPing } from './kpd-call';
 
@@ -341,6 +342,7 @@ ipcRenderer.on('main_did-finish-load', () => {
         setChatDraft(ex.chatDraft);
         setRankedAlert(ex.rankedAlert);
         if (ex.accountEndMessage) void setAccountEndMessage(true);
+        if (ex.accountSkins) void setAccountSkins(true);
         // Version 1.1: streamer mode, session stats, instant replay key and the overlay layout editor
         initStreamerMode(ex.streamerMode, ex.streamerKey);
         initSessionTracker({

@@ -8,6 +8,7 @@ Upload the pictures in the Discord Developer Portal under your application:
 - Pictures: png or jpg, 1024x1024 recommended (512x512 minimum), square.
 - Keys are the name in lowercase, with every group of other characters changed to one `_`.
   Class `Run N Gun` becomes `class_run_n_gun`, map `Lostworld` becomes `map_lostworld`.
+- **Class icon and Map picture are on by default now** (Settings > Extras > Discord Presence+). Configs made before 1.2.1.0 were switched on once.
 - The logo key `krh_logo` is the default big picture and is always used when a map has no picture.
 - A key without an uploaded picture should simply show no image (the client does not check this).
 - Discord caches assets: after uploading, wait a few minutes and restart Discord.

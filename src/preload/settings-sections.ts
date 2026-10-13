@@ -23,6 +23,7 @@ import { setMotionBlur } from './motion-blur';
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
+import { setAccountSkins } from './account-skins';
 import { updateSocialMusicConfig } from './social-music';
 import { initHPCounter, destroyHPCounter } from './competitive';
 import { initSuspectPing, destroySuspectPing } from './kpd-call';
@@ -1940,6 +1941,12 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     desc: 'Krunker\'s Match End Message is remembered for each account. An account without a message of its own sends nothing, so an alt never sends your main account\'s message.',
     checked: ex.accountEndMessage, instant: true,
     onChange: (v) => { ex.accountEndMessage = v; save(); void setAccountEndMessage(v, true); },
+  }));
+  conv.appendChild(createToggleRow({
+    label: 'Skins Per Account',
+    desc: 'Remembers the skins you have equipped for each account and puts them back when you switch accounts, so you do not have to equip them again. The page reloads once when skins are put back.',
+    checked: ex.accountSkins, instant: true,
+    onChange: (v) => { ex.accountSkins = v; save(); void setAccountSkins(v, true); },
   }));
 
   // ── Window and scripts ──

@@ -9,9 +9,16 @@
 //
 // Everything here is best effort: any failure returns an empty list and the client simply keeps
 // its generic (safe) flags. Detection never throws.
+//
+// Startup speed: spawning `reg` / `lspci` is the slow part, and the flags are needed before the app
+// is ready. So the result is saved to disk (gpu-cache.json in the app data folder). Every launch after
+// the first one reads that file instead of spawning anything, and re-checks the hardware in the
+// background (async, nothing waits for it); a changed GPU is picked up on the launch after it was found.
 
-import { execFileSync } from 'child_process';
-import { existsSync, readdirSync, readFileSync } from 'fs';
+import { execFile, execFileSync } from 'child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { app } from 'electron';
 
 export type GpuVendor = 'nvidia' | 'intel' | 'amd' | 'other';
 /**
@@ -96,10 +103,7 @@ export function classify(name: string, vendorHint?: GpuVendor): DetectedGpu {
   return { vendor, name, tier: tierOf(vendor, name), integrated: isIntegrated(vendor, name) };
 }
 
-function windowsAdapters(): DetectedGpu[] {
-  const out = execFileSync('reg', ['query', DISPLAY_CLASS_KEY, '/s', '/v', 'DriverDesc'], {
-    windowsHide: true, timeout: 4000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
-  });
+function parseWindowsAdapters(out: string): DetectedGpu[] {
   const names = new Set<string>();
   for (const m of out.matchAll(/DriverDesc\s+REG_SZ\s+(.+)/g)) {
     const name = m[1].trim();
@@ -110,7 +114,34 @@ function windowsAdapters(): DetectedGpu[] {
   return [...names].map((n) => classify(n));
 }
 
-function linuxAdapters(): DetectedGpu[] {
+const WIN_QUERY_ARGS = ['query', DISPLAY_CLASS_KEY, '/s', '/v', 'DriverDesc'];
+
+function windowsAdapters(): DetectedGpu[] {
+  const out = execFileSync('reg', WIN_QUERY_ARGS, {
+    windowsHide: true, timeout: 4000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  return parseWindowsAdapters(out);
+}
+
+function windowsAdaptersAsync(): Promise<DetectedGpu[]> {
+  return new Promise((resolve) => {
+    execFile('reg', WIN_QUERY_ARGS, { windowsHide: true, timeout: 8000, encoding: 'utf8' }, (err, stdout) => {
+      resolve(err ? [] : parseWindowsAdapters(String(stdout)));
+    });
+  });
+}
+
+function parseLspci(out: string): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const line of out.split('\n')) {
+    // 00:02.0 "VGA compatible controller" "Intel Corporation" "HD Graphics 630" ...
+    const m = line.match(/^(\S+)\s+"(?:VGA compatible controller|3D controller|Display controller)"\s+"([^"]*)"\s+"([^"]*)"/);
+    if (m) names[m[1].replace(/^0000:/, '')] = `${m[2]} ${m[3]}`.trim();
+  }
+  return names;
+}
+
+function linuxPciGpus(): Array<{ vendor: GpuVendor; slot: string }> {
   const vendorIds: Record<string, GpuVendor> = { '0x10de': 'nvidia', '0x8086': 'intel', '0x1002': 'amd' };
   const found: Array<{ vendor: GpuVendor; slot: string }> = [];
   for (const d of readdirSync('/sys/class/drm')) {
@@ -122,33 +153,38 @@ function linuxAdapters(): DetectedGpu[] {
       found.push({ vendor: vendorIds[id] ?? 'other', slot });
     } catch { /* not a PCI GPU */ }
   }
-  // Marketing names come from lspci when it is installed (it usually is).
-  let names: Record<string, string> = {};
-  try {
-    const out = execFileSync('lspci', ['-mm'], { timeout: 2500, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    for (const line of out.split('\n')) {
-      // 00:02.0 "VGA compatible controller" "Intel Corporation" "HD Graphics 630" ...
-      const m = line.match(/^(\S+)\s+"(?:VGA compatible controller|3D controller|Display controller)"\s+"([^"]*)"\s+"([^"]*)"/);
-      if (m) names[m[1].replace(/^0000:/, '')] = `${m[2]} ${m[3]}`.trim();
-    }
-  } catch { names = {}; }
+  return found;
+}
+
+function namePciGpus(found: Array<{ vendor: GpuVendor; slot: string }>, names: Record<string, string>): DetectedGpu[] {
   return found.map((f) => {
     const nm = names[f.slot.replace(/^0000:/, '')] ?? '';
     return classify(nm || `${f.vendor} GPU`, f.vendor);
   });
 }
 
-let cached: GpuSummary | null = null;
-
-export function detectGpus(): GpuSummary {
-  if (cached) return cached;
-  let gpus: DetectedGpu[] = [];
+function linuxAdapters(): DetectedGpu[] {
+  const found = linuxPciGpus();
+  // Marketing names come from lspci when it is installed (it usually is).
+  let names: Record<string, string> = {};
   try {
-    if (process.platform === 'win32') gpus = windowsAdapters();
-    else if (process.platform === 'linux') gpus = linuxAdapters();
-  } catch { gpus = []; }
-  gpus = gpus.filter((g) => g.vendor !== 'other');
+    names = parseLspci(execFileSync('lspci', ['-mm'], { timeout: 2500, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+  } catch { /* no lspci: keep the generic names */ }
+  return namePciGpus(found, names);
+}
 
+function linuxAdaptersAsync(): Promise<DetectedGpu[]> {
+  return new Promise((resolve) => {
+    let found: Array<{ vendor: GpuVendor; slot: string }>;
+    try { found = linuxPciGpus(); } catch { resolve([]); return; }
+    execFile('lspci', ['-mm'], { timeout: 4000, encoding: 'utf8' }, (err, stdout) => {
+      resolve(namePciGpus(found, err ? {} : parseLspci(String(stdout))));
+    });
+  });
+}
+
+function summarize(allGpus: DetectedGpu[]): GpuSummary {
+  const gpus = allGpus.filter((g) => g.vendor !== 'other');
   const hasNvidia = gpus.some((g) => g.vendor === 'nvidia');
   const hasIntel = gpus.some((g) => g.vendor === 'intel');
   const discrete = gpus.filter((g) => !g.integrated);
@@ -156,8 +192,72 @@ export function detectGpus(): GpuSummary {
   const hybrid = discrete.length > 0 && integrated.length > 0;
   // Prefer a discrete NVIDIA card, then any discrete card, then whatever is there.
   const primary = discrete.find((g) => g.vendor === 'nvidia') ?? discrete[0] ?? gpus[0] ?? null;
+  return { gpus, hasNvidia, hasIntel, hybrid, primary };
+}
 
-  cached = { gpus, hasNvidia, hasIntel, hybrid, primary };
+// ── Saved result (see the note at the top) ──
+const CACHE_VERSION = 1;
+interface GpuCacheFile { v: number; platform: string; gpus: DetectedGpu[] }
+
+function cachePath(): string | null {
+  try { return join(app.getPath('userData'), 'gpu-cache.json'); } catch { return null; }
+}
+
+function readCache(): DetectedGpu[] | null {
+  const p = cachePath();
+  if (!p) return null;
+  try {
+    const c = JSON.parse(readFileSync(p, 'utf8')) as GpuCacheFile;
+    if (c.v !== CACHE_VERSION || c.platform !== process.platform || !Array.isArray(c.gpus)) return null;
+    const ok = c.gpus.every((g) => g && typeof g.name === 'string' && ['nvidia', 'intel', 'amd', 'other'].includes(g.vendor)
+      && ['legacy', 'low', 'mid', 'unknown'].includes(g.tier) && typeof g.integrated === 'boolean');
+    return ok ? c.gpus : null;
+  } catch { return null; }
+}
+
+function writeCache(gpus: DetectedGpu[]): void {
+  const p = cachePath();
+  if (!p) return;
+  try {
+    mkdirSync(join(p, '..'), { recursive: true });
+    const data: GpuCacheFile = { v: CACHE_VERSION, platform: process.platform, gpus };
+    writeFileSync(p, JSON.stringify(data));
+  } catch { /* best effort */ }
+}
+
+/** Asks the OS again without blocking anything and refreshes the saved result for the next launch. */
+function refreshCacheInBackground(previous: DetectedGpu[] | null): void {
+  const run = process.platform === 'win32' ? windowsAdaptersAsync : process.platform === 'linux' ? linuxAdaptersAsync : null;
+  if (!run) return;
+  void run().then((fresh) => {
+    // An empty answer is a failed query, not "no GPU": never overwrite a good saved result with it.
+    if (fresh.length === 0) return;
+    if (previous && JSON.stringify(previous) === JSON.stringify(fresh)) return;
+    writeCache(fresh);
+  }).catch(() => { /* best effort */ });
+}
+
+let cached: GpuSummary | null = null;
+
+export function detectGpus(): GpuSummary {
+  if (cached) return cached;
+
+  // Fast path: reuse the saved result, no process is spawned and nothing waits.
+  const saved = readCache();
+  if (saved) {
+    cached = summarize(saved);
+    refreshCacheInBackground(saved);
+    return cached;
+  }
+
+  // First launch (or no / broken saved result): ask the OS now, then save it for next time.
+  let gpus: DetectedGpu[] = [];
+  try {
+    if (process.platform === 'win32') gpus = windowsAdapters();
+    else if (process.platform === 'linux') gpus = linuxAdapters();
+  } catch { gpus = []; }
+  if (gpus.length > 0) writeCache(gpus);
+  cached = summarize(gpus);
   return cached;
 }
 

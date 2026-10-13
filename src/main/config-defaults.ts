@@ -90,6 +90,8 @@ export interface ExtrasConfig {
   chatDraft: boolean;
   /** Remember Krunker's Match End Message separately for every account (adapted from Kute). */
   accountEndMessage: boolean;
+  /** Remember the equipped skins separately for every account, so switching accounts does not reset them. */
+  accountSkins: boolean;
   /** Extra Discord presence features. Each needs matching Art Assets in the Discord app (see DISCORD-ART.md). */
   rpcRich: {
     /** Small class icon on the presence (asset key class_<name>). */
@@ -233,10 +235,14 @@ export interface AppConfig {
   spotifyAuth: string;
   /** Match End Message per account name (main process only, edited through its own IPC, never exported). */
   endMessages: Record<string, string>;
+  /** Saved skin entries per account name (see preload/account-skins.ts). */
+  accountSkinSets: Record<string, Record<string, string>>;
   /** Encrypted Twitch chat token used only by the !link command. */
   twitchBotAuth: string;
   /** Version of the overlay default positions that were applied (see config.ts). */
   overlayLayout: number;
+  /** Version of the one-time "Discord Presence+ art is on by default" migration (see config.ts). */
+  rpcRichDefaults: number;
   swapper: {
     enabled: boolean;
     path: string;
@@ -465,7 +471,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     rankedAlert: true,
     chatDraft: true,
     accountEndMessage: false,
-    rpcRich: { classIcon: false, mapArt: false, join: false },
+    accountSkins: true,
+    rpcRich: { classIcon: true, mapArt: true, join: false },
     updateMode: 'ask',
     updateInstallOnQuit: false,
     streamerMode: false,
@@ -477,8 +484,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   },
   spotifyAuth: '',
   endMessages: {},
+  accountSkinSets: {},
   twitchBotAuth: '',
   overlayLayout: 0,
+  rpcRichDefaults: 0,
   swapper: {
     enabled: false,
     path: '',

@@ -5,6 +5,11 @@ import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog } from './logger';
 import { devWindowIcon } from './platform';
 
+/** krunker.io/scripting.html: the script editor that the map editor opens next to itself. */
+function isScriptingPage(url: string): boolean {
+    try { return isKrunkerPage(url) && new URL(url).pathname === '/scripting.html'; } catch { return false; }
+}
+
 const KRUNKER_SOCIAL = 'https://krunker.io/social.html';
 const TAB_BAR_HEIGHT = 40;
 const MAX_TABS = 20;
@@ -262,6 +267,61 @@ export class TabManager {
         return id;
     }
 
+    // ── Scripting window (opened by the editor) ──
+    private scriptingWindowOptions(): Electron.BrowserWindowConstructorOptions {
+        const parent = this.mode === 'same' ? this.mainWin : this.tabWindow;
+        return {
+            width: 1280,
+            height: 800,
+            minWidth: 640,
+            minHeight: 400,
+            parent: parent && !parent.isDestroyed() ? parent : undefined,
+            frame: true,
+            backgroundColor: '#000000',
+            autoHideMenuBar: true,
+            title: 'KRH - Scripting',
+            icon: devWindowIcon(),
+            webPreferences: {
+                preload: this.preloadPath,
+                contextIsolation: false,
+                nodeIntegration: false,
+                sandbox: true,
+                spellcheck: false,
+            },
+        };
+    }
+
+    private setupScriptingWindow(child: BrowserWindow): void {
+        child.removeMenu();
+        const cwc = child.webContents;
+        cwc.on('did-finish-load', () => {
+            cwc.insertCSS(ALL_CLIENT_CSS).catch(() => {});
+            cwc.insertCSS(HIDE_ADS_CSS).catch(() => {});
+            cwc.executeJavaScript(CONSENT_DISMISS_JS).catch(() => {});
+            // The editor hands the map to this window through window.opener: say in the log if that link is missing.
+            cwc.executeJavaScript('!!window.opener').then((linked) => {
+                if (linked) electronLog.log('[KRH] Scripting window opened by the editor (window.opener is set)');
+                else electronLog.warn('[KRH] Scripting window has no window.opener: the editor cannot send it the map');
+            }).catch(() => {});
+        });
+        cwc.setWindowOpenHandler(({ url: linkUrl }) => {
+            if (isGameURL(linkUrl)) this.launchGame(linkUrl);
+            else if (isKrunkerPage(linkUrl)) setImmediate(() => this.openTab(linkUrl));
+            else setImmediate(() => safeOpenExternal(linkUrl));
+            return { action: 'deny' as const };
+        });
+        cwc.on('will-navigate', (event, navUrl) => {
+            if (isGameURL(navUrl)) {
+                event.preventDefault();
+                this.launchGame(navUrl);
+            } else if (!isKrunkerPage(navUrl)) {
+                event.preventDefault();
+                safeOpenExternal(navUrl);
+            }
+        });
+        blockOffsiteRedirects(cwc);
+    }
+
     // ── Create a WebContentsView for a tab ──
     private createTabView(tabId: number): WebContentsView {
         const view = new WebContentsView({
@@ -309,6 +369,10 @@ export class TabManager {
                 this.launchGame(linkUrl);
                 if (this.mode === 'same') this.hideTabs();
                 else this.mainWin.focus();
+            } else if (isScriptingPage(linkUrl)) {
+                // The editor opens krunker.io/scripting.html as a popup of its own and talks to it through
+                // window.opener, so it has to be a real child window of the editor, not a tab of the client.
+                return { action: 'allow' as const, overrideBrowserWindowOptions: this.scriptingWindowOptions() };
             } else if (isKrunkerPage(linkUrl)) {
                 setImmediate(() => this.openTab(linkUrl));
             } else {
@@ -329,6 +393,7 @@ export class TabManager {
             }
         });
         blockOffsiteRedirects(wc);
+        wc.on('did-create-window', (child) => this.setupScriptingWindow(child));
 
         wc.on('context-menu', (_e, params) => {
             if (!params.linkURL) return;
