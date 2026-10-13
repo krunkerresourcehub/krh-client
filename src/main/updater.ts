@@ -1,5 +1,6 @@
 import { get as httpsGet } from 'https';
-import { createReadStream, createWriteStream, renameSync, unlinkSync, existsSync } from 'fs';
+import { createReadStream, createWriteStream, renameSync, unlinkSync, existsSync, statSync } from 'fs';
+import { pipeline } from 'stream';
 import { createHash } from 'crypto';
 import { spawn } from 'child_process';
 import { app } from 'electron';
@@ -62,7 +63,9 @@ function isSafeVersion(v: string): boolean {
 }
 
 const CHECK_TIMEOUT_MS = 10000;
-const DOWNLOAD_TIMEOUT_MS = 300000; // 5 minutes
+// A download may take as long as it needs; it only counts as stuck when NO data arrives for this long.
+const DOWNLOAD_STALL_MS = 60000;
+const DOWNLOAD_MAX_RETRIES = 20; // interrupted downloads continue where they stopped (Range), this caps the attempts
 
 function isAllowedRedirect(url: string): boolean {
   try {
@@ -246,89 +249,113 @@ function verifyChecksum(filePath: string, expectedSha256: string): Promise<boole
 export function downloadUpdate(url: string, destPath: string, onProgress: ProgressCallback, expectedSha256?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const tmpPath = destPath + '.tmp';
+    let retries = 0;
+    let total = 0; // size of the whole file once the server told us
+
+    const giveUp = (err: Error): void => {
+      try { unlinkSync(tmpPath); } catch { /* ignore */ }
+      reject(err);
+    };
+
+    // A stalled or dropped connection is not the end: wait a moment and continue from the bytes already on disk.
+    const retry = (err: Error, madeProgress: boolean): void => {
+      if (madeProgress) retries = 0;
+      retries++;
+      if (retries > DOWNLOAD_MAX_RETRIES) { giveUp(err); return; }
+      electronLog.warn(`[KRH-Update] Download interrupted (${err.message}), continuing (attempt ${retries})`);
+      setTimeout(() => doDownload(url), Math.min(1000 * retries, 8000));
+    };
 
     function doDownload(downloadUrl: string, redirectCount = 0): void {
       if (redirectCount > 5) {
-        reject(new Error('Too many redirects'));
+        giveUp(new Error('Too many redirects'));
         return;
       }
-      electronLog.log('[KRH-Update] Downloading from:', downloadUrl);
+      let resumeFrom = 0;
+      try { if (existsSync(tmpPath)) resumeFrom = statSync(tmpPath).size; } catch { resumeFrom = 0; }
+      electronLog.log('[KRH-Update] Downloading from:', downloadUrl, resumeFrom > 0 ? `(continuing at ${resumeFrom} bytes)` : '');
+
+      let settled = false; // one outcome per attempt, whichever event comes first
+      let gotData = false;
+      const once = (fn: () => void): void => { if (!settled) { settled = true; fn(); } };
+
       const req = httpsGet(downloadUrl, {
-        headers: { 'User-Agent': 'KrunkerKRHClient' },
+        headers: { 'User-Agent': 'KrunkerKRHClient', ...(resumeFrom > 0 ? { Range: `bytes=${resumeFrom}-` } : {}) },
       }, (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           const redirectUrl = res.headers.location;
           electronLog.log('[KRH-Update] Download redirected to:', redirectUrl);
-          if (!isAllowedRedirect(redirectUrl)) {
-            electronLog.error('[KRH-Update] Download redirect to untrusted host blocked:', redirectUrl);
-            reject(new Error('Download redirect to untrusted host: ' + redirectUrl));
-            return;
-          }
-          doDownload(redirectUrl, redirectCount + 1);
-          return;
-        }
-
-        if (res.statusCode !== 200) {
-          electronLog.error('[KRH-Update] Download returned status', res.statusCode, 'from:', downloadUrl);
-          reject(new Error('Download returned status ' + res.statusCode));
-          return;
-        }
-
-        const total = parseInt(res.headers['content-length'] || '0', 10);
-        let received = 0;
-
-        const file = createWriteStream(tmpPath);
-        res.on('data', (chunk: Buffer) => {
-          received += chunk.length;
-          if (total > 0) {
-            onProgress(Math.round(100 * received / total));
-          }
-        });
-        res.pipe(file);
-
-        file.on('finish', () => {
-          file.close(async () => {
-            try {
-              if (expectedSha256) {
-                const valid = await verifyChecksum(tmpPath, expectedSha256);
-                if (!valid) {
-                  electronLog.error('[KRH-Update] Checksum mismatch — file may be corrupted or tampered');
-                  try { unlinkSync(tmpPath); } catch { /* ignore */ }
-                  reject(new Error('SHA-256 checksum mismatch'));
-                  return;
-                }
-                electronLog.log('[KRH-Update] Checksum verified');
-              }
-              if (existsSync(destPath)) unlinkSync(destPath);
-              renameSync(tmpPath, destPath);
-              resolve();
-            } catch (err) {
-              reject(err);
+          res.resume();
+          req.setTimeout(0); // this request is done: its timer must not outlive it and cut the real download
+          once(() => {
+            if (!isAllowedRedirect(redirectUrl)) {
+              electronLog.error('[KRH-Update] Download redirect to untrusted host blocked:', redirectUrl);
+              giveUp(new Error('Download redirect to untrusted host: ' + redirectUrl));
+              return;
             }
+            doDownload(redirectUrl, redirectCount + 1);
+          });
+          return;
+        }
+
+        if (res.statusCode === 416) { // the saved part does not fit the file: start over
+          res.resume();
+          once(() => { try { unlinkSync(tmpPath); } catch { /* ignore */ } doDownload(url); });
+          return;
+        }
+
+        const partial = res.statusCode === 206;
+        if (res.statusCode !== 200 && !partial) {
+          electronLog.error('[KRH-Update] Download returned status', res.statusCode, 'from:', downloadUrl);
+          res.resume();
+          const status = res.statusCode ?? 0;
+          once(() => (status >= 500 ? retry(new Error('Download returned status ' + status), false) : giveUp(new Error('Download returned status ' + status))));
+          return;
+        }
+
+        const length = parseInt(res.headers['content-length'] || '0', 10);
+        const startAt = partial ? resumeFrom : 0;
+        if (length > 0) total = startAt + length;
+        let received = startAt;
+
+        res.on('data', (chunk: Buffer) => {
+          gotData = true;
+          received += chunk.length;
+          if (total > 0) onProgress(Math.min(100, Math.round(100 * received / total)));
+        });
+
+        const file = createWriteStream(tmpPath, { flags: partial ? 'a' : 'w' });
+        pipeline(res, file, (err) => {
+          if (err) { once(() => retry(err, gotData)); return; } // cut off half way: the part on disk is kept
+          once(() => {
+            void (async () => {
+              try {
+                if (expectedSha256) {
+                  const valid = await verifyChecksum(tmpPath, expectedSha256);
+                  if (!valid) {
+                    electronLog.error('[KRH-Update] Checksum mismatch — file may be corrupted or tampered');
+                    giveUp(new Error('SHA-256 checksum mismatch'));
+                    return;
+                  }
+                  electronLog.log('[KRH-Update] Checksum verified');
+                }
+                if (existsSync(destPath)) unlinkSync(destPath);
+                renameSync(tmpPath, destPath);
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            })();
           });
         });
-
-        file.on('error', (err) => {
-          try { unlinkSync(tmpPath); } catch { /* ignore */ }
-          reject(err);
-        });
-
-        res.on('error', (err) => {
-          try { unlinkSync(tmpPath); } catch { /* ignore */ }
-          reject(err);
-        });
       });
 
-      req.setTimeout(DOWNLOAD_TIMEOUT_MS, () => {
-        req.destroy();
-        try { unlinkSync(tmpPath); } catch { /* ignore */ }
-        reject(new Error('Download timed out'));
+      // Socket idle timer of THIS request: it restarts whenever data arrives, so a slow but moving download is fine.
+      req.setTimeout(DOWNLOAD_STALL_MS, () => {
+        req.destroy(new Error(`no data for ${DOWNLOAD_STALL_MS / 1000} s`));
       });
 
-      req.on('error', (err) => {
-        try { unlinkSync(tmpPath); } catch { /* ignore */ }
-        reject(err);
-      });
+      req.on('error', (err) => { once(() => retry(err, gotData)); });
     }
 
     doDownload(url);
