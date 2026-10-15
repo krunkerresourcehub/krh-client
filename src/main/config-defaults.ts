@@ -3,6 +3,8 @@
 // This module has NO electron-store dependency on purpose: the preload bundle is
 // sandboxed and can't pull Node modules, but it can import this for the single
 // source of truth on defaults. config.ts wraps DEFAULT_CONFIG in the actual Store.
+import type { SettingPreset } from '../shared/presets';
+
 
 // Sky dome textures are referenced by user-asset ID. This one is deliberately not a
 // real asset: the preload writes it into the map config, and main redirects the
@@ -60,8 +62,10 @@ export interface ExtrasConfig {
   /** Custom crosshair drawn once on a canvas while aiming. */
   crosshair: {
     enabled: boolean;
-    shape: 'cross' | 'plus' | 'circle' | 'hCircle' | 'square' | 'hSquare' | 'symbol';
+    shape: 'cross' | 'plus' | 'circle' | 'hCircle' | 'square' | 'hSquare' | 'symbol' | 'image';
     symbol: string;
+    /** Picture for the Image shape, stored as a data: URL so it cannot go dead like a link (see shared/crosshair-image.ts). */
+    image: string;
     color: string;
     outline: string;
     size: number;
@@ -90,8 +94,18 @@ export interface ExtrasConfig {
   chatDraft: boolean;
   /** Remember Krunker's Match End Message separately for every account (adapted from Kute). */
   accountEndMessage: boolean;
-  /** Remember the equipped skins separately for every account, so switching accounts does not reset them. */
-  accountSkins: boolean;
+  /** A quick tap of Shift (in menus) starts the same area snip as the Screenshot Area hotkey, like Snipping Tool. */
+  shiftSnip: boolean;
+  /** Escape out of a match without the ~2 s wait before you can click back in (adapted from NM/NZ Client). */
+  escapeFastRelease: boolean;
+  /** Match and life accuracy under the top-centre HUD (an estimate; adapted from NM/NZ Client). */
+  /** Friend and clan name colours (one `Name #colour [bold]` per line). */
+  nameColors: { friends: string; clans: string };
+  /** Saved sensitivity / FOV snapshots (see shared/presets.ts). */
+  settingPresets: SettingPreset[];
+  liveAccuracy: { enabled: boolean; placement: 'top' | 'bottom' };
+  /** Frame-time HUD (FPS and 1% / 0.1% lows), toggled with `key`. */
+  perfHud: { key: string; corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; detail: 'fps' | 'full'; startOn: boolean };
   /** Extra Discord presence features. Each needs matching Art Assets in the Discord app (see DISCORD-ART.md). */
   rpcRich: {
     /** Small class icon on the presence (asset key class_<name>). */
@@ -235,8 +249,6 @@ export interface AppConfig {
   spotifyAuth: string;
   /** Match End Message per account name (main process only, edited through its own IPC, never exported). */
   endMessages: Record<string, string>;
-  /** Saved skin entries per account name (see preload/account-skins.ts). */
-  accountSkinSets: Record<string, Record<string, string>>;
   /** Encrypted Twitch chat token used only by the !link command. */
   twitchBotAuth: string;
   /** Version of the overlay default positions that were applied (see config.ts). */
@@ -463,7 +475,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     rpcButtons: { enabled: false, label1: '', url1: '', label2: '', url2: '' },
     settingsProfiles: [],
     autoRejoin: false,
-    crosshair: { enabled: false, shape: 'cross', symbol: '★', color: '#00ff00', outline: '#000000', size: 10, thick: 2, gap: 5, dot: 0, outWidth: 1 },
+    crosshair: { enabled: false, shape: 'cross', symbol: '★', image: '', color: '#00ff00', outline: '#000000', size: 10, thick: 2, gap: 5, dot: 0, outWidth: 1 },
     motionBlur: { enabled: false, strength: 50, quality: 'native' },
     quickClassPicker: false,
     classicMenu: false,
@@ -471,7 +483,12 @@ export const DEFAULT_CONFIG: AppConfig = {
     rankedAlert: true,
     chatDraft: true,
     accountEndMessage: false,
-    accountSkins: true,
+    shiftSnip: true,
+    escapeFastRelease: true,
+    nameColors: { friends: '', clans: '' },
+    settingPresets: [],
+    liveAccuracy: { enabled: false, placement: 'top' },
+    perfHud: { key: 'F10', corner: 'top-left', detail: 'full', startOn: false },
     rpcRich: { classIcon: true, mapArt: true, join: false },
     updateMode: 'ask',
     updateInstallOnQuit: false,
@@ -484,7 +501,6 @@ export const DEFAULT_CONFIG: AppConfig = {
   },
   spotifyAuth: '',
   endMessages: {},
-  accountSkinSets: {},
   twitchBotAuth: '',
   overlayLayout: 0,
   rpcRichDefaults: 0,

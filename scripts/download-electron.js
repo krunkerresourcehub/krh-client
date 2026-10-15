@@ -187,6 +187,15 @@ async function main() {
     else if (IS_MAC) platformExe = 'Electron.app/Contents/MacOS/Electron';
     else platformExe = 'electron';
     fs.writeFileSync(path.join(ELECTRON_BASE, 'path.txt'), platformExe);
+
+    // Stamp of the patched Windows runtime the installed (NSIS) app ships with. vite.main.config.ts bakes it into the
+    // app and scripts/lite-release.mjs writes it into lite.json, so an app.asar-only update is only ever offered to
+    // an install running the same runtime (see src/shared/lite-update.ts). The asset name carries the Electron
+    // version and the patch set, so a new patched build means a new name and one installer-based update.
+    fs.writeFileSync(
+        path.join(ELECTRON_BASE, '.patched-build.json'),
+        JSON.stringify({ runtime: `${RELEASE_TAG}/${PLATFORMS.win32.asset}` }, null, 1) + '\n'
+    );
 }
 
 console.log('[KRH] Setting up patched Electron...');

@@ -10,6 +10,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { spawn } from 'child_process';
 import { join } from 'path';
 import { checkForUpdate, downloadUpdate, installUpdate } from './updater';
+import { updateWithoutInstaller, applyLite, applyLiteAndRelaunch } from './lite-update';
 import { electronLog } from './logger';
 
 const FIRST_CHECK_MS = 20_000;
@@ -17,7 +18,8 @@ const CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
 const BADGE_ID = 'krh-update-badge';
 const BADGE_SIGNAL = 'KRH_UPDATE:install';
 
-export interface ReadyUpdate { version: string; path: string }
+/** `lite` = only app.asar was downloaded and is waiting to be swapped in (no installer, `path` is empty). */
+export interface ReadyUpdate { version: string; path: string; lite?: boolean }
 
 export interface UpdateManagerDeps {
   appVersion: string;
@@ -78,7 +80,8 @@ export function installReadyUpdate(): boolean {
   if (!ready || installStarted) return false;
   installStarted = true;
   electronLog.log('[KRH-Update] Restart to update chosen, installing v' + ready.version);
-  installUpdate(ready.path);
+  if (ready.lite) applyLiteAndRelaunch();
+  else installUpdate(ready.path);
   return true;
 }
 
@@ -88,6 +91,12 @@ export function installOnQuitIfWanted(): void {
   if (!deps.settings().installOnQuit) return;
   installStarted = true;
   try {
+    if (ready.lite) {
+      // Only app.asar changes: swap it in as the very last step of quitting (we are inside will-quit).
+      electronLog.log('[KRH-Update] Swapping in v' + ready.version + ' after quit');
+      applyLite();
+      return;
+    }
     electronLog.log('[KRH-Update] Installing v' + ready.version + ' silently after quit');
     const child = spawn(ready.path, ['/S'], { detached: true, stdio: 'ignore' });
     child.unref();
@@ -104,13 +113,17 @@ async function cycle(): Promise<void> {
   try {
     const update = await checkForUpdate(deps.appVersion);
     if (!update || update.version === deps.skippedVersion()) return;
-    const dir = join(app.getPath('temp'), 'krh-update');
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    const path = join(dir, `KRH-${update.version}-Setup.exe`);
     electronLog.log(`[KRH-Update] Background download of v${update.version}`);
-    // The file only gets its final name after the SHA-256 check passed (see downloadUpdate).
-    await downloadUpdate(update.downloadUrl, path, () => { /* silent */ }, update.sha256);
-    ready = { version: update.version, path };
+    if (await updateWithoutInstaller(update.version, () => { /* silent */ })) {
+      ready = { version: update.version, path: '', lite: true };
+    } else {
+      const dir = join(app.getPath('temp'), 'krh-update');
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const path = join(dir, `KRH-${update.version}-Setup.exe`);
+      // The file only gets its final name after the SHA-256 check passed (see downloadUpdate).
+      await downloadUpdate(update.downloadUrl, path, () => { /* silent */ }, update.sha256);
+      ready = { version: update.version, path };
+    }
     electronLog.log(`[KRH-Update] v${update.version} downloaded and verified`);
     showBadge();
     deps.toastGame(`Update v${update.version} is ready. Open the KRH Hub and press "Restart to update".`);

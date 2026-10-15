@@ -20,10 +20,16 @@ import { setCrosshair } from './crosshair';
 import { buildV11Section } from './settings-v11';
 import { setClassicSocial, startHidePopups, stopHidePopups, setCleanMenu, setSelectableChat, setQuickClassPicker, setClassicMenu } from './menu-tweaks';
 import { setMotionBlur } from './motion-blur';
+import { setLiveAccuracy } from './live-accuracy';
+import { setPerfHud } from './perf-hud';
+import { escapeHtml } from './utils';
+import { CROSSHAIR_IMAGE_MAX_BYTES, cleanCrosshairImage } from '../shared/crosshair-image';
+import { capturePreset, normalisePresets, planPreset, presetName, PRESET_LIMIT, PRESET_SCOPES, summarisePreset } from '../shared/presets';
+import { gameSetting, setGameSettings, storedGameSettingIds } from './game-settings';
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
-import { setAccountSkins } from './account-skins';
+import { setShiftSnip } from './shift-snip';
 import { updateSocialMusicConfig } from './social-music';
 import { initHPCounter, destroyHPCounter } from './competitive';
 import { initSuspectPing, destroySuspectPing } from './kpd-call';
@@ -1761,6 +1767,10 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     rpcButtons: { ...DEFAULT_CONFIG.extras.rpcButtons, ...(exConf?.rpcButtons || {}) },
     crosshair: { ...DEFAULT_CONFIG.extras.crosshair, ...(exConf?.crosshair || {}) },
     motionBlur: { ...DEFAULT_CONFIG.extras.motionBlur, ...(exConf?.motionBlur || {}) },
+    nameColors: { ...DEFAULT_CONFIG.extras.nameColors, ...(exConf?.nameColors || {}) },
+    settingPresets: normalisePresets(exConf?.settingPresets),
+    liveAccuracy: { ...DEFAULT_CONFIG.extras.liveAccuracy, ...(exConf?.liveAccuracy || {}) },
+    perfHud: { ...DEFAULT_CONFIG.extras.perfHud, ...(exConf?.perfHud || {}) },
     rpcRich: { ...DEFAULT_CONFIG.extras.rpcRich, ...(exConf?.rpcRich || {}) },
     instantReplay: { ...DEFAULT_CONFIG.extras.instantReplay, ...(exConf?.instantReplay || {}) },
     sessionStats: { ...DEFAULT_CONFIG.extras.sessionStats, ...(exConf?.sessionStats || {}) },
@@ -1848,7 +1858,7 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     options: [
       { value: 'cross', label: 'Cross' }, { value: 'plus', label: 'Plus' }, { value: 'circle', label: 'Circle' },
       { value: 'hCircle', label: 'Hollow circle' }, { value: 'square', label: 'Square' }, { value: 'hSquare', label: 'Hollow square' },
-      { value: 'symbol', label: 'Symbol / text' },
+      { value: 'symbol', label: 'Symbol / text' }, { value: 'image', label: 'Image' },
     ],
     value: ex.crosshair.shape, instant: true,
     onChange: (v) => { ex.crosshair.shape = v as ExtrasConfig['crosshair']['shape']; xhApply(); },
@@ -1858,6 +1868,37 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     value: ex.crosshair.symbol, placeholder: '\u2605', instant: true,
     onChange: (v) => { if (v) { ex.crosshair.symbol = Array.from(v).slice(0, 4).join(''); xhApply(); } },
   }).row);
+  const xhImg = createButtonRow({
+    label: 'Crosshair Image',
+    desc: 'A picture for the Image shape (PNG, JPEG, WebP or GIF, up to 150 KB). It is saved inside your settings, so it keeps working even if the place you got it from goes offline.',
+    buttons: [],
+  });
+  const xhFile = document.createElement('input');
+  xhFile.type = 'file';
+  xhFile.accept = 'image/png,image/jpeg,image/webp,image/gif';
+  xhFile.style.display = 'none';
+  xhFile.addEventListener('change', () => {
+    const f = xhFile.files?.[0];
+    xhFile.value = '';
+    if (!f) return;
+    if (f.size > CROSSHAIR_IMAGE_MAX_BYTES) { showToast('That image is over 150 KB, pick a smaller one'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = typeof reader.result === 'string' ? cleanCrosshairImage(reader.result) : '';
+      if (!url) { showToast('That file is not a PNG, JPEG, WebP or GIF image'); return; }
+      ex.crosshair.image = url;
+      ex.crosshair.shape = 'image';
+      xhApply();
+      showToast('Crosshair image saved');
+    };
+    reader.readAsDataURL(f);
+  });
+  xhImg.control.append(
+    xhFile,
+    makeButton({ label: 'Choose Image', title: 'Pick an image file', onClick: () => xhFile.click() }),
+    makeButton({ label: 'Remove', title: 'Forget the saved image', onClick: () => { ex.crosshair.image = ''; xhApply(); showToast('Crosshair image removed'); } }),
+  );
+  xhAdd(xhImg.row);
   const xhNum = (label: string, desc: string, key: 'size' | 'thick' | 'gap' | 'dot' | 'outWidth', min: number, max: number): void => {
     xhAdd(createNumberRow({
       label, desc, min, max, step: 1, value: ex.crosshair[key], instant: true,
@@ -1903,6 +1944,55 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     onChange: (v) => { ex.motionBlur.quality = v as ExtrasConfig['motionBlur']['quality']; mbApply(); },
   }));
   mbSync();
+  const colorList = (label: string, desc: string, field: 'friends' | 'clans', placeholder: string): void => {
+    const { row, control } = createRowShell(label, escapeHtml(desc), { refreshOnly: true, block: true });
+    const area = document.createElement('textarea');
+    area.className = 'krh-input';
+    area.rows = 4;
+    area.spellcheck = false;
+    area.placeholder = placeholder;
+    area.value = ex.nameColors[field];
+    area.addEventListener('change', () => { ex.nameColors[field] = area.value.slice(0, 4000); save(); onSettingChanged('refresh'); });
+    control.appendChild(area);
+    vis.appendChild(row);
+  };
+  colorList('Friend Name Colours', 'Names to colour on the leaderboards, end-of-match tables and player list. One per line: the name, a colour, and optionally "bold". Adapted from NM/NZ Client.', 'friends', 'PlayerName #48eaff bold');
+  colorList('Clan Name Colours', 'Clan tags to colour (the tag only, without brackets). Same format. A friend\'s own colour wins for their name.', 'clans', 'TAG #e4552e');
+  vis.appendChild(createToggleRow({
+    label: 'Live Accuracy',
+    desc: 'Shows your accuracy for the match and for the current life under the top-centre HUD (or at the bottom). It is counted from your ammo and the hit sound, so it is an estimate, not Krunker\'s official figure. Adapted from NM/NZ Client.',
+    checked: ex.liveAccuracy.enabled, instant: true,
+    onChange: (v) => { ex.liveAccuracy.enabled = v; save(); setLiveAccuracy(v, ex.liveAccuracy.placement); },
+  }));
+  vis.appendChild(createSelectRow({
+    label: 'Live Accuracy Position', desc: 'Where the accuracy readout sits',
+    options: [{ value: 'top', label: 'Top centre' }, { value: 'bottom', label: 'Bottom centre' }],
+    value: ex.liveAccuracy.placement, instant: true,
+    onChange: (v) => { ex.liveAccuracy.placement = v === 'bottom' ? 'bottom' : 'top'; save(); setLiveAccuracy(ex.liveAccuracy.enabled, ex.liveAccuracy.placement); },
+  }));
+  const phApply = (): void => { save(); setPerfHud(ex.perfHud); };
+  vis.appendChild(createTextRow({
+    label: 'Frame-Time HUD Key', desc: 'Key that shows or hides an FPS counter with 1% and 0.1% lows (a key name such as F10; empty = off). Adapted from NM/NZ Client.',
+    value: ex.perfHud.key, placeholder: 'F10', instant: true,
+    onChange: (v) => { ex.perfHud.key = v.trim(); phApply(); },
+  }).row);
+  vis.appendChild(createSelectRow({
+    label: 'Frame-Time HUD Corner', desc: 'Where the counter sits',
+    options: [{ value: 'top-left', label: 'Top left' }, { value: 'top-right', label: 'Top right' }, { value: 'bottom-left', label: 'Bottom left' }, { value: 'bottom-right', label: 'Bottom right' }],
+    value: ex.perfHud.corner, instant: true,
+    onChange: (v) => { ex.perfHud.corner = v as ExtrasConfig['perfHud']['corner']; phApply(); },
+  }));
+  vis.appendChild(createSelectRow({
+    label: 'Frame-Time HUD Detail', desc: 'FPS only, or FPS with frame time and the lows',
+    options: [{ value: 'full', label: 'Full' }, { value: 'fps', label: 'FPS only' }],
+    value: ex.perfHud.detail, instant: true,
+    onChange: (v) => { ex.perfHud.detail = v === 'fps' ? 'fps' : 'full'; phApply(); },
+  }));
+  vis.appendChild(createToggleRow({
+    label: 'Frame-Time HUD On At Start', desc: 'Show the counter as soon as the game loads (takes effect the next launch)',
+    checked: ex.perfHud.startOn, refreshOnly: true,
+    onChange: (v) => { ex.perfHud.startOn = v; phApply(); },
+  }));
   vis.appendChild(createToggleRow({
     label: 'Quick Class Picker',
     desc: 'Shows the class icons above the play buttons, so one click switches class. Idea and styling from WOK Client.',
@@ -1943,10 +2033,16 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     onChange: (v) => { ex.accountEndMessage = v; save(); void setAccountEndMessage(v, true); },
   }));
   conv.appendChild(createToggleRow({
-    label: 'Skins Per Account',
-    desc: 'Remembers the skins you have equipped for each account and puts them back when you switch accounts, so you do not have to equip them again. The page reloads once when skins are put back.',
-    checked: ex.accountSkins, instant: true,
-    onChange: (v) => { ex.accountSkins = v; save(); void setAccountSkins(v, true); },
+    label: 'Tap Shift To Snip',
+    desc: 'In menus, a quick tap of Shift starts the area snip, like Windows Snipping Tool: drag a box and the picture is copied. Does nothing during a match, where Shift is sprint and crouch. The Screenshot Area hotkey still works everywhere.',
+    checked: ex.shiftSnip, instant: true,
+    onChange: (v) => { ex.shiftSnip = v; save(); setShiftSnip(v); },
+  }));
+  conv.appendChild(createToggleRow({
+    label: 'Fast Escape',
+    desc: 'Pressing Escape to leave a match normally makes clicking back in wait about two seconds (a Chromium rule). With this on, the client lets go of the mouse itself, so you can click straight back in. Escape is only taken while the game holds the mouse and its window is focused. Not available where the system blocks global shortcuts (some Linux Wayland setups).',
+    checked: ex.escapeFastRelease, instant: true,
+    onChange: (v) => { ex.escapeFastRelease = v; save(); },
   }));
 
   // ── Window and scripts ──
@@ -1989,6 +2085,55 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
   rpcField('Button 2 Label', 'label2', 'My Discord');
   rpcField('Button 2 Link', 'url2', 'https://discord.gg/…');
   syncRpc();
+
+  // ── Sensitivity and FOV presets (adapted from NM/NZ Client) ──
+  const presetGroup = createGroup(body, 'Sensitivity & FOV Presets');
+  for (const scope of PRESET_SCOPES) {
+    const sel = createSelect([{ value: '', label: '(none saved)' }], '');
+    const refresh = (keep?: string): void => {
+      sel.innerHTML = '';
+      const list = ex.settingPresets.filter((p) => p.scope === scope.id);
+      const items = list.length ? list.map((p) => ({ value: p.id, label: p.name + ' (' + summarisePreset(scope, p.values) + ')' })) : [{ value: '', label: '(none saved)' }];
+      for (const o of items) { const op = document.createElement('option'); op.value = o.value; op.textContent = o.label; sel.appendChild(op); }
+      if (keep && list.some((p) => p.id === keep)) sel.value = keep;
+    };
+    refresh();
+    const nameRow = createTextRow({
+      label: scope.label + ' Preset Name', desc: 'Name for the ' + scope.label.toLowerCase() + ' preset you save below (for example Sniper). Saving with an existing name replaces it.',
+      value: '', placeholder: scope.label === 'FOV' ? 'Wide' : 'Sniper', instant: true, onChange: () => { /* read on Save */ },
+    });
+    presetGroup.appendChild(nameRow.row);
+    const row = createButtonRow({ label: scope.label + ' Presets', desc: scope.hint, buttons: [] });
+    row.control.append(
+      sel,
+      makeButton({ label: 'Save Current', title: 'Save the current in-game ' + scope.label.toLowerCase() + ' settings', onClick: () => {
+        const name = presetName(nameRow.input.value);
+        if (!name) { showToast('Type a preset name first'); return; }
+        const values = capturePreset(scope, gameSetting, storedGameSettingIds());
+        const existing = ex.settingPresets.find((p) => p.scope === scope.id && p.name.toLowerCase() === name.toLowerCase());
+        if (!existing && ex.settingPresets.filter((p) => p.scope === scope.id).length >= PRESET_LIMIT) { showToast('Too many presets saved, delete one first'); return; }
+        const id = existing ? existing.id : scope.id + '-' + Date.now().toString(36);
+        const next = { id, name, scope: scope.id, values };
+        if (existing) ex.settingPresets[ex.settingPresets.indexOf(existing)] = next; else ex.settingPresets.push(next);
+        save(); refresh(id); showToast('Preset saved: ' + name);
+      } }),
+      makeButton({ label: 'Apply', title: 'Switch the game to the selected preset', onClick: () => {
+        const p = ex.settingPresets.find((x) => x.id === sel.value);
+        if (!p) { showToast('Pick a preset first'); return; }
+        const writes = planPreset(scope, p.values, gameSetting, storedGameSettingIds());
+        if (writes.length === 0) { showToast('Already using ' + p.name); return; }
+        showToast(setGameSettings(writes) ? 'Preset applied: ' + p.name : 'Krunker is not ready for that yet');
+      } }),
+      makeButton({ label: 'Delete', title: 'Delete the selected preset', onClick: () => {
+        const i = ex.settingPresets.findIndex((x) => x.id === sel.value);
+        if (i < 0) return;
+        const name = ex.settingPresets[i].name;
+        ex.settingPresets.splice(i, 1);
+        save(); refresh(); showToast('Preset deleted: ' + name);
+      } }),
+    );
+    presetGroup.appendChild(row.row);
+  }
 
   // ── Settings profiles ──
   const prof = createGroup(body, 'Settings Profiles');

@@ -103,7 +103,7 @@ function lsGet(key: string): string {
 }
 
 /** Poll until check() is true (checked right away, then every stepMs). Resolves false on timeout. */
-async function waitFor(check: () => boolean, timeoutMs: number, stepMs = 250): Promise<boolean> {
+async function waitFor(check: () => boolean, timeoutMs: number, stepMs = 100): Promise<boolean> {
   const end = Date.now() + timeoutMs;
   for (;;) {
     if (check()) return true;
@@ -159,7 +159,7 @@ async function altSwitch(index: number): Promise<void> {
     _console.log(`[KRH-Alt] Login confirmed (popup: ${sessionTakenOver()}, name matches target: ${onTarget()}, header signed in: ${isSignedIn()}), refreshing`);
     // The popup can arrive a moment before the page has stored the new login: let that finish before reloading
     await waitFor(onTarget, 3000);
-    await new Promise<void>((r) => setTimeout(r, 400));
+    await new Promise<void>((r) => setTimeout(r, 120));
     // No avatar is saved here: the header is often still the old account's until the reload. It is saved
     // when the account list is opened after the reload (linkCurrentAccount), when the header is correct.
     location.reload();

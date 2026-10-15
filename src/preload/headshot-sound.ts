@@ -67,5 +67,12 @@ export function installSoundHook(): void {
 function onFrame(event: string): void {
   if (event !== '6' || mode !== 'kill') return;
   const S = (window as any).SOUND;
-  if (S && typeof S.play === 'function') S.play(HS, 1, false);
+  if (S && typeof S.play === 'function') {
+    replaying = true; // lets the live accuracy readout tell this replay from a real hit
+    try { S.play(HS, 1, false); } finally { replaying = false; }
+  }
 }
+
+let replaying = false;
+/** True while KRH itself replays the headshot ding on a kill (not a new shot landing). */
+export function isHeadshotReplay(): boolean { return replaying; }

@@ -174,16 +174,24 @@ export function initQuickPlay(key: string): void {
 // Auto find: when Krunker shows its update / disconnect screen, start a matchmaker search by itself
 // (at most once every 8 seconds). Off by default (Settings > Extras).
 export function initAutoRejoin(): void {
+  // After a disconnect the connection can take a moment to come back, so a search that fails (or finds nothing)
+  // is tried again a couple of seconds later instead of after the old 8 s wait, up to a few times in a row.
+  const MAX_TRIES = 6;
+  let tries = 0;
+  let busy = false;
   setInterval(() => {
     if (document.pointerLockElement) return;
     const screen = document.getElementById('instructionsUpdate');
-    if (!screen || screen.offsetHeight === 0) return;
+    if (!screen || screen.offsetHeight === 0) { tries = 0; return; }
+    if (busy || tries >= MAX_TRIES) return;
     const last = Number(sessionStorage.getItem('krh_auto_rejoin') || 0);
-    if (Date.now() - last < 8000) return;
+    if (Date.now() - last < 2500) return;
+    busy = true;
+    tries++;
     sessionStorage.setItem('krh_auto_rejoin', String(Date.now()));
-    void ipcRenderer.invoke('get-all-config', ['matchmaker', 'keybinds']).then((all: any) => {
-      fetchGame({ ...all.matchmaker, cancelKey: all.keybinds?.matchmakerCancel } as MatchmakerConfig, _console)
-        .catch((err) => _console.error('[KRH] Auto find error:', err));
-    });
-  }, 2000);
+    void ipcRenderer.invoke('get-all-config', ['matchmaker', 'keybinds']).then((all: any) =>
+      fetchGame({ ...all.matchmaker, cancelKey: all.keybinds?.matchmakerCancel } as MatchmakerConfig, _console),
+    ).catch((err) => _console.error('[KRH] Auto find error:', err))
+      .finally(() => { busy = false; sessionStorage.setItem('krh_auto_rejoin', String(Date.now())); });
+  }, 1000);
 }

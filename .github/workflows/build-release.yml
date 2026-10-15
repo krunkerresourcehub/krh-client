@@ -88,6 +88,12 @@ jobs:
       - name: Build Linux distributables
         run: npx electron-builder --linux -c.electronDist=node_modules/electron/dist-linux --publish never
 
+      # Update without the installer: app.asar plus a small manifest (lite.json), see src/shared/lite-update.ts.
+      # Fails the build if app.asar or the Electron stamp is missing, rather than publishing a manifest that
+      # would send every client back to the installer.
+      - name: Build lite update files
+        run: node scripts/lite-release.mjs
+
       - name: Report build sizes
         run: |
           echo "=== Build output sizes ==="
@@ -101,6 +107,8 @@ jobs:
             out/*.exe
             out/*.AppImage
             out/*.deb
+            out/lite/lite.json
+            out/lite/*.asar
           if-no-files-found: error
 
   build-mac:
@@ -228,6 +236,7 @@ jobs:
             out/*.deb
             out/*.dmg
             out/*-Portable.zip
+            out/lite/*.asar
 
       - name: Generate release notes
         run: |
@@ -251,7 +260,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ASSETS=()
-          for file in out/*.exe out/*.AppImage out/*.deb out/*.dmg out/*-Portable.zip; do
+          for file in out/*.exe out/*.AppImage out/*.deb out/*.dmg out/*-Portable.zip out/lite/lite.json out/lite/*.asar; do
             [ -f "$file" ] || continue
             ASSETS+=("$file")
           done

@@ -10,6 +10,68 @@
     !define MUI_WELCOMEPAGE_TEXT "Open-source Krunker client with uncapped FPS, resource swapper, matchmaker filters and userscripts.$\r$\n$\r$\nClick Next to install."
     !insertmacro MUI_PAGE_WELCOME
   !macroend
+
+  # The desktop and Start menu shortcuts are created here (electron-builder's own ones are switched off with
+  # createDesktopShortcut / createStartMenuShortcut: false) so the user can choose. Silent installs keep the old
+  # behaviour: both created. A variable stays empty until the page was shown, which counts as "yes".
+  Var desktopShortcutBox
+  Var createDesktopShortcut
+  Var startMenuShortcutBox
+  Var createStartMenuShortcut
+
+  !macro customPageAfterChangeDir
+    Page custom desktopShortcutPageCreate desktopShortcutPageLeave
+
+    Function desktopShortcutPageCreate
+      # an update keeps the shortcuts the user already has
+      ${if} ${isUpdated}
+        Abort
+      ${endIf}
+      ${if} ${Silent}
+        Abort
+      ${endIf}
+      !insertmacro MUI_HEADER_TEXT "Shortcuts" "Choose which shortcuts ${PRODUCT_NAME} creates"
+      nsDialogs::Create 1018
+      Pop $0
+      ${NSD_CreateLabel} 0 0 100% 24u "Choose which shortcuts ${PRODUCT_NAME} creates."
+      Pop $0
+      ${NSD_CreateCheckbox} 0 32u 100% 12u "Create a desktop shortcut"
+      Pop $desktopShortcutBox
+      ${if} $createDesktopShortcut == "0"
+        ${NSD_Uncheck} $desktopShortcutBox
+      ${else}
+        ${NSD_Check} $desktopShortcutBox
+      ${endIf}
+      ${NSD_CreateCheckbox} 0 50u 100% 12u "Add ${PRODUCT_NAME} to the Start menu (right-click it there to pin it to Start)"
+      Pop $startMenuShortcutBox
+      ${if} $createStartMenuShortcut == "0"
+        ${NSD_Uncheck} $startMenuShortcutBox
+      ${else}
+        ${NSD_Check} $startMenuShortcutBox
+      ${endIf}
+      nsDialogs::Show
+    FunctionEnd
+
+    Function desktopShortcutPageLeave
+      ${NSD_GetState} $desktopShortcutBox $createDesktopShortcut
+      ${NSD_GetState} $startMenuShortcutBox $createStartMenuShortcut
+    FunctionEnd
+  !macroend
+
+  !macro customInstall
+    ${ifNot} ${isUpdated}
+    ${andIf} $createDesktopShortcut != "0"
+      CreateShortCut "$newDesktopLink" "$appExe" "" "$appExe" 0 "" "" "${APP_DESCRIPTION}"
+      ClearErrors
+      WinShell::SetLnkAUMI "$newDesktopLink" "${APP_ID}"
+    ${endIf}
+    ${ifNot} ${isUpdated}
+    ${andIf} $createStartMenuShortcut != "0"
+      CreateShortCut "$newStartMenuLink" "$appExe" "" "$appExe" 0 "" "" "${APP_DESCRIPTION}"
+      ClearErrors
+      WinShell::SetLnkAUMI "$newStartMenuLink" "${APP_ID}"
+    ${endIf}
+  !macroend
 !endif
 
 !ifdef BUILD_UNINSTALLER
@@ -43,6 +105,13 @@
   !macro customUnInstall
     ${ifNot} ${isUpdated}
       DeleteRegKey HKCU "Software\Classes\krh"
+    ${endIf}
+    # both shortcuts are made by customInstall, so electron-builder's uninstaller does not know them
+    ${ifNot} ${isKeepShortcuts}
+      WinShell::UninstShortcut "$oldDesktopLink"
+      Delete "$oldDesktopLink"
+      WinShell::UninstShortcut "$oldStartMenuLink"
+      Delete "$oldStartMenuLink"
     ${endIf}
     ${if} $unDeleteSettings == 1
     ${orIf} $unDeleteContent == 1

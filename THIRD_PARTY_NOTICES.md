@@ -64,3 +64,28 @@ Used for:
 
 No part of Kute's website, API or native components is used.
 
+## NM/NZ Client (GPL-3.0-or-later, code adapted)
+
+- Source: https://github.com/nmallik1029/nm-nez-client
+- License: GPL-3.0-or-later (KRH Client is GPL-3.0 as well, full text in `LICENSE`)
+
+Code adapted for KRH Client (each of these files carries a header naming its NM/NZ source file and what was changed):
+
+- `src/shared/lite-update.ts`, `src/main/lite-swap.ts`, `src/main/lite-update.ts`, `scripts/lite-release.mjs`: updating
+  without the installer (only `app.asar` plus a SHA-512 checked manifest). Changes: `app.asar` only, 4-part versions,
+  KRH release repository and runtime pin, retry of stalled downloads.
+- `src/shared/escape-lock.ts`, `src/main/escape-lock.ts`, `src/preload/escape-lock.ts`: Escape without the two second
+  wait before the mouse can be captured again. Changes: a settings switch, KRH IPC channel names.
+- `src/shared/accuracy.ts`, `src/preload/game-sound.ts`, `src/preload/hud-counter.ts`, `src/preload/live-accuracy.ts`:
+  live match and life accuracy. Changes: KRH styling, death detection through `#uiBase`, KRH headshot replays not counted.
+- `src/preload/frame-stats.ts`, `src/preload/perf-hud.ts`: frame-time HUD (FPS and 1% / 0.1% lows).
+- `src/shared/presets.ts`, `src/preload/game-settings.ts`: sensitivity and FOV presets. Changes: setting ids inlined,
+  presets are managed from Settings > Extras.
+- `src/preload/name-colors.ts`: friend and clan name colours. Changes: the lists are edited in Settings instead of
+  being part of the source.
+- The Linux launcher logic in `scripts/afterPack-linux.js` (root, setuid sandbox, X server check) and the extra hosts in
+  the request blocklist.
+
+Ideas only (written for KRH Client): the crosshair picture kept as bytes inside the settings.
+Not taken: the Fortnite and Valorant sound packs (ripped from copyrighted games) and the `nmnez://` tournament links.
+

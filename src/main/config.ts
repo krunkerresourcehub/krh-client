@@ -37,3 +37,9 @@ try {
     config.set('rpcRichDefaults', RPC_RICH_DEFAULTS);
   }
 } catch { /* a broken config file must never stop the client from starting */ }
+
+// Skins Per Account was removed (Krunker keeps skins on its own servers, per account): drop what it had saved.
+try {
+  const c: any = config;
+  if (c.has('accountSkinSets')) c.delete('accountSkinSets');
+} catch { /* never stop the client from starting */ }

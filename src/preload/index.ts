@@ -43,7 +43,11 @@ import { setMotionBlur } from './motion-blur';
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
-import { setAccountSkins } from './account-skins';
+import { setShiftSnip } from './shift-snip';
+import { installEscapeLockRelease } from './escape-lock';
+import { setLiveAccuracy } from './live-accuracy';
+import { setPerfHud } from './perf-hud';
+import { initNameColors } from './name-colors';
 import { setHiddenMenu } from './menu-hider';
 import { initSuspectPing } from './kpd-call';
 
@@ -55,6 +59,9 @@ installGameSocketTap();
 
 // ── Sky override: wrap window.fetch before the map config request goes out ──
 installSkyHook();
+
+// ── Fast Escape: report pointer-lock state to main so Escape can be taken there (game page only) ──
+if (location.origin === 'https://krunker.io') installEscapeLockRelease();
 
 // preventDefault on wheel events avoids Chromium 100+ pacing frame production to vsync during scroll gestures (FPS would tank from 1000+ to refresh rate). Skip when target is inside a real scrollable element so menus still scroll.
 window.addEventListener('wheel', (e: WheelEvent) => {
@@ -342,7 +349,10 @@ ipcRenderer.on('main_did-finish-load', () => {
         setChatDraft(ex.chatDraft);
         setRankedAlert(ex.rankedAlert);
         if (ex.accountEndMessage) void setAccountEndMessage(true);
-        if (ex.accountSkins) void setAccountSkins(true);
+        setShiftSnip(ex.shiftSnip !== false);
+        if (ex.liveAccuracy?.enabled) setLiveAccuracy(true, ex.liveAccuracy.placement);
+        if (ex.perfHud) setPerfHud(ex.perfHud);
+        if (ex.nameColors) initNameColors(ex.nameColors);
         // Version 1.1: streamer mode, session stats, instant replay key and the overlay layout editor
         initStreamerMode(ex.streamerMode, ex.streamerKey);
         initSessionTracker({

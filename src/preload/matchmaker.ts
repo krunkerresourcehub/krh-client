@@ -75,13 +75,13 @@ function createMapIcon(mapName: string, className: string): HTMLImageElement | n
 
 // ── Animation constants ──
 const MAX_FEED_ENTRIES = 4;
-const MAX_ANIMATION_MS = 1100;
+const MAX_ANIMATION_MS = 600;
 const BASE_TICK_MS = 80;
 const MIN_TICK_MS = 20;
-const POST_SCAN_PAUSE_MS = 180;
-const FOUND_HOLD_MS = 1200;
-const NOT_FOUND_HOLD_MS = 1100;
-const FETCH_TIMEOUT_MS = 10000;
+const POST_SCAN_PAUSE_MS = 60;
+const FOUND_HOLD_MS = 450;
+const NOT_FOUND_HOLD_MS = 800;
+const FETCH_TIMEOUT_MS = 6000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 

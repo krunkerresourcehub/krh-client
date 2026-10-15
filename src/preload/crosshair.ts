@@ -3,12 +3,13 @@
 // written from scratch. Unlike a per-frame overlay it is drawn ONCE (and again only when a setting or the
 // window size changes) on a static canvas that is shown while you aim, so it costs nothing during play.
 
-export type CrosshairShape = 'cross' | 'plus' | 'circle' | 'hCircle' | 'square' | 'hSquare' | 'symbol';
+export type CrosshairShape = 'cross' | 'plus' | 'circle' | 'hCircle' | 'square' | 'hSquare' | 'symbol' | 'image';
 
 export interface CrosshairConfig {
   enabled: boolean;
   shape: CrosshairShape;
   symbol: string;
+  image: string;
   color: string;
   outline: string;
   size: number;
@@ -24,6 +25,19 @@ const STYLE_ID = 'krhCrosshairHide';
 let cfg: CrosshairConfig | null = null;
 let canvas: HTMLCanvasElement | null = null;
 let started = false;
+// The picture for the Image shape, decoded once per source (it is a data: URL, so there is nothing to fetch).
+let imageEl: HTMLImageElement | null = null;
+let imageSrc = '';
+function ensureImage(src: string): HTMLImageElement | null {
+  if (!src) return null;
+  if (imageSrc !== src) {
+    imageSrc = src;
+    imageEl = new Image();
+    imageEl.onload = () => draw();
+    imageEl.src = src;
+  }
+  return imageEl && imageEl.complete && imageEl.naturalWidth > 0 ? imageEl : null;
+}
 
 function draw(): void {
   if (!canvas || !cfg) return;
@@ -37,6 +51,17 @@ function draw(): void {
   ctx.translate(Math.round(w / 2), Math.round(h / 2));
   const { size: S, thick: T, gap: G, dot: D, outWidth: O } = cfg;
   const rect = (x: number, y: number, rw: number, rh: number, c: string): void => { ctx.fillStyle = c; ctx.fillRect(x, y, rw, rh); };
+
+  if (cfg.shape === 'image') {
+    // The picture as it is: no colour or outline, scaled so its longer side is twice the Size setting.
+    const img = ensureImage(cfg.image);
+    if (img) {
+      const scale = (S * 2) / Math.max(img.naturalWidth, img.naturalHeight);
+      ctx.drawImage(img, -img.naturalWidth * scale / 2, -img.naturalHeight * scale / 2, img.naturalWidth * scale, img.naturalHeight * scale);
+    }
+    ctx.restore();
+    return;
+  }
 
   // Pass 1 draws the outline (slightly bigger shapes in the outline colour), pass 2 the real shapes.
   for (const pass of [0, 1]) {

@@ -25,11 +25,30 @@ for arg in "$@"; do
   case "$arg" in --type=*) exec "$SELF" "$@" ;; esac
 done
 
-if unshare -U --map-root-user /bin/true >/dev/null 2>&1; then
+# Root first: Chromium refuses to run as root with any sandbox. Then unprivileged user namespaces (what Chromium
+# tries first). Then a setuid-root chrome-sandbox, if the system has set one up. With none of them there is nothing
+# to sandbox with and Chromium would refuse to start, so --no-sandbox is the last resort, said out loud.
+# (Ideas from NM/NZ Client's launcher, GPL-3.0-or-later.)
+HERE=$(dirname "$SELF")
+if [ "$(id -u)" = 0 ]; then
+  echo "[KRH] Running as root, which Chromium only allows with --no-sandbox. Starting with it." >&2
+  SANDBOX=--no-sandbox
+elif unshare -U --map-root-user /bin/true >/dev/null 2>&1; then
   SANDBOX=--disable-setuid-sandbox
+elif [ -u "$HERE/chrome-sandbox" ] && [ "$(stat -c %u "$HERE/chrome-sandbox" 2>/dev/null)" = 0 ]; then
+  SANDBOX=
 else
   echo "[KRH] userns blocked; --no-sandbox fallback. To restore sandboxing: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0" >&2
   SANDBOX=--no-sandbox
+fi
+
+# XWayland rather than native Wayland (pointer lock can let the cursor escape on multi-monitor setups). Only when
+# there is an X server: with none, native Wayland has to be asked for by name, or Chromium tries X11 and exits.
+DISPLAY_FLAG=
+if [ -n "$DISPLAY" ]; then
+  DISPLAY_FLAG=--ozone-platform=x11
+elif [ -n "$WAYLAND_DISPLAY" ]; then
+  DISPLAY_FLAG=--ozone-platform=wayland
 fi
 
 # NVIDIA driver knobs — disable driver-level vsync (Chromium's --disable-gpu-vsync
@@ -49,7 +68,7 @@ if [ -z "$KRH_NO_NVIDIA_ENV" ] && [ -e /proc/driver/nvidia/version ]; then
   export __GLX_VENDOR_LIBRARY_NAME=nvidia
 fi
 
-exec "$SELF" --ozone-platform=x11 "$SANDBOX" "$@"
+exec "$SELF" $DISPLAY_FLAG $SANDBOX "$@"
 `;
 
 exports.default = async ({ electronPlatformName, appOutDir }) => {
@@ -60,5 +79,5 @@ exports.default = async ({ electronPlatformName, appOutDir }) => {
     if (fs.existsSync(renamed)) fs.unlinkSync(renamed);
     fs.renameSync(orig, renamed);
     fs.writeFileSync(orig, WRAPPER, { mode: 0o755 });
-    console.log('[afterPack-linux] wrapped binary (--ozone-platform=x11 + sandbox handling)');
+    console.log('[afterPack-linux] wrapped binary (display backend + sandbox handling)');
 };

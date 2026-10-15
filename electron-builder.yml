@@ -4,7 +4,7 @@ productName: KRH Client
 # real 4-part release version is injected into the packaged app here. app.getVersion(), the
 # installer filenames and the Windows file/product version all come from this value.
 extraMetadata:
-  version: 1.2.1.1
+  version: 1.3.0.0
 directories:
   output: out
   buildResources: build
@@ -58,8 +58,8 @@ nsis:
   oneClick: false
   include: build/installer.nsh
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
+  createDesktopShortcut: false   # build/installer.nsh adds a "Create a desktop shortcut" checkbox and creates it
+  createStartMenuShortcut: false   # same: build/installer.nsh adds the checkbox and creates it
   shortcutName: KRH Client
   artifactName: "${productName}-${version}-Setup.${ext}"
 
@@ -82,6 +82,9 @@ linux:
       Categories: Game;ActionGame;
       Keywords: krunker;fps;game;
       StartupWMClass: krh-client
+      # Hybrid-graphics laptops: GNOME and KDE (switcheroo-control) start it on the dedicated GPU. Only reaches
+      # launches from the menu entry; no effect on a machine with one GPU.
+      PrefersNonDefaultGPU: 'true'
 
 # macOS (arm64): signed with the Developer ID Application cert from the local
 # keychain (electron-builder auto-discovery) + hardened runtime, as notarization

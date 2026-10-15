@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, View, Menu, clipboard, ipcMain } from 'electron';
+import { BrowserWindow, WebContentsView, View, Menu, clipboard, ipcMain, dialog } from 'electron';
 import { TAB_BAR_DATA_URL } from './tab-bar-html';
 import { blockOffsiteRedirects, isGameURL, isKrunkerPage, safeOpenExternal } from './links';
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
@@ -303,6 +303,21 @@ export class TabManager {
                 if (linked) electronLog.log('[KRH] Scripting window opened by the editor (window.opener is set)');
                 else electronLog.warn('[KRH] Scripting window has no window.opener: the editor cannot send it the map');
             }).catch(() => {});
+        });
+        // The script editor asks to stay open while it saves (beforeunload). Electron then keeps the window open with
+        // no message at all, so closing it looked stuck on "saving". Ask like a browser does instead.
+        cwc.on('will-prevent-unload', (event) => {
+            if (child.isDestroyed()) return;
+            const choice = dialog.showMessageBoxSync(child, {
+                type: 'question',
+                buttons: ['Close anyway', 'Keep it open'],
+                defaultId: 1,
+                cancelId: 1,
+                title: 'Close the scripting window?',
+                message: 'This window is still saving or has unsaved changes.',
+                detail: 'If you close it now, your latest changes may be lost.',
+            });
+            if (choice === 0) event.preventDefault(); // preventDefault here means: let the page unload
         });
         cwc.setWindowOpenHandler(({ url: linkUrl }) => {
             if (isGameURL(linkUrl)) this.launchGame(linkUrl);

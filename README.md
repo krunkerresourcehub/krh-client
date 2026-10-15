@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-1.2.1.1-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-1.2.1.1-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-1.2.1.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-1.2.1.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-1.3.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-1.3.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-1.3.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-1.3.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -257,6 +257,7 @@ Found a bug or have an idea? [Open an issue](https://github.com/krunkerresourceh
 - [Water Client](https://github.com/ghostypostie/Water) by ghostypostie: the ideas of chat filters, Quick Play grid, one-click mod downloader, settings profiles, display mode, userscript hot reload, hide-menu options, Discord buttons and readable logs, all written from scratch for KRH Client
 - [LaF Client](https://github.com/LaFClient/LaF) by Hiro527 and sh (MIT license): the idea of the `!link` command and the system info button (both written from scratch for KRH Client), and the five built-in CSS themes, made by NamekujiLSDs, which are included unmodified with their original headers. The MIT license text is in [`assets/laf-themes/LICENSE-LaF.txt`](assets/laf-themes/LICENSE-LaF.txt)
 - [WOK Client](https://github.com/Alx8g/wok-client) by Alx8g (GPL-3.0): the motion blur (code adapted for KRH Client) and the quick class picker (idea and styling)
+- [NM/NZ Client](https://github.com/nmallik1029/nm-nez-client) by nmallik1029 (GPL-3.0-or-later): updating without the installer, fast Escape, live accuracy, the frame-time HUD, sensitivity and FOV presets and friend / clan name colours (code adapted for KRH Client), plus Linux launcher and blocklist improvements
 - [Kute](https://github.com/NullDev/Kute) by NullDev (GPL-3.0): the classic menu styling, friend chat drafts and per-account end message (adapted for KRH Client), the ranked match alert and video skin blocking (ideas, written for KRH Client), and the Class Roulette and Quick Sell by Rarity example userscripts (included unmodified, MIT headers kept). No Kute website or API is used
 - [Crankshaft](https://github.com/KraXen72/crankshaft) by KraXen72: matchmaker and keystrokes overlay
 - [Glorp](https://github.com/slavcp/glorp) by slav: external ranked queue, plus several features reworked for KRH Client (CPU throttling, cleaner menu, selectable chat, custom blocklist and flags)

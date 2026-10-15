@@ -16,6 +16,10 @@ import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
 import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
+import { installEscapeLock, handleEscapeInput, setEscapeFastRelease, releaseEscapeShortcut } from './escape-lock';
+import { normalisePresets } from '../shared/presets';
+import { cleanCrosshairImage } from '../shared/crosshair-image';
+import { updateWithoutInstaller, applyLiteAndRelaunch, cleanupLite } from './lite-update';
 import { createHubWindow, openSiteWindow, showWindow, setHubSuspended, authDeepLinkToHubUrl } from './hub-window';
 import { loadBlocklist, userListsDir } from './user-lists';
 import { createSplash, splashStatus, splashPrompt, splashAlive, splashElapsed, getSplash, onSplashUserClosed, closeSplash } from './splash';
@@ -130,6 +134,49 @@ function osPing(host: string): Promise<number> {
       else resolve(-1);
     });
   });
+}
+
+// ── Region pings for the matchmaker ──
+// The matchmaker waits for these before it can sort lobbies, so they must never be the slow part of a search:
+//  - an old answer is returned at once while a fresh one is measured in the background (regions move by a few ms,
+//    not by the seconds a search used to lose),
+//  - one ping per region, no retry (a region that blocks ICMP used to cost a second try every time, ~3 s),
+//  - the whole round is capped, and a region that did not answer keeps its last known value.
+let pingRefresh: Promise<Record<string, number>> | null = null;
+const PING_ROUND_CAP_MS = 2500;
+
+function refreshRegionPings(): Promise<Record<string, number>> {
+  if (pingRefresh) return pingRefresh;
+  pingRefresh = (async () => {
+    try {
+      const data = await new Promise<string>((resolve, reject) => {
+        const req = httpsGet('https://matchmaker.krunker.io/ping-list?hostname=krunker.io', (res) => {
+          let body = '';
+          res.on('data', (chunk: string) => { body += chunk; });
+          res.on('end', () => resolve(body));
+          res.on('error', reject);
+        });
+        req.setTimeout(3000, () => req.destroy(new Error('ping-list timed out')));
+        req.on('error', reject);
+      });
+      const serverIPs: Record<string, string> = JSON.parse(data);
+      const results: Record<string, number> = {};
+      const all = Promise.allSettled(Object.entries(serverIPs).map(async ([server, ip]) => {
+        const latency = await osPing(ip.split(':')[0]);
+        if (latency >= 0) results[SERVER_MAP[server] ?? server] = latency;
+      }));
+      await Promise.race([all, new Promise<void>((r) => setTimeout(r, PING_ROUND_CAP_MS))]);
+      pingCache = { ...pingCache, ...results };
+      pingCacheTime = Date.now();
+      return pingCache;
+    } catch (err) {
+      electronLog.warn('[KRH] Ping regions error:', err);
+      return pingCache;
+    } finally {
+      pingRefresh = null;
+    }
+  })();
+  return pingRefresh;
 }
 
 // ── Direct server ping (TCP-connect timing — measures the same TCP path the game's WebSocket uses) ──
@@ -312,6 +359,11 @@ const BLOCKED_URL_PATTERNS = [
   '*://cdn.ravenjs.com/*',
   '*://*.poll.fish/*',
   '*://unpkg.com/web3*',
+  // From NM/NZ Client's list: more consent, ad-network and analytics hosts
+  '*://*.onetrust.com/*',
+  '*://*.adinplay.com/*',
+  '*://*.playwire.com/*',
+  '*://*.google-analytics.com/*',
 ];
 
 // ── Bunny NPC blocklist (mirrors Glorp) ──
@@ -518,6 +570,8 @@ app.whenReady().then(async () => {
   const isAppImage = !!process.env.APPIMAGE;
   const isDev = !app.isPackaged;
   const isNsisInstall = !isDev && process.platform === 'win32' && !isPortable && !isAppImage;
+  // What an earlier lite update left behind (previous app.asar, files staged but never used).
+  if (isNsisInstall) cleanupLite();
 
   if (isDev) {
     electronLog.log('[KRH] Skipping update check (dev mode)');
@@ -543,6 +597,19 @@ app.whenReady().then(async () => {
             config.set('ui', { ...DEFAULT_CONFIG.ui, ...config.get('ui'), skippedUpdateVersion: update.version });
           }
         } else {
+          // Lite update first: only app.asar (a few MB) instead of the whole installer, and nothing new to run, so
+          // Windows Smart App Control has nothing to block. Anything unexpected falls through to the installer below.
+          splashStatus('Downloading update... 0%', 0);
+          const lite = await updateWithoutInstaller(update.version, (pct) => {
+            splashStatus(pct >= 100 ? 'Verifying download...' : `Downloading update... ${pct}%`, pct >= 100 ? -1 : pct);
+          });
+          if (!splashAlive()) return; // closed during the download: the app is quitting
+          if (lite) {
+            splashStatus('Installing update...', -1);
+            applyLiteAndRelaunch();
+            return; // the swap happens at the very end of quitting, then the client starts again
+          }
+
           const tempDir = join(app.getPath('temp'), 'krh-update');
           if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
           const installerPath = join(tempDir, `KRH-${update.version}-Setup.exe`);
@@ -1060,7 +1127,10 @@ async function launchApp(): Promise<void> {
   });
 
   // ── Configurable keybinds via before-input-event ──
+  installEscapeLock(win, getExtras().escapeFastRelease !== false);
   win.webContents.on('before-input-event', (event, input) => {
+    // Ahead of everything else: taking an Escape press means taking its keyUp and repeats too.
+    if (handleEscapeInput(win.webContents, event, input)) return;
     if (input.type !== 'keyDown') return;
     if (keybindCapturing) return;
 
@@ -1301,11 +1371,12 @@ async function launchApp(): Promise<void> {
     const v = (value && typeof value === 'object' ? value : {}) as Partial<ExtrasConfig['crosshair']>;
     const num = (x: unknown, def: number, lo: number, hi: number): number => (typeof x === 'number' && isFinite(x) ? Math.min(hi, Math.max(lo, x)) : def);
     const col = (x: unknown, def: string): string => (typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x) ? x : def);
-    const shapes = ['cross', 'plus', 'circle', 'hCircle', 'square', 'hSquare', 'symbol'];
+    const shapes = ['cross', 'plus', 'circle', 'hCircle', 'square', 'hSquare', 'symbol', 'image'];
     return {
       enabled: typeof v.enabled === 'boolean' ? v.enabled : d.enabled,
       shape: shapes.includes(String(v.shape)) ? (v.shape as ExtrasConfig['crosshair']['shape']) : d.shape,
       symbol: typeof v.symbol === 'string' && v.symbol.length > 0 ? Array.from(v.symbol).slice(0, 4).join('') : d.symbol,
+      image: cleanCrosshairImage(v.image),
       color: col(v.color, d.color),
       outline: col(v.outline, d.outline),
       size: num(v.size, d.size, 1, 80),
@@ -1358,7 +1429,20 @@ async function launchApp(): Promise<void> {
       rankedAlert: bool(v.rankedAlert, d.rankedAlert),
       chatDraft: bool(v.chatDraft, d.chatDraft),
       accountEndMessage: bool(v.accountEndMessage, d.accountEndMessage),
-      accountSkins: bool(v.accountSkins, d.accountSkins),
+      shiftSnip: bool(v.shiftSnip, d.shiftSnip),
+      escapeFastRelease: bool(v.escapeFastRelease, d.escapeFastRelease),
+      settingPresets: normalisePresets(v.settingPresets),
+      nameColors: { friends: str(v.nameColors?.friends, '', 4000), clans: str(v.nameColors?.clans, '', 4000) },
+      liveAccuracy: {
+        enabled: bool(v.liveAccuracy?.enabled, d.liveAccuracy.enabled),
+        placement: v.liveAccuracy?.placement === 'bottom' ? 'bottom' : 'top',
+      },
+      perfHud: {
+        key: str(v.perfHud?.key, d.perfHud.key, 20),
+        corner: (['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).find((c) => c === v.perfHud?.corner) ?? d.perfHud.corner,
+        detail: v.perfHud?.detail === 'fps' ? 'fps' : 'full',
+        startOn: bool(v.perfHud?.startOn, d.perfHud.startOn),
+      },
       rpcRich: {
         classIcon: bool(rr.classIcon, d.rpcRich.classIcon),
         mapArt: bool(rr.mapArt, d.rpcRich.mapArt),
@@ -1495,44 +1579,10 @@ async function launchApp(): Promise<void> {
     return true;
   });
 
-  // Skins per account: the equipped-skin entries of every account name, edited only through these two handlers.
-  const SKIN_KEY_RE = /^[\w.:-]{1,80}$/;
-  const SKIN_MAX_KEYS = 60;
-  const SKIN_MAX_VALUE = 4000;
-  const SKIN_MAX_TOTAL = 60_000;
-  const cleanSkinSnap = (raw: unknown): Record<string, string> => {
-    const out: Record<string, string> = {};
-    if (!raw || typeof raw !== 'object') return out;
-    let total = 0;
-    for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
-      if (k === '__proto__' || !SKIN_KEY_RE.test(k) || typeof val !== 'string' || val.length > SKIN_MAX_VALUE) continue;
-      total += k.length + val.length;
-      if (Object.keys(out).length >= SKIN_MAX_KEYS || total > SKIN_MAX_TOTAL) break;
-      out[k] = val;
-    }
-    return out;
-  };
-  const skinSetsOf = (): Record<string, Record<string, string>> => {
-    const raw = config.get('accountSkinSets') as unknown;
-    const out: Record<string, Record<string, string>> = {};
-    if (raw && typeof raw === 'object') {
-      for (const [k, val] of Object.entries(raw as Record<string, unknown>)) {
-        if (k !== '__proto__' && END_MESSAGE_ACCOUNT_RE.test(k)) out[k] = cleanSkinSnap(val);
-      }
-    }
-    return out;
-  };
-  ipcMain.handle('account-skins-get', (e) => (e.sender === win.webContents ? skinSetsOf() : {}));
-  ipcMain.handle('account-skins-set', (e, account: unknown, snap: unknown) => {
-    if (e.sender !== win.webContents) return false;
-    if (typeof account !== 'string' || account === '__proto__' || !END_MESSAGE_ACCOUNT_RE.test(account)) return false;
-    const all = skinSetsOf();
-    const clean = cleanSkinSnap(snap);
-    if (!Object.keys(clean).length) return false; // never replace a saved set with nothing
-    if (!(account in all) && Object.keys(all).length >= END_MESSAGE_MAX_ACCOUNTS) return false;
-    all[account] = clean;
-    config.set('accountSkinSets', all);
-    return true;
+  // Tap Shift to snip: the page reports a clean tap of Shift (menus only, see preload/shift-snip.ts).
+  ipcMain.on('krh-snip-request', (e) => {
+    if (e.sender !== win.webContents || !gameActive || win.isDestroyed()) return;
+    void takeAreaScreenshot(win);
   });
 
   // Example userscripts (Class Roulette and Quick Sell by Rarity, both from Kute): copied into the userscripts
@@ -1744,6 +1794,7 @@ async function launchApp(): Promise<void> {
       clean.packs.enabled = prev.packs.enabled;
       config.set('extras', clean);
       disableVideoSkins = clean.disableVideoSkins;
+      setEscapeFastRelease(clean.escapeFastRelease);
       applyDisplayMode(clean.displayMode);
       if (clean.updateMode === 'background' && prev.updateMode !== 'background') pokeBackgroundUpdates();
       const irNow = clean.instantReplay, irWas = prev.instantReplay;
@@ -1877,47 +1928,15 @@ async function launchApp(): Promise<void> {
 
   // ── Ping regions IPC handler (TCP connect timing, cached 60s) ──
   ipcMain.handle('ping-regions', async () => {
-    if (Object.keys(pingCache).length > 0 && Date.now() - pingCacheTime < 60000) {
+    if (Object.keys(pingCache).length > 0) {
+      // Answer at once; measure again in the background when the numbers are a minute old.
+      if (Date.now() - pingCacheTime >= 60000) void refreshRegionPings();
       return pingCache;
     }
-    try {
-      const data = await new Promise<string>((resolve, reject) => {
-        httpsGet('https://matchmaker.krunker.io/ping-list?hostname=krunker.io', (res) => {
-          let body = '';
-          res.on('data', (chunk: string) => { body += chunk; });
-          res.on('end', () => resolve(body));
-          res.on('error', reject);
-        }).on('error', reject);
-      });
-      const serverIPs: Record<string, string> = JSON.parse(data);
-
-      const results: Record<string, number> = {};
-
-      async function pingWithRetry(host: string): Promise<number> {
-        const latency = await osPing(host);
-        if (latency >= 0) return latency;
-        const retry = await osPing(host);
-        return retry >= 0 ? retry : -1;
-      }
-
-      const promises = Object.entries(serverIPs).map(async ([server, ip]) => {
-        const regionName = SERVER_MAP[server] ?? server;
-        const host = ip.split(':')[0];
-        const latency = await pingWithRetry(host);
-        if (latency >= 0) {
-          results[regionName] = latency;
-        }
-      });
-      await Promise.allSettled(promises);
-      pingCache = results;
-      pingCacheTime = Date.now();
-
-      return results;
-    } catch (err) {
-      electronLog.error('[KRH] Ping regions error:', err);
-      return pingCache;
-    }
+    return refreshRegionPings(); // nothing known yet: the first search waits for one capped round
   });
+  // Measure once shortly after start-up, so even the first search of a session has numbers ready.
+  setTimeout(() => { if (config.get('matchmaker')?.enabled) void refreshRegionPings(); }, 8000);
 
   // ── Ranked queue IPC handler ──
   ipcMain.on('open-ranked-queue', async (_e, token: string, region: string, allRegions: boolean) => {
@@ -2427,6 +2446,7 @@ async function launchApp(): Promise<void> {
 
   // ── Shutdown: disconnect Discord, then close log streams ──
   app.on('will-quit', () => {
+    releaseEscapeShortcut();
     flushStats();
     installOnQuitIfWanted();
     markCleanQuit();
