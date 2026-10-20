@@ -132,6 +132,12 @@ export function buildGeneralSection(
   }));
 
   clientGroup.appendChild(createButtonRow({
+    label: 'KRH Dashboard',
+    desc: 'A separate window with your scripts, custom CSS files (each with its own on/off switch), the resource swapper folder, links to the KRH website and clean-up tools. Default key Ctrl+Shift+D.',
+    buttons: [{ icon: 'dashboard', label: 'Open', onClick: () => { ipcRenderer.send('open-dashboard'); } }],
+  }).row);
+
+  clientGroup.appendChild(createButtonRow({
     label: 'Changelog',
     desc: 'View release notes for the current version',
     buttons: [{ icon: 'article', label: 'Show', onClick: () => {
@@ -174,6 +180,11 @@ export function buildGeneralSection(
 
   hotkeysGroup.appendChild(createKeybindRow('Pause / Resume Recording', 'Pause the recording you are making, press again to continue in the same file (default F7)', bag.binds.recordPause, (b) => {
     bag.binds.recordPause = b;
+    bag.saveBinds();
+  }, undefined, true));
+
+  hotkeysGroup.appendChild(createKeybindRow('Show / Hide KRH Dashboard', 'Show the dashboard over the game, press again to hide it (default Ctrl+Shift+D)', bag.binds.dashboard, (b) => {
+    bag.binds.dashboard = b;
     bag.saveBinds();
   }, undefined, true));
 

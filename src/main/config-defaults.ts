@@ -286,6 +286,7 @@ export interface AppConfig {
     record: Keybind;
     recordPause: Keybind;
     hubToggle: Keybind;
+    dashboard: Keybind;
   };
   userscripts: {
     enabled: boolean;
@@ -370,6 +371,7 @@ export const DEFAULT_KEYBINDS: AppConfig['keybinds'] = {
   record:            { key: 'F8',     ctrl: false, shift: false, alt: false },
   recordPause:       { key: 'F7',     ctrl: false, shift: false, alt: false },
   hubToggle:         { key: 'h',      ctrl: true,  shift: false, alt: false },
+  dashboard:         { key: 'd',      ctrl: true,  shift: true,  alt: false },
 };
 
 export const DEFAULT_CONFIG: AppConfig = {

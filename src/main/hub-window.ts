@@ -1,4 +1,5 @@
-import { BrowserWindow, app, session } from 'electron';
+import { BrowserWindow, session } from 'electron';
+import { join } from 'path';
 import { electronLog } from './logger';
 import { devWindowIcon } from './platform';
 
@@ -52,6 +53,11 @@ export interface HubWindowOptions {
   isHubToggleKey: (input: { key: string; control: boolean; shift: boolean; alt: boolean }) => boolean;
   /** The hub shortcut was pressed while the hub itself has focus. */
   onHubToggle: () => void;
+  /** Optional: the "show / hide the dashboard" shortcut also works while the hub has focus. */
+  isDashboardKey?: (input: { key: string; control: boolean; shift: boolean; alt: boolean }) => boolean;
+  onDashboardToggle?: () => void;
+  /** The hub was closed (it only hides): the app makes sure another window (the dashboard) is in front. */
+  onHidden: () => void;
 }
 
 function offlineHTML(): string {
@@ -210,6 +216,8 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
     autoHideMenuBar: true,
     webPreferences: {
       session: ses,
+      // The website's door into the client ("Use in KRH Client" buttons); see site-bridge.ts
+      preload: join(__dirname, '..', 'preload', 'hub-bridge.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -259,6 +267,11 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
       event.preventDefault();
       return;
     }
+    if (opts.isDashboardKey?.(input) && opts.onDashboardToggle) {
+      opts.onDashboardToggle();
+      event.preventDefault();
+      return;
+    }
     if (input.key === 'F5' || (input.control && !input.shift && !input.alt && input.key.toLowerCase() === 'r')) {
       win.webContents.reload();
       event.preventDefault();
@@ -268,16 +281,13 @@ export function createHubWindow(opts: HubWindowOptions): BrowserWindow {
     }
   });
 
-  // Closing the hub quits the app — unless the game is open, in which case the hub just hides
-  // (it comes back when the game window is closed).
+  // Closing the KRH website window never closes the client: it only hides (it keeps its state, and the
+  // dashboard's KRH button brings it back). If nothing else is open, the dashboard comes to the front.
   win.on('close', (event) => {
     if (opts.isQuitting()) return;
-    if (opts.isGameVisible()) {
-      event.preventDefault();
-      win.hide();
-      return;
-    }
-    app.quit();
+    event.preventDefault();
+    win.hide();
+    opts.onHidden();
   });
 
   // Wake the hub up whenever the user comes back to it.

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, net, powerSaveBlocker, safeStorage, screen, session, shell, webContents } from 'electron';
 import { join, extname, basename, dirname, resolve as resolvePath } from 'path';
-import { existsSync, mkdirSync, writeFileSync, watch as fsWatch, promises as fsp } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, watch as fsWatch, promises as fsp } from 'fs';
 import { get as httpsGet } from 'https';
 import { execFile } from 'child_process';
 import * as os from 'os';
@@ -11,6 +11,11 @@ import { config, Keybind, DEFAULT_KEYBINDS, SavedAccount, DEFAULT_CONFIG, Social
 import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL, EXTERNAL_SWAP_FILE, EXTERNAL_EXAMPLE } from './swapper';
 import { listSkyImages, resolveSkyImage, SKIES_DIR, SKY_TEXTURE_RE, SKY_IMAGE_EXTS } from './sky-textures';
 import { UserscriptManager } from './userscripts';
+import { UserCssManager } from './user-css';
+import { openDashboard, closeDashboard, hideDashboard, isDashboardVisible, isDashboardFocused, floatDashboard } from './dashboard';
+import { GAME_PROBE_JS, clearLock, lockdownPage, readLock, scanLaunchFlags, scanProcesses, scanScripts, writeLock } from './integrity';
+import { registerSiteBridge } from './site-bridge';
+import { recordGameUrl, cacheLimitMb } from './dashboard-extras';
 import exampleClassRoulette from '../../assets/example-userscripts/classRoulette.js?raw';
 import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity.js?raw';
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
@@ -724,6 +729,8 @@ async function launchApp(): Promise<void> {
   const usConfig = config.get('userscripts') || { enabled: true, path: '' };
   const usDir = usConfig.path || join(app.getPath('userData'), 'KRH Client');
   const userscriptManager = usConfig.enabled && !safeMode ? new UserscriptManager(usDir) : null;
+  // Any number of user .css files, each with its own on/off switch (Dashboard > Custom CSS)
+  const userCss = new UserCssManager(join(app.getPath('userData'), 'KRH Client', 'user-css'));
   electronLog.log(`[KRH] Userscripts: ${userscriptManager ? 'enabled' : 'disabled'} (${usDir})`);
 
   // ── Ad blocking + resource swapper (single onBeforeRequest — Electron only allows one) ──
@@ -846,7 +853,25 @@ async function launchApp(): Promise<void> {
   let appQuitting = false;
   app.on('before-quit', () => { appQuitting = true; stopRecording(); stopReplayBuffer(); });
 
+  // Restart that really restarts: the new process must not start while this one still holds the single-instance
+  // lock (it would quit at once and nothing would come back), so the lock is released and this process exits now.
+  const relaunchApp = (flush = true): void => {
+    if (flush) flushPendingConfigWrites();
+    app.releaseSingleInstanceLock();
+    const portable = process.env.PORTABLE_EXECUTABLE_FILE;
+    const appImage = process.env.APPIMAGE;
+    if (portable) app.relaunch({ execPath: portable, args: process.argv.slice(1) });
+    else if (appImage) app.relaunch({ execPath: appImage, args: process.argv.slice(1).filter((a) => a !== appImage) });
+    else app.relaunch();
+    app.exit(0);
+  };
   let gameActive = false;
+  let dashboardHintShown = false;
+  // Anti-hack lockdown (see integrity.ts). Starts locked when the last run ended locked, until the first check clears it.
+  let lockedDown = readLock() !== null;
+  let lockWin: BrowserWindow | null = null;
+  let lockReason = readLock()?.reason ?? '';
+  let showLockWindow: () => void = () => { /* set below */ };
 
   // ── Twitch chat (read-only overlay; connects only while the game window is open) ──
   // "!link": viewers type it in your chat and get the link of the game you are in (idea from the LaF Client).
@@ -949,6 +974,7 @@ async function launchApp(): Promise<void> {
     showWindow(win);
   };
   const launchGame = (url: string = 'https://krunker.io'): void => {
+    if (lockedDown) { showLockWindow(); return; }
     if (win.isDestroyed()) return;
     if (!gameActive) {
       gameActive = true;
@@ -957,6 +983,15 @@ async function launchApp(): Promise<void> {
       applyTwitch(config.get('twitch'));
       applySpotify(config.get('spotify'));
       setTimeout(() => applyReplay(), 8000); // after the first page has loaded
+      // One reminder per session that the dashboard is one key away (it is hidden while you play).
+      if (!dashboardHintShown) {
+        dashboardHintShown = true;
+        setTimeout(() => {
+          const k = getKeybinds().dashboard;
+          const name = [k.ctrl ? 'Ctrl' : '', k.alt ? 'Alt' : '', k.shift ? 'Shift' : '', k.key.length === 1 ? k.key.toUpperCase() : k.key].filter(Boolean).join('+');
+          if (!win.isDestroyed() && gameActive) win.webContents.send('krh-toast', `KRH Dashboard: press ${name} to open it over the game`);
+        }, 9000);
+      }
     } else if (url !== 'https://krunker.io') {
       void win.loadURL(url); // a specific game link (e.g. from the editor or a join link)
     }
@@ -967,10 +1002,13 @@ async function launchApp(): Promise<void> {
       hub.setAlwaysOnTop(false);
       hub.hide();
     }
+    // The dashboard is hidden too while you play (a hidden window is not drawn at all); it comes back when the game closes.
+    hideDashboard();
   };
 
   // Open / hide the KRH window while the game keeps running.
   const toggleHub = (): void => {
+    if (lockedDown) { showLockWindow(); return; }
     if (hub.isDestroyed()) return;
     if (!gameActive) { showWindow(hub); return; }
     if (hub.isVisible() && hub.isFocused()) {
@@ -1001,6 +1039,9 @@ async function launchApp(): Promise<void> {
     isQuitting: () => appQuitting,
     isHubToggleKey: (input) => matchesKeybind(input, getKeybinds().hubToggle),
     onHubToggle: toggleHub,
+    isDashboardKey: (input) => matchesKeybind(input, getKeybinds().dashboard),
+    onDashboardToggle: () => toggleDash(),
+    onHidden: () => { if (!(gameActive && !win.isDestroyed() && win.isVisible())) openDash(); },
   });
   hub.on('blur', () => { if (!hub.isDestroyed()) hub.setAlwaysOnTop(false); });
   // Background updates (Settings > Extras > Updates): quiet download, then a "Restart to update" badge in the hub
@@ -1015,6 +1056,8 @@ async function launchApp(): Promise<void> {
   // Game window focused -> freeze the hub; hub focused -> it resumes itself (see hub-window.ts).
   win.on('focus', () => {
     if (gameActive && !hub.isDestroyed()) void setHubSuspended(hub, true);
+    // Back in the game: the dashboard goes away again (a hidden window is not drawn, so it costs nothing).
+    if (gameActive && isDashboardVisible()) { floatDashboard(false); hideDashboard(); }
   });
   startGameHook = () => launchGame();
   // Website login finished in the browser -> bring the hub forward and let the site finish it.
@@ -1031,8 +1074,126 @@ async function launchApp(): Promise<void> {
   }
   focusAppHook = () => {
     if (!win.isDestroyed() && (win.isVisible() || win.isMinimized())) showWindow(win);
-    else showWindow(hub);
+    else openDash();
   };
+
+  // Same path as Settings > General > Settings Profiles > Load: Krunker's own import validates the text.
+  async function loadProfileIntoGame(name: string): Promise<boolean> {
+    if (!gameActive || win.isDestroyed()) return false;
+    const p = (config.get('extras')?.settingsProfiles ?? []).find((x) => x.name === name);
+    if (!p) return false;
+    const ok = await win.webContents.executeJavaScript(`new Promise((resolve) => {
+      const w = window;
+      if (typeof w.importSettingsPopup !== 'function' || typeof w.importSettings !== 'function') { resolve(false); return; }
+      w.importSettingsPopup(1);
+      setTimeout(() => {
+        const box = document.getElementById('importTxt');
+        if (!box) { resolve(false); return; }
+        box.value = ${JSON.stringify(p.data)};
+        w.importSettings(1);
+        resolve(true);
+      }, 150);
+    })`).catch(() => false);
+    return ok === true;
+  }
+
+  // ── KRH Dashboard window (Scripts, Custom CSS, Resource Swapper, Settings) ──
+  const openDash = (): void => {
+    if (lockedDown) { showLockWindow(); return; }
+    openDashboard({
+      version: appVersion,
+      swapDir,
+      prefsPath: join(app.getPath('userData'), 'KRH Client', 'dashboard.json'),
+      userCss,
+      userscripts: userscriptManager,
+      onCssChanged: applyUserCss,
+      play: () => { if (gameActive && !win.isDestroyed()) showWindow(win); else launchGame(); },
+      openHub: () => { if (!hub.isDestroyed()) { void setHubSuspended(hub, false); showWindow(hub); } },
+      openWindow: (url) => { tabManager.openTab(url); },
+      openGameSettings: () => {
+        if (!gameActive || win.isDestroyed()) { launchGame(); return; }
+        showWindow(win);
+        // Krunker's settings window, on the last tab (the Client tab). Best effort: harmless if the page is not ready.
+        win.webContents.executeJavaScript(`(() => { try { const w = window; w.showWindow(1); const sw = w.windows[0]; sw.changeTab(sw.tabs[sw.settingType].length - 1); } catch (e) {} })()`).catch(() => { /* page not ready */ });
+      },
+      restartClient: () => { relaunchApp(); },
+      reloadGame: () => {
+        if (!gameActive || win.isDestroyed()) return false;
+        win.webContents.reload();
+        return true;
+      },
+      quitWhenClosed: () => !(gameActive && !win.isDestroyed() && win.isVisible()) && !(!hub.isDestroyed() && hub.isVisible()),
+      clearCache: async () => { await ses.clearCache(); },
+      clearData: async () => {
+        try { win.webContents.stop(); } catch { /* already gone */ }
+        // Cookies, local/session storage, IndexedDB and cache of the Krunker session only; the client's own settings stay.
+        await ses.clearStorageData();
+        await ses.clearCache();
+        if (!win.isDestroyed()) win.webContents.reload();
+      },
+      openExternal: (url) => safeOpenExternal(url),
+      parent: () => (win.isDestroyed() ? null : win),
+      gameVisible: () => gameActive && !win.isDestroyed() && win.isVisible(),
+      isToggleKey: (input) => matchesKeybind(input, getKeybinds().dashboard),
+      toggle: () => toggleDash(),
+      extra: {
+        dataPath: join(app.getPath('userData'), 'KRH Client', 'dashboard-data.json'),
+        version: appVersion,
+        buildSystemInfo: () => buildSystemInfo(),
+        logTail: () => {
+          try { return readFileSync(getLogPath(), 'utf-8').split('\n').slice(-60).join('\n'); } catch { return ''; }
+        },
+        copyText: (text) => clipboard.writeText(text),
+        getPings: (force) => (force || Object.keys(pingCache).length === 0 ? refreshRegionPings() : Promise.resolve(pingCache)),
+        getMatchmakerRegions: () => config.get('matchmaker')?.regions ?? [],
+        setMatchmakerRegions: (regions) => config.set('matchmaker', { ...DEFAULT_CONFIG.matchmaker, ...config.get('matchmaker'), regions }),
+        currentGameUrl: () => (gameActive && !win.isDestroyed() ? win.webContents.getURL() : null),
+        launchGame: (url) => launchGame(url),
+        profiles: () => (config.get('extras')?.settingsProfiles ?? []).map((p) => p.name),
+        saveProfile: async (name) => {
+          if (!gameActive || win.isDestroyed()) return false;
+          const data = await win.webContents.executeJavaScript(`(() => { try { const r = window.exportSettings(1); return typeof r === 'string' ? r : ''; } catch (e) { return ''; } })()`).catch(() => '');
+          if (typeof data !== 'string' || data === '') return false;
+          const ex = { ...DEFAULT_CONFIG.extras, ...config.get('extras') };
+          const list = ex.settingsProfiles.filter((p) => p.name !== name);
+          if (list.length >= 30) return false;
+          config.set('extras', { ...ex, settingsProfiles: [...list, { name, data }] });
+          return true;
+        },
+        applyProfile: (name) => loadProfileIntoGame(name),
+        deleteProfile: (name) => {
+          const ex = { ...DEFAULT_CONFIG.extras, ...config.get('extras') };
+          const next = ex.settingsProfiles.filter((p) => p.name !== name);
+          if (next.length === ex.settingsProfiles.length) return false;
+          config.set('extras', { ...ex, settingsProfiles: next });
+          return true;
+        },
+        applyLowEndAndRestart: () => { applyLowEndPreset(); relaunchApp(); },
+        checkUpdates: async () => ({ latest: (await checkForUpdate(appVersion))?.version ?? null }),
+        fetchChangelog: (version) => fetchChangelog(version),
+        keybinds: () => getKeybinds(),
+        cacheSizeBytes: () => ses.getCacheSize(),
+        clearCache: async () => { await ses.clearCache(); },
+      },
+    });
+  };
+  // Show / hide the dashboard over a running game (default Ctrl+Shift+D, rebindable). Over the game it floats above
+  // the (fullscreen) game window like the KRH website window does; pressing the key again, closing it or clicking
+  // back into the game puts it away and the game keeps running.
+  const toggleDash = (): void => {
+    if (lockedDown) { showLockWindow(); return; }
+    const gameOnScreen = gameActive && !win.isDestroyed() && win.isVisible();
+    if (!gameOnScreen) { openDash(); return; }
+    if (isDashboardVisible() && isDashboardFocused()) {
+      floatDashboard(false);
+      hideDashboard();
+      showWindow(win);
+      return;
+    }
+    openDash();
+    floatDashboard(true);
+  };
+  ipcMain.on('open-dashboard', () => toggleDash());
 
   // The splash covers the hub's initial page load.
   let revealed = false;
@@ -1041,7 +1202,8 @@ async function launchApp(): Promise<void> {
     if (revealed) return;
     revealed = true;
     if (revealFallback) clearTimeout(revealFallback);
-    if (!hub.isDestroyed()) hub.show();
+    // The dashboard is the first window. The hub keeps loading hidden, so its button opens it at once.
+    openDash();
     closeSplash();
   };
   // A fast page load would reduce the splash to a flash — hold the reveal until
@@ -1060,6 +1222,8 @@ async function launchApp(): Promise<void> {
     if (isMainFrame && errorCode !== -3) revealAfterMinimum();
   });
   revealFallback = setTimeout(revealHub, 15000);
+  // Nothing to wait for: the dashboard does not depend on the hub page, only on the splash having been seen.
+  revealAfterMinimum();
   // If the user closes the splash early, show the hub immediately.
   onSplashUserClosed(revealHub);
 
@@ -1138,6 +1302,9 @@ async function launchApp(): Promise<void> {
 
     if (matchesKeybind(input, binds.hubToggle)) {
       toggleHub();
+      event.preventDefault();
+    } else if (matchesKeybind(input, binds.dashboard)) {
+      toggleDash();
       event.preventDefault();
     } else if (matchesKeybind(input, binds.reload)) {
       win.reload();
@@ -1287,6 +1454,37 @@ async function launchApp(): Promise<void> {
     if (items.length) Menu.buildFromTemplate(items).popup();
   });
 
+  // Remember the game you are in, for the dashboard's "Rejoin last game" button.
+  win.webContents.on('did-navigate', (_e, url) => recordGameUrl(url));
+  win.webContents.on('did-navigate-in-page', (_e, url) => recordGameUrl(url));
+
+  // Automatic cache limit (Dashboard > Dashboard): checked shortly after start and then every half hour while no
+  // game is open; the cache is only ever deleted, never your login or settings.
+  const autoClearCache = async (): Promise<void> => {
+    const limit = cacheLimitMb();
+    if (limit <= 0 || gameActive) return;
+    try {
+      if ((await ses.getCacheSize()) > limit * 1048576) {
+        await ses.clearCache();
+        electronLog.log(`[KRH] Cache was over ${limit} MB and has been cleared`);
+      }
+    } catch (err) { electronLog.warn('[KRH] Automatic cache check failed:', (err as Error).message); }
+  };
+  setTimeout(() => { void autoClearCache(); }, 20000);
+  setInterval(() => { void autoClearCache(); }, 30 * 60 * 1000).unref();
+
+  // The user CSS files (Dashboard > Custom CSS), as one <style> tag that is replaced whenever the list changes.
+  const applyUserCss = (): void => {
+    if (win.isDestroyed() || win.webContents.isLoading()) return;
+    const css = safeMode ? '' : userCss.combined();
+    win.webContents.executeJavaScript(`(() => {
+      let s = document.getElementById('krh-user-css');
+      if (!${JSON.stringify(css !== '')}) { if (s) s.remove(); return; }
+      if (!s) { s = document.createElement('style'); s.id = 'krh-user-css'; document.head.appendChild(s); }
+      s.textContent = ${JSON.stringify(css)};
+    })()`).catch((err) => electronLog.warn('[KRH] User CSS inject failed:', err));
+  };
+
   // ── Inject scripts after page loads ──
   win.webContents.on('did-finish-load', () => {
     electronLog.log(`[KRH] Page loaded: ${win.webContents.getURL()}`);
@@ -1312,6 +1510,8 @@ async function launchApp(): Promise<void> {
         document.head.appendChild(s);
       })()`).catch((err) => electronLog.warn('[KRH] Theme inject failed:', err));
     }
+
+    applyUserCss();
 
     // Inject loading screen background
     const loadingCSS = getLoadingScreenCSS(safeMode ? 'disabled' : (uiConf?.loadingTheme || 'disabled'), uiConf?.backgroundUrl || '', swapDir);
@@ -1885,7 +2085,9 @@ async function launchApp(): Promise<void> {
     shell.showItemInFolder(file);
   });
   // Support info for bug reports (idea from the LaF Client): version, OS, CPU, RAM and GPU in one paste.
-  ipcMain.handle('copy-system-info', async () => {
+  // Support info for bug reports (idea from the LaF Client): version, OS, CPU, RAM and GPU in one paste. The dashboard's
+  // Diagnostics page adds the settings that matter for performance and the end of the log to the same text.
+  const buildSystemInfo = async (): Promise<string> => {
     const os = await import('os');
     let gpu = 'unknown';
     try {
@@ -1896,17 +2098,23 @@ async function launchApp(): Promise<void> {
     } catch { /* keep unknown */ }
     const cpu = os.cpus()[0];
     const gb = (n: number): string => (n / 1073741824).toFixed(1) + ' GB';
-    const text = [
+    return [
       '===== KRH Client =====',
       `KRH Client v${app.getVersion()}`,
       `Electron ${process.versions.electron} / Chromium ${process.versions.chrome} / Node ${process.versions.node}`,
+      `Build: ${!app.isPackaged ? 'development' : process.env.PORTABLE_EXECUTABLE_DIR ? 'Windows portable' : process.env.APPIMAGE ? 'Linux AppImage' : process.platform === 'win32' ? 'Windows installer' : process.platform}${safeMode ? ' (safe mode)' : ''}`,
       '===== System =====',
       `OS: ${os.type()} ${os.release()} ${os.arch()}`,
       `CPU: ${cpu ? cpu.model.trim() : 'unknown'} (${os.cpus().length} threads)`,
       `RAM: ${gb(os.totalmem() - os.freemem())} used / ${gb(os.totalmem())}`,
       `GPU: ${gpu}`,
+      '===== Settings that matter for performance =====',
+      `performance: ${JSON.stringify(config.get('performance'))}`,
+      `advanced: ${JSON.stringify(config.get('advanced'))}`,
     ].join('\n');
-    clipboard.writeText(text);
+  };
+  ipcMain.handle('copy-system-info', async () => {
+    clipboard.writeText(await buildSystemInfo());
     return true;
   });
   ipcMain.handle('open-log-folder', () => shell.openPath(join(app.getPath('userData'), 'logs')));
@@ -2055,6 +2263,109 @@ async function launchApp(): Promise<void> {
     return { ok: true, kind: 'loadout', name: r.name || 'Shared loadout', packs };
   });
 
+  // ── Anti-hack check and lockdown (integrity.ts) ──
+  showLockWindow = (): void => {
+    if (lockWin && !lockWin.isDestroyed()) { lockWin.show(); lockWin.focus(); return; }
+    lockWin = new BrowserWindow({
+      width: 540, height: 400, resizable: false, minimizable: false, maximizable: false, autoHideMenuBar: true,
+      title: 'KRH Client - locked', backgroundColor: '#12060a',
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false },
+    });
+    lockWin.removeMenu();
+    void lockWin.loadURL(lockdownPage(lockReason || 'Cheat software detected'));
+    lockWin.webContents.on('will-navigate', (e, url) => {
+      if (!url.startsWith('krh-lock://')) { if (!url.startsWith('data:')) e.preventDefault(); return; }
+      e.preventDefault();
+      if (url.startsWith('krh-lock://quit')) { app.quit(); return; }
+      void runIntegrityCheck().then((reason) => {
+        if (reason) { lockReason = reason; if (lockWin && !lockWin.isDestroyed()) void lockWin.loadURL(lockdownPage(reason)); return; }
+        clearLock(); relaunchApp();
+      });
+    });
+    lockWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    lockWin.on('closed', () => { lockWin = null; });
+  };
+
+  function enterLockdown(reason: string): void {
+    lockReason = reason;
+    if (!lockedDown) electronLog.warn('[KRH-Integrity] LOCKDOWN:', reason);
+    lockedDown = true;
+    writeLock(reason);
+    gameActive = false;
+    tabManager.locked = true;
+    try { if (!win.isDestroyed()) { win.webContents.setAudioMuted(true); void win.loadURL('about:blank'); win.hide(); } } catch { /* window already gone */ }
+    try { tabManager.destroyAll(); } catch { /* no tabs */ }
+    closeDashboard();
+    if (!hub.isDestroyed()) { hub.hide(); void hub.loadURL('about:blank'); }
+    showLockWindow();
+  }
+
+  /** First reason found for a lockdown, or null when everything is clean. */
+  async function runIntegrityCheck(withProcesses = true): Promise<string | null> {
+    const flags = scanLaunchFlags();
+    if (flags) return flags;
+    if (withProcesses) {
+      const proc = await scanProcesses();
+      if (proc) return proc;
+    }
+    const scripts = scanScripts(userscriptManager?.dir ?? null);
+    if (scripts) return scripts;
+    if (gameActive && !win.isDestroyed()) {
+      const probe = await win.webContents.executeJavaScript(GAME_PROBE_JS).catch(() => '');
+      if (typeof probe === 'string' && probe) return `Cheat menu found in the game page (${probe})`;
+    }
+    return null;
+  }
+
+  let integrityRound = 0;
+  const integrityCycle = async (): Promise<void> => {
+    if (lockedDown) return;
+    integrityRound++;
+    const reason = await runIntegrityCheck(integrityRound % 3 === 0);
+    if (reason) enterLockdown(reason);
+  };
+  // First check shortly after start (also decides whether a locked run stays locked). After that the cheap checks
+  // run every 2 minutes and the process list (which starts a small system program) every 6 minutes, so nothing
+  // here is felt while playing.
+  setTimeout(() => {
+    void runIntegrityCheck().then((reason) => {
+      if (reason) { enterLockdown(reason); return; }
+      if (lockedDown) { lockedDown = false; clearLock(); if (lockWin && !lockWin.isDestroyed()) lockWin.destroy(); openDash(); }
+    });
+  }, 2500);
+  setInterval(() => { void integrityCycle(); }, 120_000).unref();
+  if (lockedDown) showLockWindow();
+
+  // ── Website -> client bridge (the "Use in KRH Client" buttons on the KRH website; see site-bridge.ts) ──
+  registerSiteBridge({
+    version: appVersion,
+    hub: () => (hub.isDestroyed() ? null : hub),
+    userCss,
+    applyUserCss,
+    installScript: async (title, code) => {
+      // Works even when Userscripts are off: the file and its switch are written, and Userscripts are turned on
+      // (they start at the next launch, because the engine loads when the client starts).
+      const mgr = userscriptManager ?? new UserscriptManager(usDir);
+      const stem = `KRH - ${title}`.slice(0, 100);
+      let file = stem + '.js';
+      for (let i = 2; existsSync(join(mgr.dir, file)); i++) file = `${stem} (${i}).js`;
+      try {
+        mkdirSync(mgr.dir, { recursive: true });
+        writeFileSync(join(mgr.dir, file), code, 'utf-8');
+        const tracker = await mgr.loadTracker(await mgr.scanScripts());
+        tracker[file] = true;
+        await mgr.saveTracker(tracker);
+      } catch (err) { return { ok: false, error: (err as Error).message }; }
+      if (!userscriptManager) {
+        config.set('userscripts', { ...usConfig, enabled: true });
+        return { ok: true, message: `"${title}" is added and switched on. Userscripts were off, so they are on now: restart KRH Client once (Restart Client button).` };
+      }
+      const live = gameActive && !win.isDestroyed();
+      if (live) win.webContents.reload();
+      return { ok: true, message: live ? `"${title}" is on and the game was reloaded.` : `"${title}" is on. It runs the next time the game loads.` };
+    },
+  });
+
   // ── Streamer mode ──
   const setStreamer = (on: boolean): void => {
     const ex = getExtras();
@@ -2131,7 +2442,7 @@ async function launchApp(): Promise<void> {
   });
 
   // ── Changelog IPC handler (fetch release notes from GitHub) ──
-  ipcMain.handle('changelog-fetch', async (_e, version: string) => {
+  const fetchChangelog = async (version: string): Promise<string> => {
     const tag = version.startsWith('v') ? version : `v${version}`;
     try {
       const data = await new Promise<string>((resolve, reject) => {
@@ -2148,7 +2459,8 @@ async function launchApp(): Promise<void> {
       electronLog.warn('[KRH] Changelog fetch failed for ' + tag + ':', err);
       return '';
     }
-  });
+  };
+  ipcMain.handle('changelog-fetch', (_e, version: string) => fetchChangelog(version));
 
   ipcMain.handle('github-issue-count', () => getIssueCount());
 
@@ -2193,14 +2505,11 @@ async function launchApp(): Promise<void> {
     }
   });
   ipcMain.handle('restart-client', () => {
-    flushPendingConfigWrites();
-    app.relaunch();
-    app.quit();
+    relaunchApp();
   });
   ipcMain.handle('reset-options', () => {
     config.clear();
-    app.relaunch();
-    app.quit();
+    relaunchApp(false);
   });
   ipcMain.handle('delete-all-data', async () => {
     // Stop the page so Krunker can't re-persist anything mid-wipe.
@@ -2224,8 +2533,7 @@ async function launchApp(): Promise<void> {
     }
     // Userscripts and swapper files live under userData/KRH Client/
     // and are intentionally left untouched.
-    app.relaunch();
-    app.quit();
+    relaunchApp();
   });
 
   // ── Settings export/import ──
@@ -2420,8 +2728,7 @@ async function launchApp(): Promise<void> {
   });
 
   // ── Stop page immediately on close to kill audio ──
-  // Closing the game window returns to the KRH Hub (the game page is unloaded so audio/network stop).
-  // If the hub is gone (it was closed while playing), closing the game quits the app.
+  // Closing the game window returns to the dashboard (the game page is unloaded so audio/network stop).
   win.on('close', (event) => {
     stopRecording();
     stopReplayBuffer();
@@ -2434,13 +2741,13 @@ async function launchApp(): Promise<void> {
     stopServerPing();
     twitchChat.disconnect();
     spotify.stopPolling();
-    if (!appQuitting && !hub.isDestroyed()) {
+    if (!appQuitting) {
+      // Closing the game returns to the dashboard (the KRH website stays hidden until its button is pressed)
       event.preventDefault();
       gameActive = false;
       void win.loadURL('about:blank');
       win.hide();
-      void setHubSuspended(hub, false);
-      showWindow(hub);
+      openDash();
     }
   });
 

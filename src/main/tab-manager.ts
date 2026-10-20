@@ -214,7 +214,11 @@ export class TabManager {
     }
 
     // ── Restore saved tabs on first open, then open the requested tab ──
+    /** Set by the lockdown: no tab can be opened any more. */
+    public locked = false;
+
     openTab(url: string): number {
+        if (this.locked) return -1;
         if (!this.restoredTabs) {
             this.restoredTabs = true;
             const saved = this.isRememberEnabled() ? this.getSavedTabs() : [];

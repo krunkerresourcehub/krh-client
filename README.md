@@ -15,22 +15,36 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-1.3.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-1.3.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-1.3.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-1.3.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-2.0.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-2.0.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-2.0.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-2.0.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
 ## How it works
 
-- The client opens on the **Krunker Resource Hub**.
+- The client opens on the **KRH Dashboard**: quick buttons for Play, the KRH website, Krunker Social, the Krunker Editor and the Krunker Viewer, and pages for Custom CSS (with an editor), Userscripts (with an editor), the Resource Swapper, Client Settings and Themes.
+- The **Krunker Resource Hub** website loads in the background and opens from the **KRH** button. Inside KRH Client, posts on the website have a **Use in KRH Client** button (CSS and legal userscripts).
 - **Play** launches the game in its own window.
 - **Editor**, **Games**, **Viewer**, **Docs** and **Guides** each open in a separate window.
-- Closing the game window takes you back to the hub.
-- The hub stays open while you play (alt-tab back to it any time). It is frozen while the game has focus, so it uses no CPU or GPU time, and it resumes as soon as you switch to it.
+- Closing the game window takes you back to the dashboard. Closing the KRH website window only hides it: it never closes the client.
+- The KRH website window can stay open while you play (alt-tab back to it any time). It is frozen while the game has focus, so it uses no CPU or GPU time, and it resumes as soon as you switch to it.
 
 ## Features
+
+### KRH Dashboard and website integration (2.0.0.0)
+
+- **KRH Dashboard** (the first window; while you play it is hidden, and `Ctrl+Shift+D` shows it over the game and hides it again, changeable under Settings > Client > Hotkeys): Home, Custom CSS, Userscripts, Resource Swapper and Client Settings, plus Themes, Servers (ping per region, favourite regions), History, Profiles, Keybinds, Diagnostics (a copyable bug report), What's new and Maintenance (cache limit, clear cache, clear Krunker data). Quick buttons open Play, the KRH website, Krunker Social, the Krunker Editor and the Krunker Viewer, and Restart Client is always one click away
+- **Themes**: Aurora Glass (default), Sky (new, bright), Midnight, Crimson Night, Emerald, Sunset and Slate, plus your own background picture (from your computer, your backgrounds folder or a link)
+- **Brightness**: the dashboard now starts lighter, and Themes > Brightness has a Brightness slider, a Panel solidness slider and three one-click looks (Bright, Balanced, Dark). Your picture's own Darken slider is separate
+- **Animated**: entrance and hover animations like the KRH website (cards rise in one after another, shine sweep, lift and glow on hover, ripple on buttons, smooth switches, a slowly drifting glow, numbers that count up, a short "wake" animation each time the dashboard comes back). Switch them off in Themes > Effects > Animations
+- **Dashboard over the game**: `Ctrl+Shift+D` floats the dashboard above the (fullscreen) game, also works from the KRH website window, and pressing it again, clicking back into the game or closing the dashboard hides it. The game keeps running. A short reminder of the key shows once per session when the game opens
+- **Userscript editor**: write or paste a script, press Save and the script is on (the open game can be reloaded). Userscripts use a `// ==UserScript==` header; Tampermonkey-only features (`GM_*`, `@match`) are not supported
+- **CSS editor**: write CSS and see it in the open game while you type, with a switch per file; files stack in name order on top of your theme
+- **Client Settings** in the dashboard are the same options as Settings > Client in the game and are saved to the same place
+- **Use in KRH Client** on the KRH website (only inside KRH Client): Ready CSS posts and legal userscripts are added to your Custom CSS / userscripts and switched on. The client only takes files from the KRH website's own storage, checks their size and never runs anything itself. Cheat scripts cannot be switched on from the website
+- **Fair-play lockdown**: if the client finds a known cheat client, a cheat script, a cheat menu in the game page or a debugger flag, it locks itself (every window closes, only a Quit / Check again window stays). It is a client-side check that knows only the cheats on its list (`src/main/integrity.ts`), not a replacement for server-side anti-cheat
 
 ### Added in KRH Client
 

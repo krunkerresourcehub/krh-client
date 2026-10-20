@@ -234,7 +234,7 @@ function updateSearch(query: string): void {
 // ── Backup & reset actions ──
 // Grouped action page: backup and client maintenance as icon buttons, with the
 // destructive actions set apart in a red danger zone with per-action descriptions.
-function buildManageSection(body: HTMLElement): void {
+function buildManageSection(body: HTMLElement, dashboard = false): void {
   const makeActionBtn = (icon: string, label: string, onClick: () => void): HTMLElement => {
     const btn = document.createElement('div');
     btn.className = 'krh-manage-btn';
@@ -254,8 +254,12 @@ function buildManageSection(body: HTMLElement): void {
   };
 
   const backupGrid = makeSection('Backup');
+  if (dashboard) {
+    const note = createInfoRow('From the dashboard, only your KRH Client settings are saved and loaded. To include your Krunker settings, use Backup &amp; Reset inside the game.');
+    body.insertBefore(note, backupGrid);
+  }
   backupGrid.appendChild(makeActionBtn('file_download', 'Export Settings', () => {
-    const krunker = collectKrunkerSettings();
+    const krunker = dashboard ? {} : collectKrunkerSettings();
     ipcRenderer.invoke('export-settings', krunker).then((res: any) => {
       if (res && res.success) showToast('Settings exported');
       else if (res && !res.canceled) showToast('Export failed: ' + (res.error || 'unknown error'));
@@ -273,7 +277,7 @@ function buildManageSection(body: HTMLElement): void {
       const skip = skippedGroups(choices);
       ipcRenderer.invoke('import-settings', [...skip]).then((res: any) => {
         if (res && res.success) {
-          applyKrunkerSettings(res.krunker, skip);
+          if (!dashboard) applyKrunkerSettings(res.krunker, skip);
           ipcRenderer.invoke('restart-client');
         } else if (res && !res.canceled) {
           showToast('Import failed: ' + (res.error || 'unknown error'));
@@ -337,9 +341,30 @@ function buildManageSection(body: HTMLElement): void {
   }
 }
 
+/** Accounts in the dashboard: alt accounts sign in on the game page, so this points to the game. */
+function buildDashboardAccountsSection(body: HTMLElement): void {
+  const group = createGroup(body);
+  group.appendChild(createInfoRow('Alt accounts sign in on the game page, so they are added and switched inside the game (Settings > Client > Accounts).'));
+  group.appendChild(createButtonRow({
+    label: 'Accounts',
+    desc: 'Opens the game and its Client settings',
+    buttons: [{ icon: 'open_in_new', label: 'Open in game', title: 'Open the game settings window', onClick: () => { void ipcRenderer.invoke('dash:open', 'game-settings'); } }],
+  }).row);
+}
+
 interface CatDef { key: string; label: string; icon: string; build: (body: HTMLElement) => void; }
 
-function renderSettings(searchQuery?: string): void {
+/** Where the settings go and what to leave out. The KRH Dashboard window renders the same panel as the game's settings window. */
+interface RenderOptions { skip?: string[]; forceHeader?: boolean; dashboard?: boolean }
+
+/** The same settings panel, for the KRH Dashboard window (it has a #settHolder of its own). */
+export function renderDashboardSettings(): void {
+  // Every category is here. Three of them work on the game page itself (Accounts, Userscripts, Backup & Reset),
+  // so in the dashboard they show the part that works without the game and point to the game for the rest.
+  renderSettings(undefined, { forceHeader: true, dashboard: true });
+}
+
+function renderSettings(searchQuery?: string, opts?: RenderOptions): void {
   const holder = document.getElementById('settHolder');
   if (!holder) return;
 
@@ -377,7 +402,7 @@ function renderSettings(searchQuery?: string): void {
   const showBrand = uiConfRaw?.watermark ?? DEFAULT_CONFIG.ui.watermark;
   const header = document.createElement('div');
   header.className = 'krh-header';
-  if (!showBrand) header.style.display = 'none';
+  if (!showBrand && !opts?.forceHeader) header.style.display = 'none';
   header.innerHTML =
     '<div class="krh-header-mark"><img src="' + KRH_ICON_DATA_URL + '" alt="KRH" draggable="false"></div>' +
     '<div class="krh-header-text">' +
@@ -413,7 +438,7 @@ function renderSettings(searchQuery?: string): void {
   shell.appendChild(pane);
   container.appendChild(shell);
 
-  const cats: CatDef[] = [
+  const allCats: CatDef[] = [
     { key: 'General', label: 'General', icon: 'tune', build: (b) => buildGeneralSection(b, gameConf, uiConfRaw, bag) },
     { key: 'Game', label: 'Game', icon: 'sports_esports', build: (b) => buildGameSection(b, gameConf, uiConfRaw, bag) },
     { key: 'Performance', label: 'Performance', icon: 'speed', build: (b) => buildPerformanceSection(b, allConf.performance, allConf.advanced, isWindows) },
@@ -423,11 +448,12 @@ function renderSettings(searchQuery?: string): void {
     { key: 'Extras', label: 'Extras', icon: 'extension', build: (b) => buildExtrasSection(b, allConf.extras) },
     { key: 'Chat', label: 'Chat', icon: 'chat', build: (b) => buildChatSection(b, gameConf, allConf.translator) },
     { key: 'Discord', label: 'Discord', icon: 'forum', build: (b) => buildDiscordSection(b, allConf.discord) },
-    { key: 'Accounts', label: 'Accounts', icon: 'people', build: (b) => buildAccountsSection(createGroup(b), reapplySearch) },
+    { key: 'Accounts', label: 'Accounts', icon: 'people', build: (b) => (opts?.dashboard ? buildDashboardAccountsSection(b) : buildAccountsSection(createGroup(b), reapplySearch)) },
     { key: 'Keystrokes', label: 'Keystrokes', icon: 'keyboard', build: (b) => buildKeystrokesRows(b) },
-    { key: 'Userscripts', label: 'Userscripts', icon: 'code', build: (b) => renderUserscriptsSection(b) },
-    { key: 'Manage', label: 'Backup & Reset', icon: 'restart_alt', build: (b) => buildManageSection(b) },
+    { key: 'Userscripts', label: 'Userscripts', icon: 'code', build: (b) => renderUserscriptsSection(b, opts?.dashboard === true) },
+    { key: 'Manage', label: 'Backup & Reset', icon: 'restart_alt', build: (b) => buildManageSection(b, opts?.dashboard === true) },
   ];
+  const cats = opts?.skip ? allCats.filter((c) => !opts.skip!.includes(c.key)) : allCats;
 
   const panels: HTMLElement[] = [];
   const items: HTMLElement[] = [];
@@ -486,7 +512,7 @@ function renderSettings(searchQuery?: string): void {
 }
 
 // ── Userscripts settings section ──
-function renderUserscriptsSection(body: HTMLElement): void {
+function renderUserscriptsSection(body: HTMLElement, dashboard = false): void {
   ipcRenderer.invoke('get-config', 'userscripts').then((usConf: any) => {
     const us = { ...DEFAULT_CONFIG.userscripts, ...usConf };
 
@@ -518,6 +544,12 @@ function renderUserscriptsSection(body: HTMLElement): void {
       } }],
     }).row);
 
+    if (dashboard) {
+      // The per-script settings live in the running game page; the list, switches and editor are on the Userscripts page of the dashboard.
+      engineGroup.appendChild(createInfoRow('Switch scripts on or off and write them on the Userscripts page of this dashboard. The settings a script offers appear in the game, under Settings > Client > Userscripts.'));
+      reapplySearch();
+      return;
+    }
     const scriptsGroup = createGroup(body, 'Installed Scripts');
 
     const scriptInstances = getInstances();

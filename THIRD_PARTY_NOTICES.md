@@ -89,3 +89,9 @@ Code adapted for KRH Client (each of these files carries a header naming its NM/
 Ideas only (written for KRH Client): the crosshair picture kept as bytes inside the settings.
 Not taken: the Fortnite and Valorant sound packs (ripped from copyrighted games) and the `nmnez://` tournament links.
 
+
+## Material Icons (Apache License 2.0)
+
+- Source: https://github.com/google/material-design-icons (npm package `material-icons`)
+- Used for: the icon font inside the KRH Dashboard window (`src/main/material-icons-font.ts`). The game page brings the same font itself; the dashboard has no game page.
+- License text: https://www.apache.org/licenses/LICENSE-2.0
