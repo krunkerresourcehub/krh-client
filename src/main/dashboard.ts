@@ -22,6 +22,8 @@ export interface DashboardDeps {
   userscripts: UserscriptManager | null;
   onCssChanged: () => void;
   play: () => void;
+  /** Start (or switch) the game window on a specific krunker.io game link, e.g. the sandbox. */
+  playUrl: (url: string) => void;
   openHub: () => void;
   /** Open a krunker.io page (social, editor, viewer) in its own window. */
   openWindow: (url: string) => void;
@@ -56,9 +58,11 @@ interface BgPrefs {
   /** Motion in the dashboard (entrance, hover, glow drift). */
   anim: boolean;
 }
-// 2.0.0.0: a lighter default look. Saved looks from earlier builds (no `ver`) get the new picture darkening once.
+// 2.0.1: a lighter default look. Saved looks from 2.0.0.0 (no `ver`) get the new picture darkening once.
 const DEFAULT_PREFS: BgPrefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true };
 const clampInt = (v: unknown, lo: number, hi: number, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
+// Krunker's sandbox is the game itself (krunker.io/?sandbox), so it runs in the game window, not in a tab.
+const SANDBOX_URL = 'https://krunker.io/?sandbox';
 const PAGES: Record<string, string> = {
   social: 'https://krunker.io/social.html',
   editor: 'https://krunker.io/editor.html',
@@ -75,9 +79,6 @@ const LINKS = new Set([
 
 let win: BrowserWindow | null = null;
 let registered = false;
-let quitting = false;
-app.on('before-quit', () => { quitting = true; });
-const appQuittingFlag = (): boolean => quitting;
 
 function readPrefs(path: string): BgPrefs {
   try {
@@ -143,17 +144,7 @@ export function openDashboard(deps: DashboardDeps): void {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.once('ready-to-show', () => { if (win && !win.isDestroyed()) showWindow(win); });
   // The dashboard is the first window: closing it with nothing else on screen ends the app (the hub is only hidden).
-  // Over a running game the dashboard is only an overlay: closing it hides it and gives the game back.
-  win.on('close', (e) => {
-    if (deps.gameVisible() && !appQuittingFlag()) {
-      e.preventDefault();
-      floatDashboard(false);
-      hideDashboard();
-      showWindow(deps.parent());
-      return;
-    }
-    if (deps.quitWhenClosed()) app.quit();
-  });
+  win.on('close', () => { if (deps.quitWhenClosed()) app.quit(); });
   win.on('blur', () => floatDashboard(false));
   // The same shortcut that opens the dashboard over the game also puts it away again.
   win.webContents.on('before-input-event', (e, input) => {
@@ -193,6 +184,7 @@ function registerIpc(deps: DashboardDeps): void {
 
   ipcMain.handle('dash:open', (_e, what: unknown) => {
     if (what === 'play') deps.play();
+    else if (what === 'sandbox') deps.playUrl(SANDBOX_URL);
     else if (what === 'hub') deps.openHub();
     else if (what === 'game-settings') deps.openGameSettings();
     else if (typeof what === 'string' && PAGES[what]) deps.openWindow(PAGES[what]);

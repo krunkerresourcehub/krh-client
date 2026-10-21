@@ -12,7 +12,7 @@ import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, file
 import { listSkyImages, resolveSkyImage, SKIES_DIR, SKY_TEXTURE_RE, SKY_IMAGE_EXTS } from './sky-textures';
 import { UserscriptManager } from './userscripts';
 import { UserCssManager } from './user-css';
-import { openDashboard, closeDashboard, hideDashboard, isDashboardVisible, isDashboardFocused, floatDashboard } from './dashboard';
+import { openDashboard, closeDashboard, isDashboardVisible, isDashboardFocused, floatDashboard } from './dashboard';
 import { GAME_PROBE_JS, clearLock, lockdownPage, readLock, scanLaunchFlags, scanProcesses, scanScripts, writeLock } from './integrity';
 import { registerSiteBridge } from './site-bridge';
 import { recordGameUrl, cacheLimitMb } from './dashboard-extras';
@@ -867,6 +867,8 @@ async function launchApp(): Promise<void> {
   };
   let gameActive = false;
   let dashboardHintShown = false;
+  // Never destroy the dashboard from inside one of its own event / IPC handlers: let that handler finish first.
+  const closeDashLater = (): void => { setImmediate(() => closeDashboard()); };
   // Anti-hack lockdown (see integrity.ts). Starts locked when the last run ended locked, until the first check clears it.
   let lockedDown = readLock() !== null;
   let lockWin: BrowserWindow | null = null;
@@ -1002,8 +1004,9 @@ async function launchApp(): Promise<void> {
       hub.setAlwaysOnTop(false);
       hub.hide();
     }
-    // The dashboard is hidden too while you play (a hidden window is not drawn at all); it comes back when the game closes.
-    hideDashboard();
+    // The dashboard is closed while you play (no extra window / process next to the game); the dashboard key and
+    // the end of the game open it again.
+    closeDashLater();
   };
 
   // Open / hide the KRH window while the game keeps running.
@@ -1044,6 +1047,39 @@ async function launchApp(): Promise<void> {
     onHidden: () => { if (!(gameActive && !win.isDestroyed() && win.isVisible())) openDash(); },
   });
   hub.on('blur', () => { if (!hub.isDestroyed()) hub.setAlwaysOnTop(false); });
+
+  // While you play the KRH website window is hidden and frozen. After a short while its page is unloaded too
+  // (about:blank), so no website code, animation or memory stays alive next to the game. It loads again when the
+  // window is shown (Ctrl+H) or when the game closes.
+  let hubParkedUrl: string | null = null;
+  let hubParkTimer: NodeJS.Timeout | null = null;
+  const parkHub = (): void => {
+    hubParkTimer = null;
+    if (hub.isDestroyed() || !gameActive || hub.isVisible()) return;
+    const u = hub.webContents.getURL();
+    if (!/^https?:/.test(u)) return;
+    hubParkedUrl = u;
+    void setHubSuspended(hub, false).then(() => { if (!hub.isDestroyed()) void hub.loadURL('about:blank'); });
+  };
+  const unparkHub = (): void => {
+    if (hubParkTimer) { clearTimeout(hubParkTimer); hubParkTimer = null; }
+    if (!hubParkedUrl || hub.isDestroyed()) return;
+    const u = hubParkedUrl;
+    hubParkedUrl = null;
+    void hub.loadURL(u);
+  };
+  hub.on('hide', () => {
+    if (!gameActive) return;
+    if (hubParkTimer) clearTimeout(hubParkTimer);
+    hubParkTimer = setTimeout(parkHub, 15_000);
+  });
+  hub.on('show', unparkHub);
+  hub.on('restore', unparkHub);
+  // Inside the client the website's endless background loops stay off: with the FPS limit removed every window that
+  // is animating renders as fast as it can.
+  hub.webContents.on('dom-ready', () => {
+    void hub.webContents.insertCSS('html::before,html::after,.brand-logo,.dot,.code,.logo-frame{animation:none !important}').catch(() => { /* page gone */ });
+  });
   // Background updates (Settings > Extras > Updates): quiet download, then a "Restart to update" badge in the hub
   wireHubBadge(hub);
   startBackgroundUpdates({
@@ -1057,7 +1093,7 @@ async function launchApp(): Promise<void> {
   win.on('focus', () => {
     if (gameActive && !hub.isDestroyed()) void setHubSuspended(hub, true);
     // Back in the game: the dashboard goes away again (a hidden window is not drawn, so it costs nothing).
-    if (gameActive && isDashboardVisible()) { floatDashboard(false); hideDashboard(); }
+    if (gameActive && isDashboardVisible()) closeDashLater();
   });
   startGameHook = () => launchGame();
   // Website login finished in the browser -> bring the hub forward and let the site finish it.
@@ -1108,6 +1144,7 @@ async function launchApp(): Promise<void> {
       userscripts: userscriptManager,
       onCssChanged: applyUserCss,
       play: () => { if (gameActive && !win.isDestroyed()) showWindow(win); else launchGame(); },
+      playUrl: (url) => launchGame(url),
       openHub: () => { if (!hub.isDestroyed()) { void setHubSuspended(hub, false); showWindow(hub); } },
       openWindow: (url) => { tabManager.openTab(url); },
       openGameSettings: () => {
@@ -1185,8 +1222,7 @@ async function launchApp(): Promise<void> {
     const gameOnScreen = gameActive && !win.isDestroyed() && win.isVisible();
     if (!gameOnScreen) { openDash(); return; }
     if (isDashboardVisible() && isDashboardFocused()) {
-      floatDashboard(false);
-      hideDashboard();
+      closeDashLater();
       showWindow(win);
       return;
     }
@@ -2747,6 +2783,7 @@ async function launchApp(): Promise<void> {
       gameActive = false;
       void win.loadURL('about:blank');
       win.hide();
+      unparkHub();
       openDash();
     }
   });

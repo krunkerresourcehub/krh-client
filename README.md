@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-2.0.0.0-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-2.0.0.0-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-2.0.0.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-2.0.0.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-2.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-2.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-2.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-2.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -33,13 +33,15 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
 
 ## Features
 
-### KRH Dashboard and website integration (2.0.0.0)
+### KRH Dashboard and website integration (2.0.0.0, refreshed in 2.0.1)
 
 - **KRH Dashboard** (the first window; while you play it is hidden, and `Ctrl+Shift+D` shows it over the game and hides it again, changeable under Settings > Client > Hotkeys): Home, Custom CSS, Userscripts, Resource Swapper and Client Settings, plus Themes, Servers (ping per region, favourite regions), History, Profiles, Keybinds, Diagnostics (a copyable bug report), What's new and Maintenance (cache limit, clear cache, clear Krunker data). Quick buttons open Play, the KRH website, Krunker Social, the Krunker Editor and the Krunker Viewer, and Restart Client is always one click away
 - **Themes**: Aurora Glass (default), Sky (new, bright), Midnight, Crimson Night, Emerald, Sunset and Slate, plus your own background picture (from your computer, your backgrounds folder or a link)
-- **Brightness**: the dashboard now starts lighter, and Themes > Brightness has a Brightness slider, a Panel solidness slider and three one-click looks (Bright, Balanced, Dark). Your picture's own Darken slider is separate
-- **Animated**: entrance and hover animations like the KRH website (cards rise in one after another, shine sweep, lift and glow on hover, ripple on buttons, smooth switches, a slowly drifting glow, numbers that count up, a short "wake" animation each time the dashboard comes back). Switch them off in Themes > Effects > Animations
-- **Dashboard over the game**: `Ctrl+Shift+D` floats the dashboard above the (fullscreen) game, also works from the KRH website window, and pressing it again, clicking back into the game or closing the dashboard hides it. The game keeps running. A short reminder of the key shows once per session when the game opens
+- **Krunker Sandbox** (2.0.1) button next to Krunker Viewer (opens `krunker.io/?sandbox` in the game window)
+- **Light while you play** (2.0.1): the dashboard window is closed and the KRH website window unloads itself while a game runs, so nothing extra runs next to the game; both come back when you need them
+- **Brightness** (2.0.1): the dashboard now starts lighter, and Themes > Brightness has a Brightness slider, a Panel solidness slider and three one-click looks (Bright, Balanced, Dark). Your picture's own Darken slider is separate
+- **Animated** (2.0.1): entrance and hover animations like the KRH website (cards rise in one after another, shine sweep, lift and glow on hover, ripple on buttons, smooth switches, a slowly drifting glow, numbers that count up, a short "wake" animation each time the dashboard comes back). Switch them off in Themes > Effects > Animations
+- **Dashboard over the game** (2.0.1): `Ctrl+Shift+D` floats the dashboard above the (fullscreen) game, also works from the KRH website window, and pressing it again, clicking back into the game or closing the dashboard hides it. The game keeps running. A short reminder of the key shows once per session when the game opens
 - **Userscript editor**: write or paste a script, press Save and the script is on (the open game can be reloaded). Userscripts use a `// ==UserScript==` header; Tampermonkey-only features (`GM_*`, `@match`) are not supported
 - **CSS editor**: write CSS and see it in the open game while you type, with a switch per file; files stack in name order on top of your theme
 - **Client Settings** in the dashboard are the same options as Settings > Client in the game and are saved to the same place

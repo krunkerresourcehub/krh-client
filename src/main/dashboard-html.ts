@@ -152,6 +152,8 @@ body[data-anim=on] #gLast .btn{animation:krhPulse 2.4s ease-out infinite}
 body[data-anim=on] nav button.on::before{animation:krhBar .3s ease}
 body[data-anim=on] #app.wake{animation:krhWake .45s cubic-bezier(.2,.8,.2,1)}
 body[data-anim=off] *{animation:none !important;transition:none !important}
+/* With the FPS limit removed a window with an endless animation renders flat out, so they pause when the window is not in front. */
+body.idle *,body.idle *::before,body.idle *::after{animation-play-state:paused !important}
 
 `;
 
@@ -178,7 +180,7 @@ const BODY = `
   <button data-p="look">Maintenance</button>
  </nav>
  <div id="right">
- <div id="pills"><button class="play" data-open="play">Open Krunker (Play)</button><button data-open="hub">KRH</button><button data-open="social">Krunker Social</button><button data-open="editor">Krunker Editor</button><button data-open="viewer">Krunker Viewer</button></div>
+ <div id="pills"><button class="play" data-open="play">Open Krunker (Play)</button><button data-open="hub">KRH</button><button data-open="social">Krunker Social</button><button data-open="editor">Krunker Editor</button><button data-open="viewer">Krunker Viewer</button><button data-open="sandbox">Krunker Sandbox</button></div>
  <main>
   <section id="p-home">
    <h1>Home</h1><p class="sub">Jump straight to the game, the KRH website or the places people ask for most.</p>
@@ -500,6 +502,8 @@ function countUp(node, text) {
   const step = (now) => { const k = Math.min(1, (now - t0) / 700); const e = 1 - Math.pow(1 - k, 3); node.textContent = (n * e).toFixed(dec); if (k < 1) requestAnimationFrame(step); else node.textContent = text; };
   requestAnimationFrame(step);
 }
+window.addEventListener('blur', () => document.body.classList.add('idle'));
+window.addEventListener('focus', () => document.body.classList.remove('idle'));
 // Coming back from hidden (you pressed the dashboard key in the game): play the entrance again.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || prefs.anim === false) return;
