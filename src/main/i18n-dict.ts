@@ -1,1336 +1,161 @@
 // UI translations for the dashboard (English is the base language). The same table is used by the KRH website
-// (assets/site-i18n.js). Exact English text -> translation per language code. Missing entries stay English.
+// (assets/i18n/<code>.js). Exact English text -> translation per language code. Missing entries stay English.
+// The dashboard window asks for one language at a time (dash:i18n-pack) instead of carrying the whole table.
 export const UI_DICT: Record<string, Record<string, string>> = {
-"Home": {
-"id": "Beranda",
-"ms": "Laman Utama",
-"ko": "홈",
-"zh": "首页",
-"ja": "ホーム",
-"es": "Inicio",
-"pt": "Início"
-},
-"Crosshair": {
-"id": "Crosshair",
-"ms": "Crosshair",
-"ko": "크로스헤어",
-"zh": "准星",
-"ja": "クロスヘア",
-"es": "Mira",
-"pt": "Mira"
-},
-"Crosshairs": {
-"id": "Crosshair",
-"ms": "Crosshair",
-"ko": "크로스헤어",
-"zh": "准星",
-"ja": "クロスヘア",
-"es": "Miras",
-"pt": "Miras"
-},
-"Settings": {
-"id": "Pengaturan",
-"ms": "Tetapan",
-"ko": "설정",
-"zh": "设置",
-"ja": "設定",
-"es": "Ajustes",
-"pt": "Configurações"
-},
-"News": {
-"id": "Berita",
-"ms": "Berita",
-"ko": "뉴스",
-"zh": "新闻",
-"ja": "ニュース",
-"es": "Noticias",
-"pt": "Notícias"
-},
-"Maps": {
-"id": "Peta",
-"ms": "Peta",
-"ko": "맵",
-"zh": "地图",
-"ja": "マップ",
-"es": "Mapas",
-"pt": "Mapas"
-},
-"Mods": {
-"id": "Mod",
-"ms": "Mod",
-"ko": "모드",
-"zh": "模组",
-"ja": "MOD",
-"es": "Mods",
-"pt": "Mods"
-},
-"Mods Files": {
-"id": "File Mod",
-"ms": "Fail Mod",
-"ko": "모드 파일",
-"zh": "模组文件",
-"ja": "MODファイル",
-"es": "Archivos de mods",
-"pt": "Arquivos de mods"
-},
-"Scripts": {
-"id": "Skrip",
-"ms": "Skrip",
-"ko": "스크립트",
-"zh": "脚本",
-"ja": "スクリプト",
-"es": "Scripts",
-"pt": "Scripts"
-},
-"Servers": {
-"id": "Server",
-"ms": "Pelayan",
-"ko": "서버",
-"zh": "服务器",
-"ja": "サーバー",
-"es": "Servidores",
-"pt": "Servidores"
-},
-"Games": {
-"id": "Game",
-"ms": "Permainan",
-"ko": "게임",
-"zh": "游戏",
-"ja": "ゲーム",
-"es": "Juegos",
-"pt": "Jogos"
-},
-"Guides": {
-"id": "Panduan",
-"ms": "Panduan",
-"ko": "가이드",
-"zh": "指南",
-"ja": "ガイド",
-"es": "Guías",
-"pt": "Guias"
-},
-"Docs": {
-"id": "Dokumentasi",
-"ms": "Dokumen",
-"ko": "문서",
-"zh": "文档",
-"ja": "ドキュメント",
-"es": "Documentos",
-"pt": "Documentos"
-},
-"Editor": {
-"id": "Editor",
-"ms": "Editor",
-"ko": "에디터",
-"zh": "编辑器",
-"ja": "エディター",
-"es": "Editor",
-"pt": "Editor"
-},
-"Viewer": {
-"id": "Viewer",
-"ms": "Penonton",
-"ko": "뷰어",
-"zh": "查看器",
-"ja": "ビューア",
-"es": "Visor",
-"pt": "Visualizador"
-},
-"Sandbox": {
-"id": "Sandbox",
-"ms": "Sandbox",
-"ko": "샌드박스",
-"zh": "沙盒",
-"ja": "サンドボックス",
-"es": "Sandbox",
-"pt": "Sandbox"
-},
-"Clients": {
-"id": "Klien",
-"ms": "Klien",
-"ko": "클라이언트",
-"zh": "客户端",
-"ja": "クライアント",
-"es": "Clientes",
-"pt": "Clientes"
-},
-"About Us": {
-"id": "Tentang Kami",
-"ms": "Tentang Kami",
-"ko": "소개",
-"zh": "关于我们",
-"ja": "私たちについて",
-"es": "Acerca de nosotros",
-"pt": "Sobre nós"
-},
-"Play": {
-"id": "Main",
-"ms": "Main",
-"ko": "플레이",
-"zh": "开始游戏",
-"ja": "プレイ",
-"es": "Jugar",
-"pt": "Jogar"
-},
-"Polls": {
-"id": "Polling",
-"ms": "Undian",
-"ko": "투표",
-"zh": "投票",
-"ja": "投票",
-"es": "Encuestas",
-"pt": "Enquetes"
-},
-"Dashboard": {
-"id": "Dasbor",
-"ms": "Papan Pemuka",
-"ko": "대시보드",
-"zh": "控制面板",
-"ja": "ダッシュボード",
-"es": "Panel",
-"pt": "Painel"
-},
-"Inbox": {
-"id": "Kotak Masuk",
-"ms": "Peti Masuk",
-"ko": "받은 편지함",
-"zh": "收件箱",
-"ja": "受信トレイ",
-"es": "Bandeja de entrada",
-"pt": "Caixa de entrada"
-},
-"Messages": {
-"id": "Pesan",
-"ms": "Mesej",
-"ko": "메시지",
-"zh": "消息",
-"ja": "メッセージ",
-"es": "Mensajes",
-"pt": "Mensagens"
-},
-"Saved": {
-"id": "Tersimpan",
-"ms": "Disimpan",
-"ko": "저장됨",
-"zh": "已保存",
-"ja": "保存済み",
-"es": "Guardado",
-"pt": "Salvos"
-},
-"My Profile": {
-"id": "Profil Saya",
-"ms": "Profil Saya",
-"ko": "내 프로필",
-"zh": "我的资料",
-"ja": "マイプロフィール",
-"es": "Mi perfil",
-"pt": "Meu perfil"
-},
-"Post": {
-"id": "Posting",
-"ms": "Pos",
-"ko": "게시",
-"zh": "发帖",
-"ja": "投稿",
-"es": "Publicar",
-"pt": "Postar"
-},
-"Posts": {
-"id": "Postingan",
-"ms": "Pos",
-"ko": "게시물",
-"zh": "帖子",
-"ja": "投稿",
-"es": "Publicaciones",
-"pt": "Publicações"
-},
-"Admin": {
-"id": "Admin",
-"ms": "Pentadbir",
-"ko": "관리자",
-"zh": "管理员",
-"ja": "管理者",
-"es": "Administración",
-"pt": "Administração"
-},
-"Reports": {
-"id": "Laporan",
-"ms": "Laporan",
-"ko": "신고",
-"zh": "举报",
-"ja": "通報",
-"es": "Reportes",
-"pt": "Denúncias"
-},
-"Users": {
-"id": "Pengguna",
-"ms": "Pengguna",
-"ko": "사용자",
-"zh": "用户",
-"ja": "ユーザー",
-"es": "Usuarios",
-"pt": "Usuários"
-},
-"All Users": {
-"id": "Semua Pengguna",
-"ms": "Semua Pengguna",
-"ko": "모든 사용자",
-"zh": "所有用户",
-"ja": "すべてのユーザー",
-"es": "Todos los usuarios",
-"pt": "Todos os usuários"
-},
-"Ban Appeals": {
-"id": "Banding Pemblokiran",
-"ms": "Rayuan Larangan",
-"ko": "제재 이의 신청",
-"zh": "封禁申诉",
-"ja": "BAN異議申し立て",
-"es": "Apelaciones de baneo",
-"pt": "Apelações de banimento"
-},
-"Krunker Verifications": {
-"id": "Verifikasi Krunker",
-"ms": "Pengesahan Krunker",
-"ko": "Krunker 인증",
-"zh": "Krunker 验证",
-"ja": "Krunker認証",
-"es": "Verificaciones de Krunker",
-"pt": "Verificações do Krunker"
-},
-"History Logs": {
-"id": "Log Riwayat",
-"ms": "Log Sejarah",
-"ko": "기록 로그",
-"zh": "历史日志",
-"ja": "履歴ログ",
-"es": "Registros de historial",
-"pt": "Registros de histórico"
-},
-"Account Settings": {
-"id": "Pengaturan Akun",
-"ms": "Tetapan Akaun",
-"ko": "계정 설정",
-"zh": "账户设置",
-"ja": "アカウント設定",
-"es": "Ajustes de la cuenta",
-"pt": "Configurações da conta"
-},
-"Theme Settings": {
-"id": "Pengaturan Tema",
-"ms": "Tetapan Tema",
-"ko": "테마 설정",
-"zh": "主题设置",
-"ja": "テーマ設定",
-"es": "Ajustes del tema",
-"pt": "Configurações do tema"
-},
-"Language": {
-"id": "Bahasa",
-"ms": "Bahasa",
-"ko": "언어",
-"zh": "语言",
-"ja": "言語",
-"es": "Idioma",
-"pt": "Idioma"
-},
-"Usable CSS": {
-"id": "CSS Siap Pakai",
-"ms": "CSS Boleh Guna",
-"ko": "사용 가능한 CSS",
-"zh": "可用 CSS",
-"ja": "使えるCSS",
-"es": "CSS utilizable",
-"pt": "CSS utilizável"
-},
-"Usable Settings": {
-"id": "Pengaturan Siap Pakai",
-"ms": "Tetapan Boleh Guna",
-"ko": "사용 가능한 설정",
-"zh": "可用设置",
-"ja": "使える設定",
-"es": "Ajustes utilizables",
-"pt": "Configurações utilizáveis"
-},
-"Usable KrunkScripts": {
-"id": "KrunkScript Siap Pakai",
-"ms": "KrunkScript Boleh Guna",
-"ko": "사용 가능한 KrunkScript",
-"zh": "可用 KrunkScript",
-"ja": "使えるKrunkScript",
-"es": "KrunkScripts utilizables",
-"pt": "KrunkScripts utilizáveis"
-},
-"Legal Script": {
-"id": "Skrip Legal",
-"ms": "Skrip Sah",
-"ko": "합법 스크립트",
-"zh": "合法脚本",
-"ja": "合法スクリプト",
-"es": "Script legal",
-"pt": "Script legal"
-},
-"Scope": {
-"id": "Scope",
-"ms": "Skop",
-"ko": "스코프",
-"zh": "瞄准镜",
-"ja": "スコープ",
-"es": "Mira telescópica",
-"pt": "Luneta"
-},
-"Hitmarker": {
-"id": "Hitmarker",
-"ms": "Hitmarker",
-"ko": "히트마커",
-"zh": "命中标记",
-"ja": "ヒットマーカー",
-"es": "Marcador de impacto",
-"pt": "Marcador de acerto"
-},
-"Krunker Updates": {
-"id": "Pembaruan Krunker",
-"ms": "Kemas Kini Krunker",
-"ko": "Krunker 업데이트",
-"zh": "Krunker 更新",
-"ja": "Krunkerアップデート",
-"es": "Actualizaciones de Krunker",
-"pt": "Atualizações do Krunker"
-},
-"Krunker Events": {
-"id": "Event Krunker",
-"ms": "Acara Krunker",
-"ko": "Krunker 이벤트",
-"zh": "Krunker 活动",
-"ja": "Krunkerイベント",
-"es": "Eventos de Krunker",
-"pt": "Eventos do Krunker"
-},
-"Login": {
-"id": "Masuk",
-"ms": "Log Masuk",
-"ko": "로그인",
-"zh": "登录",
-"ja": "ログイン",
-"es": "Iniciar sesión",
-"pt": "Entrar"
-},
-"Log In": {
-"id": "Masuk",
-"ms": "Log Masuk",
-"ko": "로그인",
-"zh": "登录",
-"ja": "ログイン",
-"es": "Iniciar sesión",
-"pt": "Entrar"
-},
-"Sign Up": {
-"id": "Daftar",
-"ms": "Daftar",
-"ko": "회원가입",
-"zh": "注册",
-"ja": "新規登録",
-"es": "Registrarse",
-"pt": "Cadastrar-se"
-},
-"Log Out": {
-"id": "Keluar",
-"ms": "Log Keluar",
-"ko": "로그아웃",
-"zh": "退出登录",
-"ja": "ログアウト",
-"es": "Cerrar sesión",
-"pt": "Sair"
-},
-"Logout": {
-"id": "Keluar",
-"ms": "Log Keluar",
-"ko": "로그아웃",
-"zh": "退出登录",
-"ja": "ログアウト",
-"es": "Cerrar sesión",
-"pt": "Sair"
-},
-"Create Account": {
-"id": "Buat Akun",
-"ms": "Cipta Akaun",
-"ko": "계정 만들기",
-"zh": "创建账户",
-"ja": "アカウント作成",
-"es": "Crear cuenta",
-"pt": "Criar conta"
-},
-"Email": {
-"id": "Email",
-"ms": "E-mel",
-"ko": "이메일",
-"zh": "邮箱",
-"ja": "メールアドレス",
-"es": "Correo electrónico",
-"pt": "E-mail"
-},
-"Password": {
-"id": "Kata Sandi",
-"ms": "Kata Laluan",
-"ko": "비밀번호",
-"zh": "密码",
-"ja": "パスワード",
-"es": "Contraseña",
-"pt": "Senha"
-},
-"Username": {
-"id": "Nama Pengguna",
-"ms": "Nama Pengguna",
-"ko": "사용자 이름",
-"zh": "用户名",
-"ja": "ユーザー名",
-"es": "Nombre de usuario",
-"pt": "Nome de usuário"
-},
-"Display Name": {
-"id": "Nama Tampilan",
-"ms": "Nama Paparan",
-"ko": "표시 이름",
-"zh": "显示名称",
-"ja": "表示名",
-"es": "Nombre para mostrar",
-"pt": "Nome de exibição"
-},
-"Email or username": {
-"id": "Email atau nama pengguna",
-"ms": "E-mel atau nama pengguna",
-"ko": "이메일 또는 사용자 이름",
-"zh": "邮箱或用户名",
-"ja": "メールまたはユーザー名",
-"es": "Correo o nombre de usuario",
-"pt": "E-mail ou nome de usuário"
-},
-"Forgot your password?": {
-"id": "Lupa kata sandi?",
-"ms": "Lupa kata laluan?",
-"ko": "비밀번호를 잊으셨나요?",
-"zh": "忘记密码？",
-"ja": "パスワードをお忘れですか？",
-"es": "¿Olvidaste tu contraseña?",
-"pt": "Esqueceu sua senha?"
-},
-"Don't have an account? Sign Up": {
-"id": "Belum punya akun? Daftar",
-"ms": "Belum ada akaun? Daftar",
-"ko": "계정이 없으신가요? 회원가입",
-"zh": "没有账户？立即注册",
-"ja": "アカウントをお持ちでない方は新規登録",
-"es": "¿No tienes cuenta? Regístrate",
-"pt": "Não tem conta? Cadastre-se"
-},
-"Already have an account? Log In": {
-"id": "Sudah punya akun? Masuk",
-"ms": "Sudah ada akaun? Log masuk",
-"ko": "이미 계정이 있으신가요? 로그인",
-"zh": "已有账户？登录",
-"ja": "すでにアカウントをお持ちですか？ログイン",
-"es": "¿Ya tienes cuenta? Inicia sesión",
-"pt": "Já tem conta? Entre"
-},
-"Privacy Policy": {
-"id": "Kebijakan Privasi",
-"ms": "Dasar Privasi",
-"ko": "개인정보 처리방침",
-"zh": "隐私政策",
-"ja": "プライバシーポリシー",
-"es": "Política de privacidad",
-"pt": "Política de privacidade"
-},
-"Terms of Service": {
-"id": "Ketentuan Layanan",
-"ms": "Terma Perkhidmatan",
-"ko": "이용약관",
-"zh": "服务条款",
-"ja": "利用規約",
-"es": "Términos del servicio",
-"pt": "Termos de serviço"
-},
-"Search": {
-"id": "Cari",
-"ms": "Cari",
-"ko": "검색",
-"zh": "搜索",
-"ja": "検索",
-"es": "Buscar",
-"pt": "Pesquisar"
-},
-"Save": {
-"id": "Simpan",
-"ms": "Simpan",
-"ko": "저장",
-"zh": "保存",
-"ja": "保存",
-"es": "Guardar",
-"pt": "Salvar"
-},
-"Cancel": {
-"id": "Batal",
-"ms": "Batal",
-"ko": "취소",
-"zh": "取消",
-"ja": "キャンセル",
-"es": "Cancelar",
-"pt": "Cancelar"
-},
-"Delete": {
-"id": "Hapus",
-"ms": "Padam",
-"ko": "삭제",
-"zh": "删除",
-"ja": "削除",
-"es": "Eliminar",
-"pt": "Excluir"
-},
-"Edit": {
-"id": "Ubah",
-"ms": "Sunting",
-"ko": "편집",
-"zh": "编辑",
-"ja": "編集",
-"es": "Editar",
-"pt": "Editar"
-},
-"Publish": {
-"id": "Terbitkan",
-"ms": "Terbitkan",
-"ko": "게시하기",
-"zh": "发布",
-"ja": "公開",
-"es": "Publicar",
-"pt": "Publicar"
-},
-"Submit": {
-"id": "Kirim",
-"ms": "Hantar",
-"ko": "제출",
-"zh": "提交",
-"ja": "送信",
-"es": "Enviar",
-"pt": "Enviar"
-},
-"Close": {
-"id": "Tutup",
-"ms": "Tutup",
-"ko": "닫기",
-"zh": "关闭",
-"ja": "閉じる",
-"es": "Cerrar",
-"pt": "Fechar"
-},
-"Copy": {
-"id": "Salin",
-"ms": "Salin",
-"ko": "복사",
-"zh": "复制",
-"ja": "コピー",
-"es": "Copiar",
-"pt": "Copiar"
-},
-"Download": {
-"id": "Unduh",
-"ms": "Muat Turun",
-"ko": "다운로드",
-"zh": "下载",
-"ja": "ダウンロード",
-"es": "Descargar",
-"pt": "Baixar"
-},
-"Upload": {
-"id": "Unggah",
-"ms": "Muat Naik",
-"ko": "업로드",
-"zh": "上传",
-"ja": "アップロード",
-"es": "Subir",
-"pt": "Enviar"
-},
-"Back": {
-"id": "Kembali",
-"ms": "Kembali",
-"ko": "뒤로",
-"zh": "返回",
-"ja": "戻る",
-"es": "Atrás",
-"pt": "Voltar"
-},
-"Next": {
-"id": "Berikutnya",
-"ms": "Seterusnya",
-"ko": "다음",
-"zh": "下一页",
-"ja": "次へ",
-"es": "Siguiente",
-"pt": "Próximo"
-},
-"Previous": {
-"id": "Sebelumnya",
-"ms": "Sebelumnya",
-"ko": "이전",
-"zh": "上一页",
-"ja": "前へ",
-"es": "Anterior",
-"pt": "Anterior"
-},
-"Loading...": {
-"id": "Memuat...",
-"ms": "Memuatkan...",
-"ko": "불러오는 중...",
-"zh": "加载中...",
-"ja": "読み込み中...",
-"es": "Cargando...",
-"pt": "Carregando..."
-},
-"Reset": {
-"id": "Atur Ulang",
-"ms": "Tetap Semula",
-"ko": "초기화",
-"zh": "重置",
-"ja": "リセット",
-"es": "Restablecer",
-"pt": "Redefinir"
-},
-"Apply": {
-"id": "Terapkan",
-"ms": "Guna",
-"ko": "적용",
-"zh": "应用",
-"ja": "適用",
-"es": "Aplicar",
-"pt": "Aplicar"
-},
-"Report": {
-"id": "Laporkan",
-"ms": "Laporkan",
-"ko": "신고",
-"zh": "举报",
-"ja": "通報",
-"es": "Reportar",
-"pt": "Denunciar"
-},
-"Like": {
-"id": "Suka",
-"ms": "Suka",
-"ko": "좋아요",
-"zh": "点赞",
-"ja": "いいね",
-"es": "Me gusta",
-"pt": "Curtir"
-},
-"Share": {
-"id": "Bagikan",
-"ms": "Kongsi",
-"ko": "공유",
-"zh": "分享",
-"ja": "共有",
-"es": "Compartir",
-"pt": "Compartilhar"
-},
-"Comments": {
-"id": "Komentar",
-"ms": "Komen",
-"ko": "댓글",
-"zh": "评论",
-"ja": "コメント",
-"es": "Comentarios",
-"pt": "Comentários"
-},
-"Reply": {
-"id": "Balas",
-"ms": "Balas",
-"ko": "답글",
-"zh": "回复",
-"ja": "返信",
-"es": "Responder",
-"pt": "Responder"
-},
-"Send": {
-"id": "Kirim",
-"ms": "Hantar",
-"ko": "보내기",
-"zh": "发送",
-"ja": "送信",
-"es": "Enviar",
-"pt": "Enviar"
-},
-"Yes": {
-"id": "Ya",
-"ms": "Ya",
-"ko": "예",
-"zh": "是",
-"ja": "はい",
-"es": "Sí",
-"pt": "Sim"
-},
-"No": {
-"id": "Tidak",
-"ms": "Tidak",
-"ko": "아니요",
-"zh": "否",
-"ja": "いいえ",
-"es": "No",
-"pt": "Não"
-},
-"Preview": {
-"id": "Pratinjau",
-"ms": "Pratonton",
-"ko": "미리보기",
-"zh": "预览",
-"ja": "プレビュー",
-"es": "Vista previa",
-"pt": "Pré-visualização"
-},
-"Description": {
-"id": "Deskripsi",
-"ms": "Penerangan",
-"ko": "설명",
-"zh": "描述",
-"ja": "説明",
-"es": "Descripción",
-"pt": "Descrição"
-},
-"Title": {
-"id": "Judul",
-"ms": "Tajuk",
-"ko": "제목",
-"zh": "标题",
-"ja": "タイトル",
-"es": "Título",
-"pt": "Título"
-},
-"Name": {
-"id": "Nama",
-"ms": "Nama",
-"ko": "이름",
-"zh": "名称",
-"ja": "名前",
-"es": "Nombre",
-"pt": "Nome"
-},
-"Category": {
-"id": "Kategori",
-"ms": "Kategori",
-"ko": "카테고리",
-"zh": "分类",
-"ja": "カテゴリ",
-"es": "Categoría",
-"pt": "Categoria"
-},
-"Tags": {
-"id": "Tag",
-"ms": "Tag",
-"ko": "태그",
-"zh": "标签",
-"ja": "タグ",
-"es": "Etiquetas",
-"pt": "Tags"
-},
-"Views": {
-"id": "Dilihat",
-"ms": "Tontonan",
-"ko": "조회수",
-"zh": "浏览量",
-"ja": "閲覧数",
-"es": "Vistas",
-"pt": "Visualizações"
-},
-"Downloads": {
-"id": "Unduhan",
-"ms": "Muat Turun",
-"ko": "다운로드 수",
-"zh": "下载量",
-"ja": "ダウンロード数",
-"es": "Descargas",
-"pt": "Downloads"
-},
-"Likes": {
-"id": "Suka",
-"ms": "Suka",
-"ko": "좋아요",
-"zh": "点赞数",
-"ja": "いいね数",
-"es": "Me gusta",
-"pt": "Curtidas"
-},
-"Default": {
-"id": "Bawaan",
-"ms": "Lalai",
-"ko": "기본값",
-"zh": "默认",
-"ja": "デフォルト",
-"es": "Predeterminado",
-"pt": "Padrão"
-},
-"Reset to default": {
-"id": "Kembalikan ke bawaan",
-"ms": "Kembalikan ke lalai",
-"ko": "기본값으로 되돌리기",
-"zh": "恢复默认",
-"ja": "デフォルトに戻す",
-"es": "Restablecer valores",
-"pt": "Restaurar padrão"
-},
-"Theme Presets": {
-"id": "Preset Tema",
-"ms": "Pratetap Tema",
-"ko": "테마 프리셋",
-"zh": "主题预设",
-"ja": "テーマプリセット",
-"es": "Temas predefinidos",
-"pt": "Predefinições de tema"
-},
-"Accent Color": {
-"id": "Warna Aksen",
-"ms": "Warna Aksen",
-"ko": "강조 색상",
-"zh": "强调色",
-"ja": "アクセントカラー",
-"es": "Color de acento",
-"pt": "Cor de destaque"
-},
-"Custom CSS": {
-"id": "CSS Kustom",
-"ms": "CSS Tersuai",
-"ko": "사용자 CSS",
-"zh": "自定义 CSS",
-"ja": "カスタムCSS",
-"es": "CSS personalizado",
-"pt": "CSS personalizado"
-},
-"Userscripts": {
-"id": "Userscript",
-"ms": "Userscript",
-"ko": "유저스크립트",
-"zh": "用户脚本",
-"ja": "ユーザースクリプト",
-"es": "Userscripts",
-"pt": "Userscripts"
-},
-"Resource Swapper": {
-"id": "Penukar Resource",
-"ms": "Penukar Sumber",
-"ko": "리소스 스왑",
-"zh": "资源替换器",
-"ja": "リソーススワッパー",
-"es": "Cambiador de recursos",
-"pt": "Trocador de recursos"
-},
-"Client Settings": {
-"id": "Pengaturan Client",
-"ms": "Tetapan Klien",
-"ko": "클라이언트 설정",
-"zh": "客户端设置",
-"ja": "クライアント設定",
-"es": "Ajustes del cliente",
-"pt": "Configurações do cliente"
-},
-"More": {
-"id": "Lainnya",
-"ms": "Lagi",
-"ko": "더보기",
-"zh": "更多",
-"ja": "その他",
-"es": "Más",
-"pt": "Mais"
-},
-"Themes": {
-"id": "Tema",
-"ms": "Tema",
-"ko": "테마",
-"zh": "主题",
-"ja": "テーマ",
-"es": "Temas",
-"pt": "Temas"
-},
-"History": {
-"id": "Riwayat",
-"ms": "Sejarah",
-"ko": "기록",
-"zh": "历史",
-"ja": "履歴",
-"es": "Historial",
-"pt": "Histórico"
-},
-"Profiles": {
-"id": "Profil",
-"ms": "Profil",
-"ko": "프로필",
-"zh": "配置文件",
-"ja": "プロファイル",
-"es": "Perfiles",
-"pt": "Perfis"
-},
-"Keybinds": {
-"id": "Tombol Pintas",
-"ms": "Pintasan Kekunci",
-"ko": "키 설정",
-"zh": "快捷键",
-"ja": "キー設定",
-"es": "Atajos de teclado",
-"pt": "Atalhos"
-},
-"Diagnostics": {
-"id": "Diagnostik",
-"ms": "Diagnostik",
-"ko": "진단",
-"zh": "诊断",
-"ja": "診断",
-"es": "Diagnóstico",
-"pt": "Diagnóstico"
-},
-"What's new": {
-"id": "Yang baru",
-"ms": "Apa yang baharu",
-"ko": "새로운 소식",
-"zh": "新功能",
-"ja": "新着情報",
-"es": "Novedades",
-"pt": "Novidades"
-},
-"Maintenance": {
-"id": "Pemeliharaan",
-"ms": "Penyelenggaraan",
-"ko": "유지보수",
-"zh": "维护",
-"ja": "メンテナンス",
-"es": "Mantenimiento",
-"pt": "Manutenção"
-},
-"Restart Client": {
-"id": "Mulai Ulang Client",
-"ms": "Mulakan Semula Klien",
-"ko": "클라이언트 재시작",
-"zh": "重启客户端",
-"ja": "クライアントを再起動",
-"es": "Reiniciar cliente",
-"pt": "Reiniciar cliente"
-},
-"Open Krunker (Play)": {
-"id": "Buka Krunker (Main)",
-"ms": "Buka Krunker (Main)",
-"ko": "Krunker 열기 (플레이)",
-"zh": "打开 Krunker（开始游戏）",
-"ja": "Krunkerを開く（プレイ）",
-"es": "Abrir Krunker (Jugar)",
-"pt": "Abrir Krunker (Jogar)"
-},
-"Rejoin": {
-"id": "Gabung Lagi",
-"ms": "Sertai Semula",
-"ko": "다시 참가",
-"zh": "重新加入",
-"ja": "再参加",
-"es": "Volver a unirse",
-"pt": "Reentrar"
-},
-"Save current game": {
-"id": "Simpan game saat ini",
-"ms": "Simpan permainan semasa",
-"ko": "현재 게임 저장",
-"zh": "保存当前游戏",
-"ja": "現在のゲームを保存",
-"es": "Guardar partida actual",
-"pt": "Salvar jogo atual"
-},
-"Play Krunker": {
-"id": "Main Krunker",
-"ms": "Main Krunker",
-"ko": "Krunker 플레이",
-"zh": "玩 Krunker",
-"ja": "Krunkerをプレイ",
-"es": "Jugar a Krunker",
-"pt": "Jogar Krunker"
-},
-"KRH Website": {
-"id": "Situs KRH",
-"ms": "Laman Web KRH",
-"ko": "KRH 웹사이트",
-"zh": "KRH 网站",
-"ja": "KRHウェブサイト",
-"es": "Sitio web de KRH",
-"pt": "Site do KRH"
-},
-"Client settings": {
-"id": "Pengaturan client",
-"ms": "Tetapan klien",
-"ko": "클라이언트 설정",
-"zh": "客户端设置",
-"ja": "クライアント設定",
-"es": "Ajustes del cliente",
-"pt": "Configurações do cliente"
-},
-"Releases": {
-"id": "Rilis",
-"ms": "Keluaran",
-"ko": "릴리스",
-"zh": "发行版",
-"ja": "リリース",
-"es": "Versiones",
-"pt": "Lançamentos"
-},
-"Report a problem": {
-"id": "Laporkan masalah",
-"ms": "Laporkan masalah",
-"ko": "문제 신고",
-"zh": "报告问题",
-"ja": "問題を報告",
-"es": "Informar de un problema",
-"pt": "Relatar um problema"
-},
-"Source code": {
-"id": "Kode sumber",
-"ms": "Kod sumber",
-"ko": "소스 코드",
-"zh": "源代码",
-"ja": "ソースコード",
-"es": "Código fuente",
-"pt": "Código-fonte"
-},
-"Dashboard shortcut": {
-"id": "Pintasan dasbor",
-"ms": "Pintasan papan pemuka",
-"ko": "대시보드 단축키",
-"zh": "控制面板快捷键",
-"ja": "ダッシュボードのショートカット",
-"es": "Atajo del panel",
-"pt": "Atalho do painel"
-},
-"All keybinds": {
-"id": "Semua tombol pintas",
-"ms": "Semua pintasan kekunci",
-"ko": "모든 키 설정",
-"zh": "所有快捷键",
-"ja": "すべてのキー設定",
-"es": "Todos los atajos",
-"pt": "Todos os atalhos"
-},
-"Brightness": {
-"id": "Kecerahan",
-"ms": "Kecerahan",
-"ko": "밝기",
-"zh": "亮度",
-"ja": "明るさ",
-"es": "Brillo",
-"pt": "Brilho"
-},
-"Panel solidness": {
-"id": "Kepekatan panel",
-"ms": "Ketebalan panel",
-"ko": "패널 불투명도",
-"zh": "面板不透明度",
-"ja": "パネルの不透明度",
-"es": "Opacidad del panel",
-"pt": "Opacidade do painel"
-},
-"Effects": {
-"id": "Efek",
-"ms": "Kesan",
-"ko": "효과",
-"zh": "效果",
-"ja": "エフェクト",
-"es": "Efectos",
-"pt": "Efeitos"
-},
-"Glass blur": {
-"id": "Blur kaca",
-"ms": "Kabur kaca",
-"ko": "유리 블러",
-"zh": "玻璃模糊",
-"ja": "ガラスぼかし",
-"es": "Desenfoque de cristal",
-"pt": "Desfoque de vidro"
-},
-"Animations": {
-"id": "Animasi",
-"ms": "Animasi",
-"ko": "애니메이션",
-"zh": "动画",
-"ja": "アニメーション",
-"es": "Animaciones",
-"pt": "Animações"
-},
-"Theme": {
-"id": "Tema",
-"ms": "Tema",
-"ko": "테마",
-"zh": "主题",
-"ja": "テーマ",
-"es": "Tema",
-"pt": "Tema"
-},
-"Bright": {
-"id": "Terang",
-"ms": "Cerah",
-"ko": "밝게",
-"zh": "明亮",
-"ja": "明るい",
-"es": "Claro",
-"pt": "Claro"
-},
-"Dark": {
-"id": "Gelap",
-"ms": "Gelap",
-"ko": "어둡게",
-"zh": "暗色",
-"ja": "暗い",
-"es": "Oscuro",
-"pt": "Escuro"
-},
-"Balanced (default)": {
-"id": "Seimbang (bawaan)",
-"ms": "Seimbang (lalai)",
-"ko": "균형 (기본)",
-"zh": "均衡（默认）",
-"ja": "バランス（デフォルト）",
-"es": "Equilibrado (predeterminado)",
-"pt": "Equilibrado (padrão)"
-},
-"Performance doctor": {
-"id": "Dokter performa",
-"ms": "Doktor prestasi",
-"ko": "성능 닥터",
-"zh": "性能医生",
-"ja": "パフォーマンスドクター",
-"es": "Doctor de rendimiento",
-"pt": "Médico de desempenho"
-},
-"Run check": {
-"id": "Jalankan pemeriksaan",
-"ms": "Jalankan semakan",
-"ko": "검사 실행",
-"zh": "运行检查",
-"ja": "チェックを実行",
-"es": "Ejecutar comprobación",
-"pt": "Executar verificação"
-},
-"Copy report": {
-"id": "Salin laporan",
-"ms": "Salin laporan",
-"ko": "보고서 복사",
-"zh": "复制报告",
-"ja": "レポートをコピー",
-"es": "Copiar informe",
-"pt": "Copiar relatório"
-},
-"Krunker news": {
-"id": "Berita Krunker",
-"ms": "Berita Krunker",
-"ko": "Krunker 뉴스",
-"zh": "Krunker 新闻",
-"ja": "Krunkerニュース",
-"es": "Noticias de Krunker",
-"pt": "Notícias do Krunker"
-},
-"Font": {
-"id": "Font",
-"ms": "Fon",
-"ko": "글꼴",
-"zh": "字体",
-"ja": "フォント",
-"es": "Fuente",
-"pt": "Fonte"
-},
-"Font Family": {
-"id": "Jenis Font",
-"ms": "Jenis Fon",
-"ko": "글꼴 종류",
-"zh": "字体类型",
-"ja": "フォントの種類",
-"es": "Tipo de fuente",
-"pt": "Tipo de fonte"
-},
-"Font Color": {
-"id": "Warna Font",
-"ms": "Warna Fon",
-"ko": "글꼴 색상",
-"zh": "字体颜色",
-"ja": "フォントの色",
-"es": "Color de fuente",
-"pt": "Cor da fonte"
-},
-"Text Size": {
-"id": "Ukuran Teks",
-"ms": "Saiz Teks",
-"ko": "글자 크기",
-"zh": "文字大小",
-"ja": "文字サイズ",
-"es": "Tamaño del texto",
-"pt": "Tamanho do texto"
-},
-"Interface Language": {
-"id": "Bahasa Antarmuka",
-"ms": "Bahasa Antara Muka",
-"ko": "인터페이스 언어",
-"zh": "界面语言",
-"ja": "表示言語",
-"es": "Idioma de la interfaz",
-"pt": "Idioma da interface"
-},
-"Refresh": {
-"id": "Segarkan",
-"ms": "Muat semula",
-"ko": "새로고침",
-"zh": "刷新",
-"ja": "更新",
-"es": "Actualizar",
-"pt": "Atualizar"
-},
-"Dismiss": {
-"id": "Tutup",
-"ms": "Ketepikan",
-"ko": "닫기",
-"zh": "忽略",
-"ja": "閉じる",
-"es": "Descartar",
-"pt": "Dispensar"
-},
-"Turn back on": {
-"id": "Nyalakan lagi",
-"ms": "Hidupkan semula",
-"ko": "다시 켜기",
-"zh": "重新开启",
-"ja": "再びオンにする",
-"es": "Volver a activar",
-"pt": "Ativar novamente"
-},
-"Scripts turned off": {
-"id": "Skrip dimatikan",
-"ms": "Skrip dimatikan",
-"ko": "꺼진 스크립트",
-"zh": "已关闭的脚本",
-"ja": "オフにされたスクリプト",
-"es": "Scripts desactivados",
-"pt": "Scripts desativados"
-},
-"Read on KRH": {
-"id": "Baca di KRH",
-"ms": "Baca di KRH",
-"ko": "KRH에서 읽기",
-"zh": "在 KRH 阅读",
-"ja": "KRHで読む",
-"es": "Leer en KRH",
-"pt": "Ler no KRH"
-},
-"Open News on KRH": {
-"id": "Buka Berita di KRH",
-"ms": "Buka Berita di KRH",
-"ko": "KRH에서 뉴스 열기",
-"zh": "在 KRH 打开新闻",
-"ja": "KRHでニュースを開く",
-"es": "Abrir noticias en KRH",
-"pt": "Abrir notícias no KRH"
-},
-"Language & Font": {
-"id": "Bahasa & Font",
-"ms": "Bahasa & Fon",
-"ko": "언어 및 글꼴",
-"zh": "语言与字体",
-"ja": "言語とフォント",
-"es": "Idioma y fuente",
-"pt": "Idioma e fonte"
-}
+"Home": {"id":"Beranda","ms":"Laman Utama","ko":"홈","zh":"首页","ja":"ホーム","es":"Inicio","pt":"Início","de":"Startseite","fr":"Accueil","it":"Home","nl":"Home","ru":"Главная","uk":"Головна","pl":"Strona główna","cs":"Domů","tr":"Ana Sayfa","vi":"Trang chủ","th":"หน้าแรก","ar":"الرئيسية","hi":"होम","bn":"হোম","fil":"Home","zt":"首頁","sv":"Hem","da":"Hjem","no":"Hjem","fi":"Etusivu","el":"Αρχική","he":"בית","ro":"Acasă","hu":"Kezdőlap","fa":"خانه","ur":"ہوم","jv":"Wiwitan","bg":"Начало","hr":"Početna","sk":"Domov"},
+"Crosshair": {"id":"Crosshair","ms":"Crosshair","ko":"크로스헤어","zh":"准星","ja":"クロスヘア","es":"Mira","pt":"Mira","de":"Fadenkreuz","fr":"Viseur","it":"Mirino","nl":"Dradenkruis","ru":"Прицел","uk":"Приціл","pl":"Celownik","cs":"Zaměřovač","tr":"Nişangâh","vi":"Tâm ngắm","th":"เป้าเล็ง","ar":"مؤشر التصويب","hi":"क्रॉसहेयर","bn":"ক্রসহেয়ার","fil":"Crosshair","zt":"準星","sv":"Hårkors","da":"Trådkors","no":"Trådkors","fi":"Tähtäin","el":"Σταυρόνημα","he":"כוונת","ro":"Reticul","hu":"Célkereszt","fa":"نشانه‌گیر","ur":"کراس ہیئر","jv":"Crosshair","bg":"Мерник","hr":"Nišan","sk":"Zameriavač"},
+"Crosshairs": {"id":"Crosshair","ms":"Crosshair","ko":"크로스헤어","zh":"准星","ja":"クロスヘア","es":"Miras","pt":"Miras","de":"Fadenkreuze","fr":"Viseurs","it":"Mirini","nl":"Dradenkruisen","ru":"Прицелы","uk":"Прицілі","pl":"Celowniki","cs":"Zaměřovače","tr":"Nişangâhlar","vi":"Các tâm ngắm","th":"เป้าเล็ง","ar":"مؤشرات التصويب","hi":"क्रॉसहेयर","bn":"ক্রসহেয়ার","fil":"Mga Crosshair","zt":"準星","sv":"Hårkors","da":"Trådkors","no":"Trådkors","fi":"Tähtäimet","el":"Σταυρονήματα","he":"כוונות","ro":"Reticule","hu":"Célkeresztek","fa":"نشانه‌گیرها","ur":"کراس ہیئرز","jv":"Crosshair","bg":"Мерници","hr":"Nišani","sk":"Zameriavače"},
+"Settings": {"id":"Pengaturan","ms":"Tetapan","ko":"설정","zh":"设置","ja":"設定","es":"Ajustes","pt":"Configurações","de":"Einstellungen","fr":"Paramètres","it":"Impostazioni","nl":"Instellingen","ru":"Настройки","uk":"Налаштування","pl":"Ustawienia","cs":"Nastavení","tr":"Ayarlar","vi":"Cài đặt","th":"การตั้งค่า","ar":"الإعدادات","hi":"सेटिंग्स","bn":"সেটিংস","fil":"Mga Setting","zt":"設定","sv":"Inställningar","da":"Indstillinger","no":"Innstillinger","fi":"Asetukset","el":"Ρυθμίσεις","he":"הגדרות","ro":"Setări","hu":"Beállítások","fa":"تنظیمات","ur":"ترتیبات","jv":"Setelan","bg":"Настройки","hr":"Postavke","sk":"Nastavenia"},
+"News": {"id":"Berita","ms":"Berita","ko":"뉴스","zh":"新闻","ja":"ニュース","es":"Noticias","pt":"Notícias","de":"News","fr":"Actualités","it":"Notizie","nl":"Nieuws","ru":"Новости","uk":"Новини","pl":"Wiadomości","cs":"Novinky","tr":"Haberler","vi":"Tin tức","th":"ข่าว","ar":"الأخبار","hi":"समाचार","bn":"সংবাদ","fil":"Balita","zt":"新聞","sv":"Nyheter","da":"Nyheder","no":"Nyheter","fi":"Uutiset","el":"Νέα","he":"חדשות","ro":"Știri","hu":"Hírek","fa":"اخبار","ur":"خبریں","jv":"Warta","bg":"Новини","hr":"Vijesti","sk":"Novinky"},
+"Maps": {"id":"Peta","ms":"Peta","ko":"맵","zh":"地图","ja":"マップ","es":"Mapas","pt":"Mapas","de":"Karten","fr":"Cartes","it":"Mappe","nl":"Kaarten","ru":"Карты","uk":"Карти","pl":"Mapy","cs":"Mapy","tr":"Haritalar","vi":"Bản đồ","th":"แผนที่","ar":"الخرائط","hi":"मैप","bn":"ম্যাপ","fil":"Mga Mapa","zt":"地圖","sv":"Kartor","da":"Kort","no":"Kart","fi":"Kartat","el":"Χάρτες","he":"מפות","ro":"Hărți","hu":"Pályák","fa":"نقشه‌ها","ur":"نقشے","jv":"Peta","bg":"Карти","hr":"Karte","sk":"Mapy"},
+"Mods": {"id":"Mod","ms":"Mod","ko":"모드","zh":"模组","ja":"MOD","es":"Mods","pt":"Mods","de":"Mods","fr":"Mods","it":"Mod","nl":"Mods","ru":"Моды","uk":"Моди","pl":"Mody","cs":"Módy","tr":"Modlar","vi":"Mod","th":"ม็อด","ar":"التعديلات","hi":"मॉड","bn":"মড","fil":"Mga Mod","zt":"模組","sv":"Moddar","da":"Mods","no":"Modder","fi":"Modit","el":"Mods","he":"מודים","ro":"Moduri","hu":"Modok","fa":"مادها","ur":"موڈز","jv":"Mod","bg":"Модове","hr":"Modovi","sk":"Módy"},
+"Mods Files": {"id":"File Mod","ms":"Fail Mod","ko":"모드 파일","zh":"模组文件","ja":"MODファイル","es":"Archivos de mods","pt":"Arquivos de mods","de":"Mod-Dateien","fr":"Fichiers de mods","it":"File dei mod","nl":"Modbestanden","ru":"Файлы модов","uk":"Файли модів","pl":"Pliki modów","cs":"Soubory módů","tr":"Mod Dosyaları","vi":"Tệp mod","th":"ไฟล์ม็อด","ar":"ملفات التعديلات","hi":"मॉड फ़ाइलें","bn":"মড ফাইল","fil":"Mga File ng Mod","zt":"模組檔案","sv":"Moddfiler","da":"Modfiler","no":"Moddfiler","fi":"Modi-tiedostot","el":"Αρχεία mods","he":"קבצי מודים","ro":"Fișiere de moduri","hu":"Mod fájlok","fa":"فایل‌های ماد","ur":"موڈ فائلیں","jv":"Berkas Mod","bg":"Файлове на модове","hr":"Datoteke modova","sk":"Súbory módov"},
+"Scripts": {"id":"Skrip","ms":"Skrip","ko":"스크립트","zh":"脚本","ja":"スクリプト","es":"Scripts","pt":"Scripts","de":"Skripte","fr":"Scripts","it":"Script","nl":"Scripts","ru":"Скрипты","uk":"Скрипти","pl":"Skrypty","cs":"Skripty","tr":"Betikler","vi":"Script","th":"สคริปต์","ar":"السكربتات","hi":"स्क्रिप्ट","bn":"স্ক্রিপ্ট","fil":"Mga Script","zt":"腳本","sv":"Skript","da":"Scripts","no":"Skript","fi":"Skriptit","el":"Σενάρια","he":"סקריפטים","ro":"Scripturi","hu":"Szkriptek","fa":"اسکریپت‌ها","ur":"اسکرپٹس","jv":"Skrip","bg":"Скриптове","hr":"Skripte","sk":"Skripty"},
+"Servers": {"id":"Server","ms":"Pelayan","ko":"서버","zh":"服务器","ja":"サーバー","es":"Servidores","pt":"Servidores","de":"Server","fr":"Serveurs","it":"Server","nl":"Servers","ru":"Серверы","uk":"Сервери","pl":"Serwery","cs":"Servery","tr":"Sunucular","vi":"Máy chủ","th":"เซิร์ฟเวอร์","ar":"الخوادم","hi":"सर्वर","bn":"সার্ভার","fil":"Mga Server","zt":"伺服器","sv":"Servrar","da":"Servere","no":"Servere","fi":"Palvelimet","el":"Διακομιστές","he":"שרתים","ro":"Servere","hu":"Szerverek","fa":"سرورها","ur":"سرورز","jv":"Server","bg":"Сървъри","hr":"Poslužitelji","sk":"Servery"},
+"Games": {"id":"Game","ms":"Permainan","ko":"게임","zh":"游戏","ja":"ゲーム","es":"Juegos","pt":"Jogos","de":"Spiele","fr":"Jeux","it":"Giochi","nl":"Games","ru":"Игры","uk":"Ігри","pl":"Gry","cs":"Hry","tr":"Oyunlar","vi":"Trò chơi","th":"เกม","ar":"الألعاب","hi":"गेम्स","bn":"গেম","fil":"Mga Laro","zt":"遊戲","sv":"Spel","da":"Spil","no":"Spill","fi":"Pelit","el":"Παιχνίδια","he":"משחקים","ro":"Jocuri","hu":"Játékok","fa":"بازی‌ها","ur":"گیمز","jv":"Game","bg":"Игри","hr":"Igre","sk":"Hry"},
+"Guides": {"id":"Panduan","ms":"Panduan","ko":"가이드","zh":"指南","ja":"ガイド","es":"Guías","pt":"Guias","de":"Anleitungen","fr":"Guides","it":"Guide","nl":"Gidsen","ru":"Гайды","uk":"Гайди","pl":"Poradniki","cs":"Návody","tr":"Rehberler","vi":"Hướng dẫn","th":"คู่มือ","ar":"الأدلة","hi":"गाइड","bn":"গাইড","fil":"Mga Gabay","zt":"指南","sv":"Guider","da":"Guides","no":"Guider","fi":"Oppaat","el":"Οδηγοί","he":"מדריכים","ro":"Ghiduri","hu":"Útmutatók","fa":"راهنماها","ur":"گائیڈز","jv":"Pandhuan","bg":"Ръководства","hr":"Vodiči","sk":"Návody"},
+"Docs": {"id":"Dokumentasi","ms":"Dokumen","ko":"문서","zh":"文档","ja":"ドキュメント","es":"Documentos","pt":"Documentos","de":"Doku","fr":"Docs","it":"Documenti","nl":"Documenten","ru":"Документация","uk":"Документація","pl":"Dokumenty","cs":"Dokumentace","tr":"Belgeler","vi":"Tài liệu","th":"เอกสาร","ar":"المستندات","hi":"दस्तावेज़","bn":"ডকুমেন্ট","fil":"Mga Dokumento","zt":"文件","sv":"Dokument","da":"Dokumenter","no":"Dokumenter","fi":"Dokumentit","el":"Έγγραφα","he":"מסמכים","ro":"Documente","hu":"Dokumentáció","fa":"مستندات","ur":"دستاویزات","jv":"Dokumen","bg":"Документи","hr":"Dokumenti","sk":"Dokumentácia"},
+"Editor": {"id":"Editor","ms":"Editor","ko":"에디터","zh":"编辑器","ja":"エディター","es":"Editor","pt":"Editor","de":"Editor","fr":"Éditeur","it":"Editor","nl":"Editor","ru":"Редактор","uk":"Редактор","pl":"Edytor","cs":"Editor","tr":"Editör","vi":"Trình chỉnh sửa","th":"ตัวแก้ไข","ar":"المحرر","hi":"एडिटर","bn":"এডিটর","fil":"Editor","zt":"編輯器","sv":"Redigerare","da":"Editor","no":"Redigerer","fi":"Editori","el":"Επεξεργαστής","he":"עורך","ro":"Editor","hu":"Szerkesztő","fa":"ویرایشگر","ur":"ایڈیٹر","jv":"Panyunting","bg":"Редактор","hr":"Uređivač","sk":"Editor"},
+"Viewer": {"id":"Viewer","ms":"Penonton","ko":"뷰어","zh":"查看器","ja":"ビューア","es":"Visor","pt":"Visualizador","de":"Viewer","fr":"Visionneuse","it":"Visualizzatore","nl":"Viewer","ru":"Просмотр","uk":"Перегляд","pl":"Podgląd","cs":"Prohlížeč","tr":"Görüntüleyici","vi":"Trình xem","th":"ตัวดู","ar":"العارض","hi":"व्यूअर","bn":"ভিউয়ার","fil":"Viewer","zt":"檢視器","sv":"Visare","da":"Viser","no":"Viser","fi":"Katselin","el":"Προβολέας","he":"מציג","ro":"Vizualizator","hu":"Megjelenítő","fa":"نمایشگر","ur":"ویور","jv":"Pamirsa","bg":"Преглед","hr":"Preglednik","sk":"Prehliadač"},
+"Sandbox": {"id":"Sandbox","ms":"Sandbox","ko":"샌드박스","zh":"沙盒","ja":"サンドボックス","es":"Sandbox","pt":"Sandbox","de":"Sandbox","fr":"Bac à sable","it":"Sandbox","nl":"Sandbox","ru":"Песочница","uk":"Пісочниця","pl":"Piaskownica","cs":"Pískoviště","tr":"Deneme Alanı","vi":"Sandbox","th":"แซนด์บ็อกซ์","ar":"ساحة التجربة","hi":"सैंडबॉक्स","bn":"স্যান্ডবক্স","fil":"Sandbox","zt":"沙盒","sv":"Sandlåda","da":"Sandkasse","no":"Sandkasse","fi":"Hiekkalaatikko","el":"Sandbox","he":"ארגז חול","ro":"Sandbox","hu":"Homokozó","fa":"محیط آزمایشی","ur":"سینڈ باکس","jv":"Sandbox","bg":"Пясъчник","hr":"Pješčanik","sk":"Pieskovisko"},
+"Clients": {"id":"Klien","ms":"Klien","ko":"클라이언트","zh":"客户端","ja":"クライアント","es":"Clientes","pt":"Clientes","de":"Clients","fr":"Clients","it":"Client","nl":"Clients","ru":"Клиенты","uk":"Клієнти","pl":"Klienty","cs":"Klienti","tr":"İstemciler","vi":"Ứng dụng khách","th":"ไคลเอนต์","ar":"العملاء","hi":"क्लाइंट","bn":"ক্লায়েন্ট","fil":"Mga Client","zt":"用戶端","sv":"Klienter","da":"Klienter","no":"Klienter","fi":"Asiakasohjelmat","el":"Πελάτες","he":"לקוחות","ro":"Clienți","hu":"Kliensek","fa":"کلاینت‌ها","ur":"کلائنٹس","jv":"Klien","bg":"Клиенти","hr":"Klijenti","sk":"Klienti"},
+"About Us": {"id":"Tentang Kami","ms":"Tentang Kami","ko":"소개","zh":"关于我们","ja":"私たちについて","es":"Acerca de nosotros","pt":"Sobre nós","de":"Über uns","fr":"À propos","it":"Chi siamo","nl":"Over ons","ru":"О нас","uk":"Про нас","pl":"O nas","cs":"O nás","tr":"Hakkımızda","vi":"Giới thiệu","th":"เกี่ยวกับเรา","ar":"من نحن","hi":"हमारे बारे में","bn":"আমাদের সম্পর্কে","fil":"Tungkol sa Amin","zt":"關於我們","sv":"Om oss","da":"Om os","no":"Om oss","fi":"Tietoa meistä","el":"Σχετικά με εμάς","he":"אודותינו","ro":"Despre noi","hu":"Rólunk","fa":"درباره ما","ur":"ہمارے بارے میں","jv":"Bab Kita","bg":"За нас","hr":"O nama","sk":"O nás"},
+"Play": {"id":"Main","ms":"Main","ko":"플레이","zh":"开始游戏","ja":"プレイ","es":"Jugar","pt":"Jogar","de":"Spielen","fr":"Jouer","it":"Gioca","nl":"Spelen","ru":"Играть","uk":"Грати","pl":"Graj","cs":"Hrát","tr":"Oyna","vi":"Chơi","th":"เล่น","ar":"العب","hi":"खेलें","bn":"খেলুন","fil":"Maglaro","zt":"遊玩","sv":"Spela","da":"Spil","no":"Spill","fi":"Pelaa","el":"Παίξε","he":"שחק","ro":"Joacă","hu":"Játék","fa":"بازی کنید","ur":"کھیلیں","jv":"Dolanan","bg":"Играй","hr":"Igraj","sk":"Hrať"},
+"Polls": {"id":"Polling","ms":"Undian","ko":"투표","zh":"投票","ja":"投票","es":"Encuestas","pt":"Enquetes","de":"Umfragen","fr":"Sondages","it":"Sondaggi","nl":"Peilingen","ru":"Опросы","uk":"Опитування","pl":"Ankiety","cs":"Ankety","tr":"Anketler","vi":"Khảo sát","th":"โพล","ar":"الاستطلاعات","hi":"पोल","bn":"পোল","fil":"Mga Poll","zt":"投票","sv":"Omröstningar","da":"Afstemninger","no":"Avstemninger","fi":"Kyselyt","el":"Δημοσκοπήσεις","he":"סקרים","ro":"Sondaje","hu":"Szavazások","fa":"نظرسنجی‌ها","ur":"پولز","jv":"Jajak Pendapat","bg":"Анкети","hr":"Ankete","sk":"Ankety"},
+"Dashboard": {"id":"Dasbor","ms":"Papan Pemuka","ko":"대시보드","zh":"控制面板","ja":"ダッシュボード","es":"Panel","pt":"Painel","de":"Dashboard","fr":"Tableau de bord","it":"Dashboard","nl":"Dashboard","ru":"Панель","uk":"Панель","pl":"Panel","cs":"Přehled","tr":"Panel","vi":"Bảng điều khiển","th":"แดชบอร์ด","ar":"لوحة التحكم","hi":"डैशबोर्ड","bn":"ড্যাশবোর্ড","fil":"Dashboard","zt":"儀表板","sv":"Översikt","da":"Dashboard","no":"Dashbord","fi":"Hallintapaneeli","el":"Πίνακας ελέγχου","he":"לוח בקרה","ro":"Panou","hu":"Irányítópult","fa":"داشبورد","ur":"ڈیش بورڈ","jv":"Dasbor","bg":"Табло","hr":"Nadzorna ploča","sk":"Prehľad"},
+"Inbox": {"id":"Kotak Masuk","ms":"Peti Masuk","ko":"받은 편지함","zh":"收件箱","ja":"受信トレイ","es":"Bandeja de entrada","pt":"Caixa de entrada","de":"Posteingang","fr":"Boîte de réception","it":"Posta in arrivo","nl":"Inbox","ru":"Входящие","uk":"Вхідні","pl":"Skrzynka odbiorcza","cs":"Doručené","tr":"Gelen Kutusu","vi":"Hộp thư đến","th":"กล่องจดหมาย","ar":"الوارد","hi":"इनबॉक्स","bn":"ইনবক্স","fil":"Inbox","zt":"收件匣","sv":"Inkorg","da":"Indbakke","no":"Innboks","fi":"Saapuneet","el":"Εισερχόμενα","he":"דואר נכנס","ro":"Mesaje primite","hu":"Beérkezett üzenetek","fa":"صندوق ورودی","ur":"ان باکس","jv":"Kothak Mlebu","bg":"Входящи","hr":"Pristigla pošta","sk":"Doručené"},
+"Messages": {"id":"Pesan","ms":"Mesej","ko":"메시지","zh":"消息","ja":"メッセージ","es":"Mensajes","pt":"Mensagens","de":"Nachrichten","fr":"Messages","it":"Messaggi","nl":"Berichten","ru":"Сообщения","uk":"Повідомлення","pl":"Wiadomości","cs":"Zprávy","tr":"Mesajlar","vi":"Tin nhắn","th":"ข้อความ","ar":"الرسائل","hi":"संदेश","bn":"বার্তা","fil":"Mga Mensahe","zt":"訊息","sv":"Meddelanden","da":"Beskeder","no":"Meldinger","fi":"Viestit","el":"Μηνύματα","he":"הודעות","ro":"Mesaje","hu":"Üzenetek","fa":"پیام‌ها","ur":"پیغامات","jv":"Pesen","bg":"Съобщения","hr":"Poruke","sk":"Správy"},
+"Saved": {"id":"Tersimpan","ms":"Disimpan","ko":"저장됨","zh":"已保存","ja":"保存済み","es":"Guardado","pt":"Salvos","de":"Gespeichert","fr":"Enregistrés","it":"Salvati","nl":"Opgeslagen","ru":"Сохранённое","uk":"Збережене","pl":"Zapisane","cs":"Uložené","tr":"Kaydedilenler","vi":"Đã lưu","th":"บันทึกไว้","ar":"المحفوظات","hi":"सहेजे गए","bn":"সংরক্ষিত","fil":"Mga Naka-save","zt":"已儲存","sv":"Sparade","da":"Gemte","no":"Lagret","fi":"Tallennetut","el":"Αποθηκευμένα","he":"שמורים","ro":"Salvate","hu":"Mentettek","fa":"ذخیره‌شده‌ها","ur":"محفوظ شدہ","jv":"Kasimpen","bg":"Запазени","hr":"Spremljeno","sk":"Uložené"},
+"My Profile": {"id":"Profil Saya","ms":"Profil Saya","ko":"내 프로필","zh":"我的资料","ja":"マイプロフィール","es":"Mi perfil","pt":"Meu perfil","de":"Mein Profil","fr":"Mon profil","it":"Il mio profilo","nl":"Mijn profiel","ru":"Мой профиль","uk":"Мій профіль","pl":"Mój profil","cs":"Můj profil","tr":"Profilim","vi":"Hồ sơ của tôi","th":"โปรไฟล์ของฉัน","ar":"ملفي الشخصي","hi":"मेरी प्रोफ़ाइल","bn":"আমার প্রোফাইল","fil":"Aking Profile","zt":"我的個人檔案","sv":"Min profil","da":"Min profil","no":"Min profil","fi":"Oma profiili","el":"Το προφίλ μου","he":"הפרופיל שלי","ro":"Profilul meu","hu":"Profilom","fa":"نمایه من","ur":"میری پروفائل","jv":"Profilku","bg":"Моят профил","hr":"Moj profil","sk":"Môj profil"},
+"Post": {"id":"Posting","ms":"Pos","ko":"게시","zh":"发帖","ja":"投稿","es":"Publicar","pt":"Postar","de":"Beitrag","fr":"Publication","it":"Post","nl":"Bericht","ru":"Пост","uk":"Допис","pl":"Wpis","cs":"Příspěvek","tr":"Gönderi","vi":"Bài đăng","th":"โพสต์","ar":"منشور","hi":"पोस्ट","bn":"পোস্ট","fil":"Post","zt":"貼文","sv":"Inlägg","da":"Opslag","no":"Innlegg","fi":"Julkaisu","el":"Ανάρτηση","he":"פוסט","ro":"Postare","hu":"Bejegyzés","fa":"پست","ur":"پوسٹ","jv":"Kiriman","bg":"Публикация","hr":"Objava","sk":"Príspevok"},
+"Posts": {"id":"Postingan","ms":"Pos","ko":"게시물","zh":"帖子","ja":"投稿","es":"Publicaciones","pt":"Publicações","de":"Beiträge","fr":"Publications","it":"Post","nl":"Berichten","ru":"Посты","uk":"Дописи","pl":"Wpisy","cs":"Příspěvky","tr":"Gönderiler","vi":"Các bài đăng","th":"โพสต์","ar":"المنشورات","hi":"पोस्ट","bn":"পোস্টসমূহ","fil":"Mga Post","zt":"貼文","sv":"Inlägg","da":"Opslag","no":"Innlegg","fi":"Julkaisut","el":"Αναρτήσεις","he":"פוסטים","ro":"Postări","hu":"Bejegyzések","fa":"پست‌ها","ur":"پوسٹس","jv":"Kiriman","bg":"Публикации","hr":"Objave","sk":"Príspevky"},
+"Admin": {"id":"Admin","ms":"Pentadbir","ko":"관리자","zh":"管理员","ja":"管理者","es":"Administración","pt":"Administração","de":"Admin","fr":"Admin","it":"Admin","nl":"Beheer","ru":"Админ","uk":"Адмін","pl":"Admin","cs":"Správce","tr":"Yönetici","vi":"Quản trị","th":"ผู้ดูแล","ar":"المشرف","hi":"एडमिन","bn":"অ্যাডমিন","fil":"Admin","zt":"管理員","sv":"Admin","da":"Admin","no":"Admin","fi":"Ylläpito","el":"Διαχειριστής","he":"מנהל","ro":"Admin","hu":"Admin","fa":"مدیر","ur":"ایڈمن","jv":"Admin","bg":"Админ","hr":"Admin","sk":"Správca"},
+"Reports": {"id":"Laporan","ms":"Laporan","ko":"신고","zh":"举报","ja":"通報","es":"Reportes","pt":"Denúncias","de":"Meldungen","fr":"Signalements","it":"Segnalazioni","nl":"Meldingen","ru":"Жалобы","uk":"Скарги","pl":"Zgłoszenia","cs":"Hlášení","tr":"Şikâyetler","vi":"Báo cáo","th":"รายงาน","ar":"البلاغات","hi":"रिपोर्ट","bn":"রিপোর্ট","fil":"Mga Ulat","zt":"檢舉","sv":"Rapporter","da":"Rapporter","no":"Rapporter","fi":"Ilmoitukset","el":"Αναφορές","he":"דיווחים","ro":"Raportări","hu":"Bejelentések","fa":"گزارش‌ها","ur":"رپورٹس","jv":"Laporan","bg":"Сигнали","hr":"Prijave","sk":"Hlásenia"},
+"Users": {"id":"Pengguna","ms":"Pengguna","ko":"사용자","zh":"用户","ja":"ユーザー","es":"Usuarios","pt":"Usuários","de":"Benutzer","fr":"Utilisateurs","it":"Utenti","nl":"Gebruikers","ru":"Пользователи","uk":"Користувачі","pl":"Użytkownicy","cs":"Uživatelé","tr":"Kullanıcılar","vi":"Người dùng","th":"ผู้ใช้","ar":"المستخدمون","hi":"यूज़र","bn":"ব্যবহারকারী","fil":"Mga User","zt":"使用者","sv":"Användare","da":"Brugere","no":"Brukere","fi":"Käyttäjät","el":"Χρήστες","he":"משתמשים","ro":"Utilizatori","hu":"Felhasználók","fa":"کاربران","ur":"صارفین","jv":"Pangguna","bg":"Потребители","hr":"Korisnici","sk":"Používatelia"},
+"All Users": {"id":"Semua Pengguna","ms":"Semua Pengguna","ko":"모든 사용자","zh":"所有用户","ja":"すべてのユーザー","es":"Todos los usuarios","pt":"Todos os usuários","de":"Alle Benutzer","fr":"Tous les utilisateurs","it":"Tutti gli utenti","nl":"Alle gebruikers","ru":"Все пользователи","uk":"Усі користувачі","pl":"Wszyscy użytkownicy","cs":"Všichni uživatelé","tr":"Tüm Kullanıcılar","vi":"Tất cả người dùng","th":"ผู้ใช้ทั้งหมด","ar":"كل المستخدمين","hi":"सभी यूज़र","bn":"সব ব্যবহারকারী","fil":"Lahat ng User","zt":"所有使用者","sv":"Alla användare","da":"Alle brugere","no":"Alle brukere","fi":"Kaikki käyttäjät","el":"Όλοι οι χρήστες","he":"כל המשתמשים","ro":"Toți utilizatorii","hu":"Összes felhasználó","fa":"همه کاربران","ur":"تمام صارفین","jv":"Kabeh Pangguna","bg":"Всички потребители","hr":"Svi korisnici","sk":"Všetci používatelia"},
+"Ban Appeals": {"id":"Banding Pemblokiran","ms":"Rayuan Larangan","ko":"제재 이의 신청","zh":"封禁申诉","ja":"BAN異議申し立て","es":"Apelaciones de baneo","pt":"Apelações de banimento","de":"Sperr-Einsprüche","fr":"Appels de bannissement","it":"Ricorsi ai ban","nl":"Banberoepen","ru":"Апелляции на бан","uk":"Апеляції на бан","pl":"Odwołania od bana","cs":"Odvolání proti banu","tr":"Yasak İtirazları","vi":"Kháng cáo cấm","th":"คำอุทธรณ์การแบน","ar":"طعون الحظر","hi":"बैन अपील","bn":"ব্যান আপিল","fil":"Mga Apela sa Ban","zt":"封鎖申訴","sv":"Överklaganden av avstängning","da":"Anker over udelukkelse","no":"Anker på utestengelse","fi":"Porttikieltovalitukset","el":"Εφέσεις αποκλεισμού","he":"ערעורים על חסימה","ro":"Contestații de ban","hu":"Kitiltási fellebbezések","fa":"اعتراض به مسدودی","ur":"پابندی کی اپیلیں","jv":"Banding Pamblokiran","bg":"Обжалвания на бан","hr":"Žalbe na zabranu","sk":"Odvolania proti banu"},
+"Krunker Verifications": {"id":"Verifikasi Krunker","ms":"Pengesahan Krunker","ko":"Krunker 인증","zh":"Krunker 验证","ja":"Krunker認証","es":"Verificaciones de Krunker","pt":"Verificações do Krunker","de":"Krunker-Verifizierungen","fr":"Vérifications Krunker","it":"Verifiche Krunker","nl":"Krunker-verificaties","ru":"Верификации Krunker","uk":"Верифікації Krunker","pl":"Weryfikacje Krunker","cs":"Ověření Krunker","tr":"Krunker Doğrulamaları","vi":"Xác minh Krunker","th":"การยืนยัน Krunker","ar":"عمليات تحقق Krunker","hi":"Krunker सत्यापन","bn":"Krunker যাচাইকরণ","fil":"Mga Beripikasyon sa Krunker","zt":"Krunker 驗證","sv":"Krunker-verifieringar","da":"Krunker-verificeringer","no":"Krunker-verifiseringer","fi":"Krunker-vahvistukset","el":"Επαληθεύσεις Krunker","he":"אימותי Krunker","ro":"Verificări Krunker","hu":"Krunker-ellenőrzések","fa":"تأییدهای Krunker","ur":"Krunker تصدیقات","jv":"Verifikasi Krunker","bg":"Потвърждения на Krunker","hr":"Krunker provjere","sk":"Overenia Krunker"},
+"History Logs": {"id":"Log Riwayat","ms":"Log Sejarah","ko":"기록 로그","zh":"历史日志","ja":"履歴ログ","es":"Registros de historial","pt":"Registros de histórico","de":"Verlaufsprotokolle","fr":"Journaux d'historique","it":"Registro cronologia","nl":"Geschiedenislogs","ru":"Журналы истории","uk":"Журнали історії","pl":"Dzienniki historii","cs":"Protokoly historie","tr":"Geçmiş Kayıtları","vi":"Nhật ký lịch sử","th":"บันทึกประวัติ","ar":"سجلات التاريخ","hi":"इतिहास लॉग","bn":"ইতিহাস লগ","fil":"Mga Log ng Kasaysayan","zt":"歷史記錄","sv":"Historikloggar","da":"Historiklogge","no":"Historikklogger","fi":"Historialokit","el":"Αρχεία ιστορικού","he":"יומני היסטוריה","ro":"Jurnale de istoric","hu":"Előzménynaplók","fa":"گزارش‌های تاریخچه","ur":"ہسٹری لاگز","jv":"Log Riwayat","bg":"Дневници на историята","hr":"Zapisnici povijesti","sk":"Protokoly histórie"},
+"Account Settings": {"id":"Pengaturan Akun","ms":"Tetapan Akaun","ko":"계정 설정","zh":"账户设置","ja":"アカウント設定","es":"Ajustes de la cuenta","pt":"Configurações da conta","de":"Kontoeinstellungen","fr":"Paramètres du compte","it":"Impostazioni account","nl":"Accountinstellingen","ru":"Настройки аккаунта","uk":"Налаштування облікового запису","pl":"Ustawienia konta","cs":"Nastavení účtu","tr":"Hesap Ayarları","vi":"Cài đặt tài khoản","th":"การตั้งค่าบัญชี","ar":"إعدادات الحساب","hi":"खाता सेटिंग्स","bn":"অ্যাকাউন্ট সেটিংস","fil":"Mga Setting ng Account","zt":"帳號設定","sv":"Kontoinställningar","da":"Kontoindstillinger","no":"Kontoinnstillinger","fi":"Tilin asetukset","el":"Ρυθμίσεις λογαριασμού","he":"הגדרות חשבון","ro":"Setări cont","hu":"Fiókbeállítások","fa":"تنظیمات حساب","ur":"اکاؤنٹ کی ترتیبات","jv":"Setelan Akun","bg":"Настройки на акаунта","hr":"Postavke računa","sk":"Nastavenia účtu"},
+"Theme Settings": {"id":"Pengaturan Tema","ms":"Tetapan Tema","ko":"테마 설정","zh":"主题设置","ja":"テーマ設定","es":"Ajustes del tema","pt":"Configurações do tema","de":"Design-Einstellungen","fr":"Paramètres du thème","it":"Impostazioni tema","nl":"Thema-instellingen","ru":"Настройки темы","uk":"Налаштування теми","pl":"Ustawienia motywu","cs":"Nastavení motivu","tr":"Tema Ayarları","vi":"Cài đặt giao diện","th":"การตั้งค่าธีม","ar":"إعدادات السمة","hi":"थीम सेटिंग्स","bn":"থিম সেটিংস","fil":"Mga Setting ng Tema","zt":"主題設定","sv":"Temainställningar","da":"Temaindstillinger","no":"Temainnstillinger","fi":"Teeman asetukset","el":"Ρυθμίσεις θέματος","he":"הגדרות ערכת נושא","ro":"Setări temă","hu":"Témabeállítások","fa":"تنظیمات پوسته","ur":"تھیم کی ترتیبات","jv":"Setelan Tema","bg":"Настройки на темата","hr":"Postavke teme","sk":"Nastavenia témy"},
+"Language": {"id":"Bahasa","ms":"Bahasa","ko":"언어","zh":"语言","ja":"言語","es":"Idioma","pt":"Idioma","de":"Sprache","fr":"Langue","it":"Lingua","nl":"Taal","ru":"Язык","uk":"Мова","pl":"Język","cs":"Jazyk","tr":"Dil","vi":"Ngôn ngữ","th":"ภาษา","ar":"اللغة","hi":"भाषा","bn":"ভাষা","fil":"Wika","zt":"語言","sv":"Språk","da":"Sprog","no":"Språk","fi":"Kieli","el":"Γλώσσα","he":"שפה","ro":"Limbă","hu":"Nyelv","fa":"زبان","ur":"زبان","jv":"Basa","bg":"Език","hr":"Jezik","sk":"Jazyk"},
+"Usable CSS": {"id":"CSS Siap Pakai","ms":"CSS Boleh Guna","ko":"사용 가능한 CSS","zh":"可用 CSS","ja":"使えるCSS","es":"CSS utilizable","pt":"CSS utilizável","de":"Nutzbares CSS","fr":"CSS utilisable","it":"CSS utilizzabili","nl":"Bruikbare CSS","ru":"Доступный CSS","uk":"Придатний CSS","pl":"Używalny CSS","cs":"Použitelné CSS","tr":"Kullanılabilir CSS","vi":"CSS dùng được","th":"CSS ที่ใช้ได้","ar":"CSS قابل للاستخدام","hi":"उपयोग योग्य CSS","bn":"ব্যবহারযোগ্য CSS","fil":"Magagamit na CSS","zt":"可用的 CSS","sv":"Användbar CSS","da":"Brugbar CSS","no":"Brukbar CSS","fi":"Käytettävä CSS","el":"Χρησιμοποιήσιμο CSS","he":"CSS שימושי","ro":"CSS utilizabil","hu":"Használható CSS","fa":"CSS قابل استفاده","ur":"قابلِ استعمال CSS","jv":"CSS sing Bisa Dienggo","bg":"Използваем CSS","hr":"Upotrebljiv CSS","sk":"Použiteľné CSS"},
+"Usable Settings": {"id":"Pengaturan Siap Pakai","ms":"Tetapan Boleh Guna","ko":"사용 가능한 설정","zh":"可用设置","ja":"使える設定","es":"Ajustes utilizables","pt":"Configurações utilizáveis","de":"Nutzbare Einstellungen","fr":"Paramètres utilisables","it":"Impostazioni utilizzabili","nl":"Bruikbare instellingen","ru":"Доступные настройки","uk":"Придатні налаштування","pl":"Używalne ustawienia","cs":"Použitelná nastavení","tr":"Kullanılabilir Ayarlar","vi":"Cài đặt dùng được","th":"การตั้งค่าที่ใช้ได้","ar":"إعدادات قابلة للاستخدام","hi":"उपयोग योग्य सेटिंग्स","bn":"ব্যবহারযোগ্য সেটিংস","fil":"Magagamit na Setting","zt":"可用的設定","sv":"Användbara inställningar","da":"Brugbare indstillinger","no":"Brukbare innstillinger","fi":"Käytettävät asetukset","el":"Χρησιμοποιήσιμες ρυθμίσεις","he":"הגדרות שימושיות","ro":"Setări utilizabile","hu":"Használható beállítások","fa":"تنظیمات قابل استفاده","ur":"قابلِ استعمال ترتیبات","jv":"Setelan sing Bisa Dienggo","bg":"Използваеми настройки","hr":"Upotrebljive postavke","sk":"Použiteľné nastavenia"},
+"Usable KrunkScripts": {"id":"KrunkScript Siap Pakai","ms":"KrunkScript Boleh Guna","ko":"사용 가능한 KrunkScript","zh":"可用 KrunkScript","ja":"使えるKrunkScript","es":"KrunkScripts utilizables","pt":"KrunkScripts utilizáveis","de":"Nutzbare KrunkScripts","fr":"KrunkScripts utilisables","it":"KrunkScript utilizzabili","nl":"Bruikbare KrunkScripts","ru":"Доступные KrunkScripts","uk":"Придатні KrunkScripts","pl":"Używalne KrunkScripts","cs":"Použitelné KrunkScripts","tr":"Kullanılabilir KrunkScript'ler","vi":"KrunkScript dùng được","th":"KrunkScript ที่ใช้ได้","ar":"KrunkScripts قابلة للاستخدام","hi":"उपयोग योग्य KrunkScripts","bn":"ব্যবহারযোগ্য KrunkScripts","fil":"Magagamit na KrunkScript","zt":"可用的 KrunkScript","sv":"Användbara KrunkScripts","da":"Brugbare KrunkScripts","no":"Brukbare KrunkScripts","fi":"Käytettävät KrunkScriptit","el":"Χρησιμοποιήσιμα KrunkScripts","he":"KrunkScripts שימושיים","ro":"KrunkScripts utilizabile","hu":"Használható KrunkScriptek","fa":"KrunkScript‌های قابل استفاده","ur":"قابلِ استعمال KrunkScripts","jv":"KrunkScript sing Bisa Dienggo","bg":"Използваеми KrunkScripts","hr":"Upotrebljivi KrunkScripts","sk":"Použiteľné KrunkScripts"},
+"Legal Script": {"id":"Skrip Legal","ms":"Skrip Sah","ko":"합법 스크립트","zh":"合法脚本","ja":"合法スクリプト","es":"Script legal","pt":"Script legal","de":"Legales Skript","fr":"Script légal","it":"Script legale","nl":"Legaal script","ru":"Легальный скрипт","uk":"Легальний скрипт","pl":"Legalny skrypt","cs":"Legální skript","tr":"Yasal Betik","vi":"Script hợp lệ","th":"สคริปต์ที่ถูกต้อง","ar":"سكربت قانوني","hi":"वैध स्क्रिप्ट","bn":"বৈধ স্ক্রিপ্ট","fil":"Legal na Script","zt":"合法腳本","sv":"Lagligt skript","da":"Lovligt script","no":"Lovlig skript","fi":"Laillinen skripti","el":"Νόμιμο σενάριο","he":"סקריפט חוקי","ro":"Script legal","hu":"Szabályos szkript","fa":"اسکریپت مجاز","ur":"جائز اسکرپٹ","jv":"Skrip Sah","bg":"Легален скрипт","hr":"Legalna skripta","sk":"Legálny skript"},
+"Scope": {"id":"Scope","ms":"Skop","ko":"스코프","zh":"瞄准镜","ja":"スコープ","es":"Mira telescópica","pt":"Luneta","de":"Zielfernrohr","fr":"Lunette","it":"Mirino ottico","nl":"Richtkijker","ru":"Прицел оптики","uk":"Приціл оптики","pl":"Luneta","cs":"Puškohled","tr":"Dürbün","vi":"Ống ngắm","th":"กล้องเล็ง","ar":"المنظار","hi":"स्कोप","bn":"স্কোপ","fil":"Scope","zt":"瞄準鏡","sv":"Kikarsikte","da":"Kikkertsigte","no":"Kikkertsikte","fi":"Kiikaritähtäin","el":"Διόπτρα","he":"כוונת טלסקופית","ro":"Lunetă","hu":"Távcső","fa":"دوربین","ur":"اسکوپ","jv":"Scope","bg":"Оптичен мерник","hr":"Optički nišan","sk":"Ďalekohľad"},
+"Hitmarker": {"id":"Hitmarker","ms":"Hitmarker","ko":"히트마커","zh":"命中标记","ja":"ヒットマーカー","es":"Marcador de impacto","pt":"Marcador de acerto","de":"Hitmarker","fr":"Hitmarker","it":"Hitmarker","nl":"Hitmarker","ru":"Хитмаркер","uk":"Хітмаркер","pl":"Hitmarker","cs":"Hitmarker","tr":"Hitmarker","vi":"Hitmarker","th":"ฮิตมาร์กเกอร์","ar":"مؤشر الإصابة","hi":"हिटमार्कर","bn":"হিটমার্কার","fil":"Hitmarker","zt":"命中標記","sv":"Träffmarkör","da":"Hitmarker","no":"Treffmarkør","fi":"Osumamerkki","el":"Hitmarker","he":"סימון פגיעה","ro":"Hitmarker","hu":"Találatjelző","fa":"نشانگر برخورد","ur":"ہٹ مارکر","jv":"Hitmarker","bg":"Хитмаркер","hr":"Hitmarker","sk":"Hitmarker"},
+"Krunker Updates": {"id":"Pembaruan Krunker","ms":"Kemas Kini Krunker","ko":"Krunker 업데이트","zh":"Krunker 更新","ja":"Krunkerアップデート","es":"Actualizaciones de Krunker","pt":"Atualizações do Krunker","de":"Krunker-Updates","fr":"Mises à jour Krunker","it":"Aggiornamenti Krunker","nl":"Krunker-updates","ru":"Обновления Krunker","uk":"Оновлення Krunker","pl":"Aktualizacje Krunker","cs":"Aktualizace Krunker","tr":"Krunker Güncellemeleri","vi":"Cập nhật Krunker","th":"อัปเดต Krunker","ar":"تحديثات Krunker","hi":"Krunker अपडेट","bn":"Krunker আপডেট","fil":"Mga Update sa Krunker","zt":"Krunker 更新","sv":"Krunker-uppdateringar","da":"Krunker-opdateringer","no":"Krunker-oppdateringer","fi":"Krunker-päivitykset","el":"Ενημερώσεις Krunker","he":"עדכוני Krunker","ro":"Actualizări Krunker","hu":"Krunker-frissítések","fa":"به‌روزرسانی‌های Krunker","ur":"Krunker اپڈیٹس","jv":"Pembaruan Krunker","bg":"Актуализации на Krunker","hr":"Krunker ažuriranja","sk":"Aktualizácie Krunker"},
+"Krunker Events": {"id":"Event Krunker","ms":"Acara Krunker","ko":"Krunker 이벤트","zh":"Krunker 活动","ja":"Krunkerイベント","es":"Eventos de Krunker","pt":"Eventos do Krunker","de":"Krunker-Events","fr":"Événements Krunker","it":"Eventi Krunker","nl":"Krunker-evenementen","ru":"События Krunker","uk":"Події Krunker","pl":"Wydarzenia Krunker","cs":"Události Krunker","tr":"Krunker Etkinlikleri","vi":"Sự kiện Krunker","th":"กิจกรรม Krunker","ar":"فعاليات Krunker","hi":"Krunker इवेंट","bn":"Krunker ইভেন্ট","fil":"Mga Event sa Krunker","zt":"Krunker 活動","sv":"Krunker-event","da":"Krunker-events","no":"Krunker-arrangementer","fi":"Krunker-tapahtumat","el":"Εκδηλώσεις Krunker","he":"אירועי Krunker","ro":"Evenimente Krunker","hu":"Krunker-események","fa":"رویدادهای Krunker","ur":"Krunker ایونٹس","jv":"Acara Krunker","bg":"Събития на Krunker","hr":"Krunker događaji","sk":"Udalosti Krunker"},
+"Login": {"id":"Masuk","ms":"Log Masuk","ko":"로그인","zh":"登录","ja":"ログイン","es":"Iniciar sesión","pt":"Entrar","de":"Anmeldung","fr":"Connexion","it":"Accesso","nl":"Inloggen","ru":"Вход","uk":"Вхід","pl":"Logowanie","cs":"Přihlášení","tr":"Giriş","vi":"Đăng nhập","th":"เข้าสู่ระบบ","ar":"تسجيل الدخول","hi":"लॉगिन","bn":"লগইন","fil":"Login","zt":"登入","sv":"Inloggning","da":"Login","no":"Innlogging","fi":"Kirjautuminen","el":"Σύνδεση","he":"התחברות","ro":"Autentificare","hu":"Bejelentkezés","fa":"ورود","ur":"لاگ اِن","jv":"Mlebu","bg":"Вход","hr":"Prijava","sk":"Prihlásenie"},
+"Log In": {"id":"Masuk","ms":"Log Masuk","ko":"로그인","zh":"登录","ja":"ログイン","es":"Iniciar sesión","pt":"Entrar","de":"Anmelden","fr":"Se connecter","it":"Accedi","nl":"Inloggen","ru":"Войти","uk":"Увійти","pl":"Zaloguj się","cs":"Přihlásit se","tr":"Giriş Yap","vi":"Đăng nhập","th":"เข้าสู่ระบบ","ar":"تسجيل الدخول","hi":"लॉग इन करें","bn":"লগ ইন করুন","fil":"Mag-log In","zt":"登入","sv":"Logga in","da":"Log ind","no":"Logg inn","fi":"Kirjaudu sisään","el":"Σύνδεση","he":"התחבר","ro":"Autentifică-te","hu":"Bejelentkezés","fa":"ورود","ur":"لاگ اِن کریں","jv":"Mlebu","bg":"Вход","hr":"Prijavi se","sk":"Prihlásiť sa"},
+"Sign Up": {"id":"Daftar","ms":"Daftar","ko":"회원가입","zh":"注册","ja":"新規登録","es":"Registrarse","pt":"Cadastrar-se","de":"Registrieren","fr":"S'inscrire","it":"Registrati","nl":"Registreren","ru":"Регистрация","uk":"Реєстрація","pl":"Zarejestruj się","cs":"Registrovat se","tr":"Kaydol","vi":"Đăng ký","th":"สมัครสมาชิก","ar":"إنشاء حساب","hi":"साइन अप करें","bn":"সাইন আপ করুন","fil":"Mag-sign Up","zt":"註冊","sv":"Registrera dig","da":"Tilmeld dig","no":"Registrer deg","fi":"Rekisteröidy","el":"Εγγραφή","he":"הירשם","ro":"Înregistrează-te","hu":"Regisztráció","fa":"ثبت‌نام","ur":"سائن اپ کریں","jv":"Daftar","bg":"Регистрация","hr":"Registriraj se","sk":"Registrovať sa"},
+"Log Out": {"id":"Keluar","ms":"Log Keluar","ko":"로그아웃","zh":"退出登录","ja":"ログアウト","es":"Cerrar sesión","pt":"Sair","de":"Abmelden","fr":"Se déconnecter","it":"Esci","nl":"Uitloggen","ru":"Выйти","uk":"Вийти","pl":"Wyloguj się","cs":"Odhlásit se","tr":"Çıkış Yap","vi":"Đăng xuất","th":"ออกจากระบบ","ar":"تسجيل الخروج","hi":"लॉग आउट करें","bn":"লগ আউট করুন","fil":"Mag-log Out","zt":"登出","sv":"Logga ut","da":"Log ud","no":"Logg ut","fi":"Kirjaudu ulos","el":"Αποσύνδεση","he":"התנתק","ro":"Deconectare","hu":"Kijelentkezés","fa":"خروج از حساب","ur":"لاگ آؤٹ کریں","jv":"Metu","bg":"Изход","hr":"Odjavi se","sk":"Odhlásiť sa"},
+"Logout": {"id":"Keluar","ms":"Log Keluar","ko":"로그아웃","zh":"退出登录","ja":"ログアウト","es":"Cerrar sesión","pt":"Sair","de":"Abmelden","fr":"Déconnexion","it":"Esci","nl":"Uitloggen","ru":"Выход","uk":"Вихід","pl":"Wylogowanie","cs":"Odhlášení","tr":"Çıkış","vi":"Đăng xuất","th":"ออกจากระบบ","ar":"خروج","hi":"लॉगआउट","bn":"লগআউট","fil":"Logout","zt":"登出","sv":"Utloggning","da":"Logout","no":"Utlogging","fi":"Uloskirjautuminen","el":"Αποσύνδεση","he":"התנתקות","ro":"Deconectare","hu":"Kijelentkezés","fa":"خروج","ur":"لاگ آؤٹ","jv":"Metu","bg":"Изход","hr":"Odjava","sk":"Odhlásenie"},
+"Create Account": {"id":"Buat Akun","ms":"Cipta Akaun","ko":"계정 만들기","zh":"创建账户","ja":"アカウント作成","es":"Crear cuenta","pt":"Criar conta","de":"Konto erstellen","fr":"Créer un compte","it":"Crea account","nl":"Account aanmaken","ru":"Создать аккаунт","uk":"Створити обліковий запис","pl":"Utwórz konto","cs":"Vytvořit účet","tr":"Hesap Oluştur","vi":"Tạo tài khoản","th":"สร้างบัญชี","ar":"إنشاء حساب","hi":"खाता बनाएँ","bn":"অ্যাকাউন্ট তৈরি করুন","fil":"Gumawa ng Account","zt":"建立帳號","sv":"Skapa konto","da":"Opret konto","no":"Opprett konto","fi":"Luo tili","el":"Δημιουργία λογαριασμού","he":"צור חשבון","ro":"Creează cont","hu":"Fiók létrehozása","fa":"ساخت حساب","ur":"اکاؤنٹ بنائیں","jv":"Gawe Akun","bg":"Създай акаунт","hr":"Izradi račun","sk":"Vytvoriť účet"},
+"Email": {"id":"Email","ms":"E-mel","ko":"이메일","zh":"邮箱","ja":"メールアドレス","es":"Correo electrónico","pt":"E-mail","de":"E-Mail","fr":"E-mail","it":"Email","nl":"E-mail","ru":"Эл. почта","uk":"Ел. пошта","pl":"E-mail","cs":"E-mail","tr":"E-posta","vi":"Email","th":"อีเมล","ar":"البريد الإلكتروني","hi":"ईमेल","bn":"ইমেইল","fil":"Email","zt":"電子郵件","sv":"E-post","da":"E-mail","no":"E-post","fi":"Sähköposti","el":"Email","he":"אימייל","ro":"E-mail","hu":"E-mail","fa":"ایمیل","ur":"ای میل","jv":"Email","bg":"Имейл","hr":"E-pošta","sk":"E-mail"},
+"Password": {"id":"Kata Sandi","ms":"Kata Laluan","ko":"비밀번호","zh":"密码","ja":"パスワード","es":"Contraseña","pt":"Senha","de":"Passwort","fr":"Mot de passe","it":"Password","nl":"Wachtwoord","ru":"Пароль","uk":"Пароль","pl":"Hasło","cs":"Heslo","tr":"Şifre","vi":"Mật khẩu","th":"รหัสผ่าน","ar":"كلمة المرور","hi":"पासवर्ड","bn":"পাসওয়ার্ড","fil":"Password","zt":"密碼","sv":"Lösenord","da":"Adgangskode","no":"Passord","fi":"Salasana","el":"Κωδικός πρόσβασης","he":"סיסמה","ro":"Parolă","hu":"Jelszó","fa":"گذرواژه","ur":"پاس ورڈ","jv":"Tembung Sandi","bg":"Парола","hr":"Lozinka","sk":"Heslo"},
+"Username": {"id":"Nama Pengguna","ms":"Nama Pengguna","ko":"사용자 이름","zh":"用户名","ja":"ユーザー名","es":"Nombre de usuario","pt":"Nome de usuário","de":"Benutzername","fr":"Nom d'utilisateur","it":"Nome utente","nl":"Gebruikersnaam","ru":"Имя пользователя","uk":"Ім'я користувача","pl":"Nazwa użytkownika","cs":"Uživatelské jméno","tr":"Kullanıcı adı","vi":"Tên người dùng","th":"ชื่อผู้ใช้","ar":"اسم المستخدم","hi":"यूज़रनेम","bn":"ইউজারনেম","fil":"Username","zt":"使用者名稱","sv":"Användarnamn","da":"Brugernavn","no":"Brukernavn","fi":"Käyttäjätunnus","el":"Όνομα χρήστη","he":"שם משתמש","ro":"Nume de utilizator","hu":"Felhasználónév","fa":"نام کاربری","ur":"صارف نام","jv":"Jeneng pangguna","bg":"Потребителско име","hr":"Korisničko ime","sk":"Používateľské meno"},
+"Display Name": {"id":"Nama Tampilan","ms":"Nama Paparan","ko":"표시 이름","zh":"显示名称","ja":"表示名","es":"Nombre para mostrar","pt":"Nome de exibição","de":"Anzeigename","fr":"Nom affiché","it":"Nome visualizzato","nl":"Weergavenaam","ru":"Отображаемое имя","uk":"Відображуване ім'я","pl":"Nazwa wyświetlana","cs":"Zobrazované jméno","tr":"Görünen Ad","vi":"Tên hiển thị","th":"ชื่อที่แสดง","ar":"الاسم المعروض","hi":"प्रदर्शित नाम","bn":"প্রদর্শিত নাম","fil":"Display Name","zt":"顯示名稱","sv":"Visningsnamn","da":"Visningsnavn","no":"Visningsnavn","fi":"Näyttönimi","el":"Εμφανιζόμενο όνομα","he":"שם תצוגה","ro":"Nume afișat","hu":"Megjelenített név","fa":"نام نمایشی","ur":"ظاہری نام","jv":"Jeneng Tampilan","bg":"Показвано име","hr":"Prikazno ime","sk":"Zobrazované meno"},
+"Email or username": {"id":"Email atau nama pengguna","ms":"E-mel atau nama pengguna","ko":"이메일 또는 사용자 이름","zh":"邮箱或用户名","ja":"メールまたはユーザー名","es":"Correo o nombre de usuario","pt":"E-mail ou nome de usuário","de":"E-Mail oder Benutzername","fr":"E-mail ou nom d'utilisateur","it":"Email o nome utente","nl":"E-mail of gebruikersnaam","ru":"Эл. почта или имя пользователя","uk":"Ел. пошта або ім'я користувача","pl":"E-mail lub nazwa użytkownika","cs":"E-mail nebo uživatelské jméno","tr":"E-posta veya kullanıcı adı","vi":"Email hoặc tên người dùng","th":"อีเมลหรือชื่อผู้ใช้","ar":"البريد الإلكتروني أو اسم المستخدم","hi":"ईमेल या यूज़रनेम","bn":"ইমেইল বা ইউজারনেম","fil":"Email o username","zt":"電子郵件或使用者名稱","sv":"E-post eller användarnamn","da":"E-mail eller brugernavn","no":"E-post eller brukernavn","fi":"Sähköposti tai käyttäjätunnus","el":"Email ή όνομα χρήστη","he":"אימייל או שם משתמש","ro":"E-mail sau nume de utilizator","hu":"E-mail vagy felhasználónév","fa":"ایمیل یا نام کاربری","ur":"ای میل یا صارف نام","jv":"Email utawa jeneng pangguna","bg":"Имейл или потребителско име","hr":"E-pošta ili korisničko ime","sk":"E-mail alebo používateľské meno"},
+"Forgot your password?": {"id":"Lupa kata sandi?","ms":"Lupa kata laluan?","ko":"비밀번호를 잊으셨나요?","zh":"忘记密码？","ja":"パスワードをお忘れですか？","es":"¿Olvidaste tu contraseña?","pt":"Esqueceu sua senha?","de":"Passwort vergessen?","fr":"Mot de passe oublié ?","it":"Password dimenticata?","nl":"Wachtwoord vergeten?","ru":"Забыли пароль?","uk":"Забули пароль?","pl":"Nie pamiętasz hasła?","cs":"Zapomněli jste heslo?","tr":"Şifrenizi mi unuttunuz?","vi":"Quên mật khẩu?","th":"ลืมรหัสผ่าน?","ar":"هل نسيت كلمة المرور؟","hi":"पासवर्ड भूल गए?","bn":"পাসওয়ার্ড ভুলে গেছেন?","fil":"Nakalimutan ang password?","zt":"忘記密碼？","sv":"Glömt lösenordet?","da":"Glemt adgangskode?","no":"Glemt passordet?","fi":"Unohditko salasanan?","el":"Ξεχάσατε τον κωδικό σας;","he":"שכחת סיסמה?","ro":"Ai uitat parola?","hu":"Elfelejtetted a jelszavad?","fa":"گذرواژه را فراموش کرده‌اید؟","ur":"پاس ورڈ بھول گئے؟","jv":"Lali tembung sandi?","bg":"Забравена парола?","hr":"Zaboravljena lozinka?","sk":"Zabudli ste heslo?"},
+"Don't have an account? Sign Up": {"id":"Belum punya akun? Daftar","ms":"Belum ada akaun? Daftar","ko":"계정이 없으신가요? 회원가입","zh":"没有账户？立即注册","ja":"アカウントをお持ちでない方は新規登録","es":"¿No tienes cuenta? Regístrate","pt":"Não tem conta? Cadastre-se","de":"Noch kein Konto? Registrieren","fr":"Pas de compte ? S'inscrire","it":"Non hai un account? Registrati","nl":"Nog geen account? Registreren","ru":"Нет аккаунта? Зарегистрируйтесь","uk":"Немає облікового запису? Зареєструйтесь","pl":"Nie masz konta? Zarejestruj się","cs":"Nemáte účet? Zaregistrujte se","tr":"Hesabınız yok mu? Kaydolun","vi":"Chưa có tài khoản? Đăng ký","th":"ยังไม่มีบัญชี? สมัครสมาชิก","ar":"ليس لديك حساب؟ سجّل الآن","hi":"खाता नहीं है? साइन अप करें","bn":"অ্যাকাউন্ট নেই? সাইন আপ করুন","fil":"Wala pang account? Mag-sign Up","zt":"還沒有帳號？註冊","sv":"Har du inget konto? Registrera dig","da":"Har du ikke en konto? Tilmeld dig","no":"Har du ikke konto? Registrer deg","fi":"Ei tiliä? Rekisteröidy","el":"Δεν έχετε λογαριασμό; Εγγραφείτε","he":"אין לך חשבון? הירשם","ro":"Nu ai cont? Înregistrează-te","hu":"Nincs fiókod? Regisztrálj","fa":"حساب ندارید؟ ثبت‌نام کنید","ur":"اکاؤنٹ نہیں ہے؟ سائن اپ کریں","jv":"Durung duwe akun? Daftar","bg":"Нямате акаунт? Регистрирайте се","hr":"Nemaš račun? Registriraj se","sk":"Nemáte účet? Zaregistrujte sa"},
+"Already have an account? Log In": {"id":"Sudah punya akun? Masuk","ms":"Sudah ada akaun? Log masuk","ko":"이미 계정이 있으신가요? 로그인","zh":"已有账户？登录","ja":"すでにアカウントをお持ちですか？ログイン","es":"¿Ya tienes cuenta? Inicia sesión","pt":"Já tem conta? Entre","de":"Schon ein Konto? Anmelden","fr":"Déjà un compte ? Se connecter","it":"Hai già un account? Accedi","nl":"Al een account? Inloggen","ru":"Уже есть аккаунт? Войдите","uk":"Уже є обліковий запис? Увійдіть","pl":"Masz już konto? Zaloguj się","cs":"Už máte účet? Přihlaste se","tr":"Zaten hesabınız var mı? Giriş yapın","vi":"Đã có tài khoản? Đăng nhập","th":"มีบัญชีอยู่แล้ว? เข้าสู่ระบบ","ar":"لديك حساب بالفعل؟ سجّل الدخول","hi":"पहले से खाता है? लॉग इन करें","bn":"আগে থেকেই অ্যাকাউন্ট আছে? লগ ইন করুন","fil":"May account na? Mag-log In","zt":"已有帳號？登入","sv":"Har du redan ett konto? Logga in","da":"Har du allerede en konto? Log ind","no":"Har du allerede konto? Logg inn","fi":"Onko sinulla jo tili? Kirjaudu sisään","el":"Έχετε ήδη λογαριασμό; Συνδεθείτε","he":"כבר יש לך חשבון? התחבר","ro":"Ai deja cont? Autentifică-te","hu":"Van már fiókod? Jelentkezz be","fa":"حساب دارید؟ وارد شوید","ur":"پہلے سے اکاؤنٹ ہے؟ لاگ اِن کریں","jv":"Wis duwe akun? Mlebu","bg":"Вече имате акаунт? Влезте","hr":"Već imaš račun? Prijavi se","sk":"Už máte účet? Prihláste sa"},
+"Privacy Policy": {"id":"Kebijakan Privasi","ms":"Dasar Privasi","ko":"개인정보 처리방침","zh":"隐私政策","ja":"プライバシーポリシー","es":"Política de privacidad","pt":"Política de privacidade","de":"Datenschutzerklärung","fr":"Politique de confidentialité","it":"Informativa sulla privacy","nl":"Privacybeleid","ru":"Политика конфиденциальности","uk":"Політика конфіденційності","pl":"Polityka prywatności","cs":"Zásady ochrany osobních údajů","tr":"Gizlilik Politikası","vi":"Chính sách quyền riêng tư","th":"นโยบายความเป็นส่วนตัว","ar":"سياسة الخصوصية","hi":"गोपनीयता नीति","bn":"গোপনীয়তা নীতি","fil":"Patakaran sa Privacy","zt":"隱私權政策","sv":"Integritetspolicy","da":"Privatlivspolitik","no":"Personvernerklæring","fi":"Tietosuojakäytäntö","el":"Πολιτική απορρήτου","he":"מדיניות פרטיות","ro":"Politica de confidențialitate","hu":"Adatvédelmi irányelvek","fa":"سیاست حریم خصوصی","ur":"پرائیویسی پالیسی","jv":"Kabijakan Privasi","bg":"Политика за поверителност","hr":"Pravila privatnosti","sk":"Zásady ochrany osobných údajov"},
+"Terms of Service": {"id":"Ketentuan Layanan","ms":"Terma Perkhidmatan","ko":"이용약관","zh":"服务条款","ja":"利用規約","es":"Términos del servicio","pt":"Termos de serviço","de":"Nutzungsbedingungen","fr":"Conditions d'utilisation","it":"Termini di servizio","nl":"Servicevoorwaarden","ru":"Условия использования","uk":"Умови використання","pl":"Regulamin","cs":"Podmínky služby","tr":"Hizmet Şartları","vi":"Điều khoản dịch vụ","th":"ข้อกำหนดการใช้บริการ","ar":"شروط الخدمة","hi":"सेवा की शर्तें","bn":"সেবার শর্তাবলি","fil":"Mga Tuntunin ng Serbisyo","zt":"服務條款","sv":"Användarvillkor","da":"Servicevilkår","no":"Vilkår for bruk","fi":"Käyttöehdot","el":"Όροι χρήσης","he":"תנאי שימוש","ro":"Termeni și condiții","hu":"Felhasználási feltételek","fa":"شرایط استفاده از خدمات","ur":"سروس کی شرائط","jv":"Ketentuan Layanan","bg":"Условия за ползване","hr":"Uvjeti korištenja","sk":"Podmienky služby"},
+"Search": {"id":"Cari","ms":"Cari","ko":"검색","zh":"搜索","ja":"検索","es":"Buscar","pt":"Pesquisar","de":"Suchen","fr":"Rechercher","it":"Cerca","nl":"Zoeken","ru":"Поиск","uk":"Пошук","pl":"Szukaj","cs":"Hledat","tr":"Ara","vi":"Tìm kiếm","th":"ค้นหา","ar":"بحث","hi":"खोजें","bn":"অনুসন্ধান","fil":"Hanapin","zt":"搜尋","sv":"Sök","da":"Søg","no":"Søk","fi":"Haku","el":"Αναζήτηση","he":"חיפוש","ro":"Caută","hu":"Keresés","fa":"جستجو","ur":"تلاش کریں","jv":"Goleki","bg":"Търсене","hr":"Traži","sk":"Hľadať"},
+"Save": {"id":"Simpan","ms":"Simpan","ko":"저장","zh":"保存","ja":"保存","es":"Guardar","pt":"Salvar","de":"Speichern","fr":"Enregistrer","it":"Salva","nl":"Opslaan","ru":"Сохранить","uk":"Зберегти","pl":"Zapisz","cs":"Uložit","tr":"Kaydet","vi":"Lưu","th":"บันทึก","ar":"حفظ","hi":"सहेजें","bn":"সংরক্ষণ","fil":"I-save","zt":"儲存","sv":"Spara","da":"Gem","no":"Lagre","fi":"Tallenna","el":"Αποθήκευση","he":"שמור","ro":"Salvează","hu":"Mentés","fa":"ذخیره","ur":"محفوظ کریں","jv":"Simpen","bg":"Запази","hr":"Spremi","sk":"Uložiť"},
+"Cancel": {"id":"Batal","ms":"Batal","ko":"취소","zh":"取消","ja":"キャンセル","es":"Cancelar","pt":"Cancelar","de":"Abbrechen","fr":"Annuler","it":"Annulla","nl":"Annuleren","ru":"Отмена","uk":"Скасувати","pl":"Anuluj","cs":"Zrušit","tr":"İptal","vi":"Hủy","th":"ยกเลิก","ar":"إلغاء","hi":"रद्द करें","bn":"বাতিল","fil":"Kanselahin","zt":"取消","sv":"Avbryt","da":"Annuller","no":"Avbryt","fi":"Peruuta","el":"Ακύρωση","he":"ביטול","ro":"Anulează","hu":"Mégse","fa":"لغو","ur":"منسوخ کریں","jv":"Batal","bg":"Отказ","hr":"Odustani","sk":"Zrušiť"},
+"Delete": {"id":"Hapus","ms":"Padam","ko":"삭제","zh":"删除","ja":"削除","es":"Eliminar","pt":"Excluir","de":"Löschen","fr":"Supprimer","it":"Elimina","nl":"Verwijderen","ru":"Удалить","uk":"Видалити","pl":"Usuń","cs":"Smazat","tr":"Sil","vi":"Xóa","th":"ลบ","ar":"حذف","hi":"हटाएँ","bn":"মুছুন","fil":"Burahin","zt":"刪除","sv":"Ta bort","da":"Slet","no":"Slett","fi":"Poista","el":"Διαγραφή","he":"מחק","ro":"Șterge","hu":"Törlés","fa":"حذف","ur":"حذف کریں","jv":"Busak","bg":"Изтрий","hr":"Izbriši","sk":"Odstrániť"},
+"Edit": {"id":"Ubah","ms":"Sunting","ko":"편집","zh":"编辑","ja":"編集","es":"Editar","pt":"Editar","de":"Bearbeiten","fr":"Modifier","it":"Modifica","nl":"Bewerken","ru":"Изменить","uk":"Редагувати","pl":"Edytuj","cs":"Upravit","tr":"Düzenle","vi":"Sửa","th":"แก้ไข","ar":"تعديل","hi":"संपादित करें","bn":"সম্পাদনা","fil":"I-edit","zt":"編輯","sv":"Redigera","da":"Rediger","no":"Rediger","fi":"Muokkaa","el":"Επεξεργασία","he":"ערוך","ro":"Editează","hu":"Szerkesztés","fa":"ویرایش","ur":"ترمیم کریں","jv":"Sunting","bg":"Редактирай","hr":"Uredi","sk":"Upraviť"},
+"Publish": {"id":"Terbitkan","ms":"Terbitkan","ko":"게시하기","zh":"发布","ja":"公開","es":"Publicar","pt":"Publicar","de":"Veröffentlichen","fr":"Publier","it":"Pubblica","nl":"Publiceren","ru":"Опубликовать","uk":"Опублікувати","pl":"Opublikuj","cs":"Publikovat","tr":"Yayınla","vi":"Đăng","th":"เผยแพร่","ar":"نشر","hi":"प्रकाशित करें","bn":"প্রকাশ করুন","fil":"I-publish","zt":"發布","sv":"Publicera","da":"Udgiv","no":"Publiser","fi":"Julkaise","el":"Δημοσίευση","he":"פרסם","ro":"Publică","hu":"Közzététel","fa":"انتشار","ur":"شائع کریں","jv":"Terbitake","bg":"Публикувай","hr":"Objavi","sk":"Zverejniť"},
+"Submit": {"id":"Kirim","ms":"Hantar","ko":"제출","zh":"提交","ja":"送信","es":"Enviar","pt":"Enviar","de":"Absenden","fr":"Envoyer","it":"Invia","nl":"Verzenden","ru":"Отправить","uk":"Надіслати","pl":"Wyślij","cs":"Odeslat","tr":"Gönder","vi":"Gửi","th":"ส่ง","ar":"إرسال","hi":"जमा करें","bn":"জমা দিন","fil":"Isumite","zt":"提交","sv":"Skicka in","da":"Indsend","no":"Send inn","fi":"Lähetä","el":"Υποβολή","he":"שלח","ro":"Trimite","hu":"Beküldés","fa":"ارسال","ur":"جمع کرائیں","jv":"Kirim","bg":"Изпрати","hr":"Pošalji","sk":"Odoslať"},
+"Close": {"id":"Tutup","ms":"Tutup","ko":"닫기","zh":"关闭","ja":"閉じる","es":"Cerrar","pt":"Fechar","de":"Schließen","fr":"Fermer","it":"Chiudi","nl":"Sluiten","ru":"Закрыть","uk":"Закрити","pl":"Zamknij","cs":"Zavřít","tr":"Kapat","vi":"Đóng","th":"ปิด","ar":"إغلاق","hi":"बंद करें","bn":"বন্ধ করুন","fil":"Isara","zt":"關閉","sv":"Stäng","da":"Luk","no":"Lukk","fi":"Sulje","el":"Κλείσιμο","he":"סגור","ro":"Închide","hu":"Bezárás","fa":"بستن","ur":"بند کریں","jv":"Tutup","bg":"Затвори","hr":"Zatvori","sk":"Zavrieť"},
+"Copy": {"id":"Salin","ms":"Salin","ko":"복사","zh":"复制","ja":"コピー","es":"Copiar","pt":"Copiar","de":"Kopieren","fr":"Copier","it":"Copia","nl":"Kopiëren","ru":"Копировать","uk":"Копіювати","pl":"Kopiuj","cs":"Kopírovat","tr":"Kopyala","vi":"Sao chép","th":"คัดลอก","ar":"نسخ","hi":"कॉपी करें","bn":"কপি","fil":"Kopyahin","zt":"複製","sv":"Kopiera","da":"Kopiér","no":"Kopier","fi":"Kopioi","el":"Αντιγραφή","he":"העתק","ro":"Copiază","hu":"Másolás","fa":"کپی","ur":"کاپی کریں","jv":"Salin","bg":"Копирай","hr":"Kopiraj","sk":"Kopírovať"},
+"Download": {"id":"Unduh","ms":"Muat Turun","ko":"다운로드","zh":"下载","ja":"ダウンロード","es":"Descargar","pt":"Baixar","de":"Herunterladen","fr":"Télécharger","it":"Scarica","nl":"Downloaden","ru":"Скачать","uk":"Завантажити","pl":"Pobierz","cs":"Stáhnout","tr":"İndir","vi":"Tải xuống","th":"ดาวน์โหลด","ar":"تنزيل","hi":"डाउनलोड","bn":"ডাউনলোড","fil":"I-download","zt":"下載","sv":"Ladda ner","da":"Download","no":"Last ned","fi":"Lataa","el":"Λήψη","he":"הורד","ro":"Descarcă","hu":"Letöltés","fa":"دانلود","ur":"ڈاؤن لوڈ","jv":"Undhuh","bg":"Изтегли","hr":"Preuzmi","sk":"Stiahnuť"},
+"Upload": {"id":"Unggah","ms":"Muat Naik","ko":"업로드","zh":"上传","ja":"アップロード","es":"Subir","pt":"Enviar","de":"Hochladen","fr":"Importer","it":"Carica","nl":"Uploaden","ru":"Загрузить","uk":"Вивантажити","pl":"Prześlij","cs":"Nahrát","tr":"Yükle","vi":"Tải lên","th":"อัปโหลด","ar":"رفع","hi":"अपलोड","bn":"আপলোড","fil":"I-upload","zt":"上傳","sv":"Ladda upp","da":"Upload","no":"Last opp","fi":"Lähetä tiedosto","el":"Μεταφόρτωση","he":"העלה","ro":"Încarcă","hu":"Feltöltés","fa":"بارگذاری","ur":"اپ لوڈ","jv":"Unggah","bg":"Качи","hr":"Prenesi","sk":"Nahrať"},
+"Back": {"id":"Kembali","ms":"Kembali","ko":"뒤로","zh":"返回","ja":"戻る","es":"Atrás","pt":"Voltar","de":"Zurück","fr":"Retour","it":"Indietro","nl":"Terug","ru":"Назад","uk":"Назад","pl":"Wstecz","cs":"Zpět","tr":"Geri","vi":"Quay lại","th":"กลับ","ar":"رجوع","hi":"वापस","bn":"পিছনে","fil":"Bumalik","zt":"返回","sv":"Tillbaka","da":"Tilbage","no":"Tilbake","fi":"Takaisin","el":"Πίσω","he":"חזרה","ro":"Înapoi","hu":"Vissza","fa":"بازگشت","ur":"واپس","jv":"Bali","bg":"Назад","hr":"Natrag","sk":"Späť"},
+"Next": {"id":"Berikutnya","ms":"Seterusnya","ko":"다음","zh":"下一页","ja":"次へ","es":"Siguiente","pt":"Próximo","de":"Weiter","fr":"Suivant","it":"Avanti","nl":"Volgende","ru":"Далее","uk":"Далі","pl":"Dalej","cs":"Další","tr":"İleri","vi":"Tiếp theo","th":"ถัดไป","ar":"التالي","hi":"अगला","bn":"পরবর্তী","fil":"Susunod","zt":"下一步","sv":"Nästa","da":"Næste","no":"Neste","fi":"Seuraava","el":"Επόμενο","he":"הבא","ro":"Următorul","hu":"Következő","fa":"بعدی","ur":"اگلا","jv":"Candhake","bg":"Напред","hr":"Dalje","sk":"Ďalej"},
+"Previous": {"id":"Sebelumnya","ms":"Sebelumnya","ko":"이전","zh":"上一页","ja":"前へ","es":"Anterior","pt":"Anterior","de":"Vorherige","fr":"Précédent","it":"Precedente","nl":"Vorige","ru":"Предыдущий","uk":"Попередній","pl":"Poprzedni","cs":"Předchozí","tr":"Önceki","vi":"Trước đó","th":"ก่อนหน้า","ar":"السابق","hi":"पिछला","bn":"আগের","fil":"Nakaraan","zt":"上一步","sv":"Föregående","da":"Forrige","no":"Forrige","fi":"Edellinen","el":"Προηγούμενο","he":"הקודם","ro":"Anteriorul","hu":"Előző","fa":"قبلی","ur":"پچھلا","jv":"Sadurunge","bg":"Предишен","hr":"Prethodno","sk":"Predchádzajúce"},
+"Loading...": {"id":"Memuat...","ms":"Memuatkan...","ko":"불러오는 중...","zh":"加载中...","ja":"読み込み中...","es":"Cargando...","pt":"Carregando...","de":"Wird geladen...","fr":"Chargement...","it":"Caricamento...","nl":"Laden...","ru":"Загрузка...","uk":"Завантаження...","pl":"Ładowanie...","cs":"Načítání...","tr":"Yükleniyor...","vi":"Đang tải...","th":"กำลังโหลด...","ar":"جارٍ التحميل...","hi":"लोड हो रहा है...","bn":"লোড হচ্ছে...","fil":"Naglo-load...","zt":"載入中...","sv":"Laddar...","da":"Indlæser...","no":"Laster...","fi":"Ladataan...","el":"Φόρτωση...","he":"טוען...","ro":"Se încarcă...","hu":"Betöltés...","fa":"در حال بارگذاری...","ur":"لوڈ ہو رہا ہے...","jv":"Lagi ngemot...","bg":"Зареждане...","hr":"Učitavanje...","sk":"Načítava sa..."},
+"Reset": {"id":"Atur Ulang","ms":"Tetap Semula","ko":"초기화","zh":"重置","ja":"リセット","es":"Restablecer","pt":"Redefinir","de":"Zurücksetzen","fr":"Réinitialiser","it":"Reimposta","nl":"Resetten","ru":"Сбросить","uk":"Скинути","pl":"Resetuj","cs":"Obnovit","tr":"Sıfırla","vi":"Đặt lại","th":"รีเซ็ต","ar":"إعادة ضبط","hi":"रीसेट","bn":"রিসেট","fil":"I-reset","zt":"重設","sv":"Återställ","da":"Nulstil","no":"Tilbakestill","fi":"Nollaa","el":"Επαναφορά","he":"אפס","ro":"Resetează","hu":"Visszaállítás","fa":"بازنشانی","ur":"ری سیٹ","jv":"Reset","bg":"Нулирай","hr":"Poništi","sk":"Obnoviť"},
+"Apply": {"id":"Terapkan","ms":"Guna","ko":"적용","zh":"应用","ja":"適用","es":"Aplicar","pt":"Aplicar","de":"Anwenden","fr":"Appliquer","it":"Applica","nl":"Toepassen","ru":"Применить","uk":"Застосувати","pl":"Zastosuj","cs":"Použít","tr":"Uygula","vi":"Áp dụng","th":"นำไปใช้","ar":"تطبيق","hi":"लागू करें","bn":"প্রয়োগ করুন","fil":"Ilapat","zt":"套用","sv":"Tillämpa","da":"Anvend","no":"Bruk","fi":"Käytä","el":"Εφαρμογή","he":"החל","ro":"Aplică","hu":"Alkalmazás","fa":"اعمال","ur":"لاگو کریں","jv":"Terapake","bg":"Приложи","hr":"Primijeni","sk":"Použiť"},
+"Report": {"id":"Laporkan","ms":"Laporkan","ko":"신고","zh":"举报","ja":"通報","es":"Reportar","pt":"Denunciar","de":"Melden","fr":"Signaler","it":"Segnala","nl":"Melden","ru":"Пожаловаться","uk":"Поскаржитися","pl":"Zgłoś","cs":"Nahlásit","tr":"Bildir","vi":"Báo cáo","th":"รายงาน","ar":"إبلاغ","hi":"रिपोर्ट करें","bn":"রিপোর্ট করুন","fil":"I-report","zt":"檢舉","sv":"Rapportera","da":"Rapportér","no":"Rapporter","fi":"Ilmoita","el":"Αναφορά","he":"דווח","ro":"Raportează","hu":"Jelentés","fa":"گزارش","ur":"رپورٹ کریں","jv":"Laporake","bg":"Докладвай","hr":"Prijavi","sk":"Nahlásiť"},
+"Like": {"id":"Suka","ms":"Suka","ko":"좋아요","zh":"点赞","ja":"いいね","es":"Me gusta","pt":"Curtir","de":"Gefällt mir","fr":"J'aime","it":"Mi piace","nl":"Vind ik leuk","ru":"Нравится","uk":"Подобається","pl":"Lubię to","cs":"To se mi líbí","tr":"Beğen","vi":"Thích","th":"ถูกใจ","ar":"إعجاب","hi":"पसंद","bn":"পছন্দ","fil":"Like","zt":"喜歡","sv":"Gilla","da":"Synes godt om","no":"Lik","fi":"Tykkää","el":"Μου αρέσει","he":"לייק","ro":"Îmi place","hu":"Tetszik","fa":"پسندیدن","ur":"پسند","jv":"Seneng","bg":"Харесвам","hr":"Sviđa mi se","sk":"Páči sa mi to"},
+"Share": {"id":"Bagikan","ms":"Kongsi","ko":"공유","zh":"分享","ja":"共有","es":"Compartir","pt":"Compartilhar","de":"Teilen","fr":"Partager","it":"Condividi","nl":"Delen","ru":"Поделиться","uk":"Поділитися","pl":"Udostępnij","cs":"Sdílet","tr":"Paylaş","vi":"Chia sẻ","th":"แชร์","ar":"مشاركة","hi":"साझा करें","bn":"শেয়ার","fil":"I-share","zt":"分享","sv":"Dela","da":"Del","no":"Del","fi":"Jaa","el":"Κοινοποίηση","he":"שתף","ro":"Distribuie","hu":"Megosztás","fa":"اشتراک‌گذاری","ur":"شیئر کریں","jv":"Bagekake","bg":"Сподели","hr":"Podijeli","sk":"Zdieľať"},
+"Comments": {"id":"Komentar","ms":"Komen","ko":"댓글","zh":"评论","ja":"コメント","es":"Comentarios","pt":"Comentários","de":"Kommentare","fr":"Commentaires","it":"Commenti","nl":"Reacties","ru":"Комментарии","uk":"Коментарі","pl":"Komentarze","cs":"Komentáře","tr":"Yorumlar","vi":"Bình luận","th":"ความคิดเห็น","ar":"التعليقات","hi":"टिप्पणियाँ","bn":"মন্তব্য","fil":"Mga Komento","zt":"留言","sv":"Kommentarer","da":"Kommentarer","no":"Kommentarer","fi":"Kommentit","el":"Σχόλια","he":"תגובות","ro":"Comentarii","hu":"Hozzászólások","fa":"نظرات","ur":"تبصرے","jv":"Komentar","bg":"Коментари","hr":"Komentari","sk":"Komentáre"},
+"Reply": {"id":"Balas","ms":"Balas","ko":"답글","zh":"回复","ja":"返信","es":"Responder","pt":"Responder","de":"Antworten","fr":"Répondre","it":"Rispondi","nl":"Beantwoorden","ru":"Ответить","uk":"Відповісти","pl":"Odpowiedz","cs":"Odpovědět","tr":"Yanıtla","vi":"Trả lời","th":"ตอบกลับ","ar":"رد","hi":"जवाब दें","bn":"উত্তর দিন","fil":"Sumagot","zt":"回覆","sv":"Svara","da":"Svar","no":"Svar","fi":"Vastaa","el":"Απάντηση","he":"השב","ro":"Răspunde","hu":"Válasz","fa":"پاسخ","ur":"جواب دیں","jv":"Wangsulana","bg":"Отговори","hr":"Odgovori","sk":"Odpovedať"},
+"Send": {"id":"Kirim","ms":"Hantar","ko":"보내기","zh":"发送","ja":"送信","es":"Enviar","pt":"Enviar","de":"Senden","fr":"Envoyer","it":"Invia","nl":"Versturen","ru":"Отправить","uk":"Надіслати","pl":"Wyślij","cs":"Odeslat","tr":"Gönder","vi":"Gửi","th":"ส่ง","ar":"إرسال","hi":"भेजें","bn":"পাঠান","fil":"Ipadala","zt":"傳送","sv":"Skicka","da":"Send","no":"Send","fi":"Lähetä","el":"Αποστολή","he":"שלח","ro":"Trimite","hu":"Küldés","fa":"ارسال","ur":"بھیجیں","jv":"Kirim","bg":"Изпрати","hr":"Pošalji","sk":"Odoslať"},
+"Yes": {"id":"Ya","ms":"Ya","ko":"예","zh":"是","ja":"はい","es":"Sí","pt":"Sim","de":"Ja","fr":"Oui","it":"Sì","nl":"Ja","ru":"Да","uk":"Так","pl":"Tak","cs":"Ano","tr":"Evet","vi":"Có","th":"ใช่","ar":"نعم","hi":"हाँ","bn":"হ্যাঁ","fil":"Oo","zt":"是","sv":"Ja","da":"Ja","no":"Ja","fi":"Kyllä","el":"Ναι","he":"כן","ro":"Da","hu":"Igen","fa":"بله","ur":"ہاں","jv":"Ya","bg":"Да","hr":"Da","sk":"Áno"},
+"No": {"id":"Tidak","ms":"Tidak","ko":"아니요","zh":"否","ja":"いいえ","es":"No","pt":"Não","de":"Nein","fr":"Non","it":"No","nl":"Nee","ru":"Нет","uk":"Ні","pl":"Nie","cs":"Ne","tr":"Hayır","vi":"Không","th":"ไม่","ar":"لا","hi":"नहीं","bn":"না","fil":"Hindi","zt":"否","sv":"Nej","da":"Nej","no":"Nei","fi":"Ei","el":"Όχι","he":"לא","ro":"Nu","hu":"Nem","fa":"خیر","ur":"نہیں","jv":"Ora","bg":"Не","hr":"Ne","sk":"Nie"},
+"Preview": {"id":"Pratinjau","ms":"Pratonton","ko":"미리보기","zh":"预览","ja":"プレビュー","es":"Vista previa","pt":"Pré-visualização","de":"Vorschau","fr":"Aperçu","it":"Anteprima","nl":"Voorbeeld","ru":"Предпросмотр","uk":"Попередній перегляд","pl":"Podgląd","cs":"Náhled","tr":"Önizleme","vi":"Xem trước","th":"ตัวอย่าง","ar":"معاينة","hi":"पूर्वावलोकन","bn":"প্রিভিউ","fil":"Preview","zt":"預覽","sv":"Förhandsvisning","da":"Forhåndsvisning","no":"Forhåndsvisning","fi":"Esikatselu","el":"Προεπισκόπηση","he":"תצוגה מקדימה","ro":"Previzualizare","hu":"Előnézet","fa":"پیش‌نمایش","ur":"پیش منظر","jv":"Pratayang","bg":"Преглед","hr":"Pregled","sk":"Náhľad"},
+"Description": {"id":"Deskripsi","ms":"Penerangan","ko":"설명","zh":"描述","ja":"説明","es":"Descripción","pt":"Descrição","de":"Beschreibung","fr":"Description","it":"Descrizione","nl":"Beschrijving","ru":"Описание","uk":"Опис","pl":"Opis","cs":"Popis","tr":"Açıklama","vi":"Mô tả","th":"คำอธิบาย","ar":"الوصف","hi":"विवरण","bn":"বিবরণ","fil":"Paglalarawan","zt":"描述","sv":"Beskrivning","da":"Beskrivelse","no":"Beskrivelse","fi":"Kuvaus","el":"Περιγραφή","he":"תיאור","ro":"Descriere","hu":"Leírás","fa":"توضیحات","ur":"تفصیل","jv":"Katrangan","bg":"Описание","hr":"Opis","sk":"Popis"},
+"Title": {"id":"Judul","ms":"Tajuk","ko":"제목","zh":"标题","ja":"タイトル","es":"Título","pt":"Título","de":"Titel","fr":"Titre","it":"Titolo","nl":"Titel","ru":"Название","uk":"Назва","pl":"Tytuł","cs":"Název","tr":"Başlık","vi":"Tiêu đề","th":"ชื่อเรื่อง","ar":"العنوان","hi":"शीर्षक","bn":"শিরোনাম","fil":"Pamagat","zt":"標題","sv":"Titel","da":"Titel","no":"Tittel","fi":"Otsikko","el":"Τίτλος","he":"כותרת","ro":"Titlu","hu":"Cím","fa":"عنوان","ur":"عنوان","jv":"Irah-irahan","bg":"Заглавие","hr":"Naslov","sk":"Názov"},
+"Name": {"id":"Nama","ms":"Nama","ko":"이름","zh":"名称","ja":"名前","es":"Nombre","pt":"Nome","de":"Name","fr":"Nom","it":"Nome","nl":"Naam","ru":"Имя","uk":"Ім'я","pl":"Nazwa","cs":"Jméno","tr":"Ad","vi":"Tên","th":"ชื่อ","ar":"الاسم","hi":"नाम","bn":"নাম","fil":"Pangalan","zt":"名稱","sv":"Namn","da":"Navn","no":"Navn","fi":"Nimi","el":"Όνομα","he":"שם","ro":"Nume","hu":"Név","fa":"نام","ur":"نام","jv":"Jeneng","bg":"Име","hr":"Naziv","sk":"Meno"},
+"Category": {"id":"Kategori","ms":"Kategori","ko":"카테고리","zh":"分类","ja":"カテゴリ","es":"Categoría","pt":"Categoria","de":"Kategorie","fr":"Catégorie","it":"Categoria","nl":"Categorie","ru":"Категория","uk":"Категорія","pl":"Kategoria","cs":"Kategorie","tr":"Kategori","vi":"Danh mục","th":"หมวดหมู่","ar":"الفئة","hi":"श्रेणी","bn":"বিভাগ","fil":"Kategorya","zt":"分類","sv":"Kategori","da":"Kategori","no":"Kategori","fi":"Luokka","el":"Κατηγορία","he":"קטגוריה","ro":"Categorie","hu":"Kategória","fa":"دسته‌بندی","ur":"زمرہ","jv":"Kategori","bg":"Категория","hr":"Kategorija","sk":"Kategória"},
+"Tags": {"id":"Tag","ms":"Tag","ko":"태그","zh":"标签","ja":"タグ","es":"Etiquetas","pt":"Tags","de":"Tags","fr":"Tags","it":"Tag","nl":"Tags","ru":"Теги","uk":"Теги","pl":"Tagi","cs":"Štítky","tr":"Etiketler","vi":"Thẻ","th":"แท็ก","ar":"الوسوم","hi":"टैग","bn":"ট্যাগ","fil":"Mga Tag","zt":"標籤","sv":"Taggar","da":"Tags","no":"Tagger","fi":"Tunnisteet","el":"Ετικέτες","he":"תגיות","ro":"Etichete","hu":"Címkék","fa":"برچسب‌ها","ur":"ٹیگز","jv":"Tag","bg":"Етикети","hr":"Oznake","sk":"Štítky"},
+"Views": {"id":"Dilihat","ms":"Tontonan","ko":"조회수","zh":"浏览量","ja":"閲覧数","es":"Vistas","pt":"Visualizações","de":"Aufrufe","fr":"Vues","it":"Visualizzazioni","nl":"Weergaven","ru":"Просмотры","uk":"Перегляди","pl":"Wyświetlenia","cs":"Zobrazení","tr":"Görüntülenme","vi":"Lượt xem","th":"ยอดเข้าชม","ar":"المشاهدات","hi":"व्यूज़","bn":"ভিউ","fil":"Mga View","zt":"瀏覽次數","sv":"Visningar","da":"Visninger","no":"Visninger","fi":"Katselukerrat","el":"Προβολές","he":"צפיות","ro":"Vizualizări","hu":"Megtekintések","fa":"بازدیدها","ur":"ویوز","jv":"Tampilan","bg":"Прегледи","hr":"Pregledi","sk":"Zobrazenia"},
+"Downloads": {"id":"Unduhan","ms":"Muat Turun","ko":"다운로드 수","zh":"下载量","ja":"ダウンロード数","es":"Descargas","pt":"Downloads","de":"Downloads","fr":"Téléchargements","it":"Download","nl":"Downloads","ru":"Загрузки","uk":"Завантаження","pl":"Pobrania","cs":"Stažení","tr":"İndirme","vi":"Lượt tải","th":"ดาวน์โหลด","ar":"التنزيلات","hi":"डाउनलोड","bn":"ডাউনলোড","fil":"Mga Download","zt":"下載次數","sv":"Nedladdningar","da":"Downloads","no":"Nedlastinger","fi":"Lataukset","el":"Λήψεις","he":"הורדות","ro":"Descărcări","hu":"Letöltések","fa":"دانلودها","ur":"ڈاؤن لوڈز","jv":"Undhuhan","bg":"Изтегляния","hr":"Preuzimanja","sk":"Stiahnutia"},
+"Likes": {"id":"Suka","ms":"Suka","ko":"좋아요","zh":"点赞数","ja":"いいね数","es":"Me gusta","pt":"Curtidas","de":"Likes","fr":"J'aime","it":"Mi piace","nl":"Likes","ru":"Лайки","uk":"Вподобання","pl":"Polubienia","cs":"Líbí se","tr":"Beğeni","vi":"Lượt thích","th":"ถูกใจ","ar":"الإعجابات","hi":"पसंद","bn":"পছন্দ","fil":"Mga Like","zt":"喜歡數","sv":"Gillningar","da":"Likes","no":"Likes","fi":"Tykkäykset","el":"Μου αρέσει","he":"לייקים","ro":"Aprecieri","hu":"Kedvelések","fa":"پسندها","ur":"پسندیدگیاں","jv":"Seneng","bg":"Харесвания","hr":"Sviđanja","sk":"Páčenia"},
+"Default": {"id":"Bawaan","ms":"Lalai","ko":"기본값","zh":"默认","ja":"デフォルト","es":"Predeterminado","pt":"Padrão","de":"Standard","fr":"Par défaut","it":"Predefinito","nl":"Standaard","ru":"По умолчанию","uk":"За замовчуванням","pl":"Domyślne","cs":"Výchozí","tr":"Varsayılan","vi":"Mặc định","th":"ค่าเริ่มต้น","ar":"افتراضي","hi":"डिफ़ॉल्ट","bn":"ডিফল্ট","fil":"Default","zt":"預設","sv":"Standard","da":"Standard","no":"Standard","fi":"Oletus","el":"Προεπιλογή","he":"ברירת מחדל","ro":"Implicit","hu":"Alapértelmezett","fa":"پیش‌فرض","ur":"طے شدہ","jv":"Bawaan","bg":"По подразбиране","hr":"Zadano","sk":"Predvolené"},
+"Reset to default": {"id":"Kembalikan ke bawaan","ms":"Kembalikan ke lalai","ko":"기본값으로 되돌리기","zh":"恢复默认","ja":"デフォルトに戻す","es":"Restablecer valores","pt":"Restaurar padrão","de":"Auf Standard zurücksetzen","fr":"Rétablir par défaut","it":"Ripristina predefiniti","nl":"Standaard herstellen","ru":"Сбросить по умолчанию","uk":"Скинути до стандартних","pl":"Przywróć domyślne","cs":"Obnovit výchozí","tr":"Varsayılana sıfırla","vi":"Đặt lại về mặc định","th":"รีเซ็ตเป็นค่าเริ่มต้น","ar":"إعادة الضبط إلى الافتراضي","hi":"डिफ़ॉल्ट पर रीसेट करें","bn":"ডিফল্টে রিসেট করুন","fil":"I-reset sa default","zt":"重設為預設值","sv":"Återställ till standard","da":"Nulstil til standard","no":"Tilbakestill til standard","fi":"Palauta oletukset","el":"Επαναφορά στις προεπιλογές","he":"אפס לברירת מחדל","ro":"Revino la implicit","hu":"Visszaállítás alapértelmezettre","fa":"بازنشانی به پیش‌فرض","ur":"طے شدہ پر ری سیٹ کریں","jv":"Reset menyang bawaan","bg":"Нулирай по подразбиране","hr":"Vrati na zadano","sk":"Obnoviť predvolené"},
+"Theme Presets": {"id":"Preset Tema","ms":"Pratetap Tema","ko":"테마 프리셋","zh":"主题预设","ja":"テーマプリセット","es":"Temas predefinidos","pt":"Predefinições de tema","de":"Design-Vorlagen","fr":"Thèmes prédéfinis","it":"Temi predefiniti","nl":"Themavoorinstellingen","ru":"Пресеты тем","uk":"Пресети тем","pl":"Gotowe motywy","cs":"Předvolby motivů","tr":"Tema Ön Ayarları","vi":"Giao diện có sẵn","th":"ธีมสำเร็จรูป","ar":"قوالب السمات","hi":"थीम प्रीसेट","bn":"থিম প্রিসেট","fil":"Mga Preset ng Tema","zt":"主題預設","sv":"Temamallar","da":"Temaforudindstillinger","no":"Temaforhåndsvalg","fi":"Teemaesiasetukset","el":"Προκαθορισμένα θέματα","he":"ערכות נושא מוכנות","ro":"Teme presetate","hu":"Témaelőbeállítások","fa":"پوسته‌های آماده","ur":"تھیم پری سیٹس","jv":"Preset Tema","bg":"Готови теми","hr":"Gotove teme","sk":"Predvoľby tém"},
+"Accent Color": {"id":"Warna Aksen","ms":"Warna Aksen","ko":"강조 색상","zh":"强调色","ja":"アクセントカラー","es":"Color de acento","pt":"Cor de destaque","de":"Akzentfarbe","fr":"Couleur d'accent","it":"Colore principale","nl":"Accentkleur","ru":"Акцентный цвет","uk":"Акцентний колір","pl":"Kolor akcentu","cs":"Barva zvýraznění","tr":"Vurgu Rengi","vi":"Màu nhấn","th":"สีเน้น","ar":"لون التمييز","hi":"एक्सेंट रंग","bn":"অ্যাকসেন্ট রঙ","fil":"Kulay ng Accent","zt":"強調色","sv":"Accentfärg","da":"Accentfarve","no":"Aksentfarge","fi":"Korostusväri","el":"Χρώμα έμφασης","he":"צבע הדגשה","ro":"Culoare accent","hu":"Kiemelő szín","fa":"رنگ تأکید","ur":"نمایاں رنگ","jv":"Warna Aksen","bg":"Акцентен цвят","hr":"Naglašena boja","sk":"Farba zvýraznenia"},
+"Custom CSS": {"id":"CSS Kustom","ms":"CSS Tersuai","ko":"사용자 CSS","zh":"自定义 CSS","ja":"カスタムCSS","es":"CSS personalizado","pt":"CSS personalizado","de":"Eigenes CSS","fr":"CSS personnalisé","it":"CSS personalizzato","nl":"Aangepaste CSS","ru":"Свой CSS","uk":"Власний CSS","pl":"Własny CSS","cs":"Vlastní CSS","tr":"Özel CSS","vi":"CSS tùy chỉnh","th":"CSS กำหนดเอง","ar":"CSS مخصص","hi":"कस्टम CSS","bn":"কাস্টম CSS","fil":"Custom na CSS","zt":"自訂 CSS","sv":"Egen CSS","da":"Brugerdefineret CSS","no":"Egendefinert CSS","fi":"Oma CSS","el":"Προσαρμοσμένο CSS","he":"CSS מותאם אישית","ro":"CSS personalizat","hu":"Egyéni CSS","fa":"CSS سفارشی","ur":"حسبِ ضرورت CSS","jv":"CSS Pribadi","bg":"Собствен CSS","hr":"Prilagođeni CSS","sk":"Vlastné CSS"},
+"Userscripts": {"id":"Userscript","ms":"Userscript","ko":"유저스크립트","zh":"用户脚本","ja":"ユーザースクリプト","es":"Userscripts","pt":"Userscripts","de":"Userscripts","fr":"Userscripts","it":"Userscript","nl":"Userscripts","ru":"Юзерскрипты","uk":"Юзерскрипти","pl":"Userscripty","cs":"Uživatelské skripty","tr":"Kullanıcı Betikleri","vi":"Userscript","th":"ยูสเซอร์สคริปต์","ar":"سكربتات المستخدم","hi":"यूज़रस्क्रिप्ट","bn":"ইউজারস্ক্রিপ্ট","fil":"Mga Userscript","zt":"使用者腳本","sv":"Användarskript","da":"Userscripts","no":"Brukerskript","fi":"Käyttäjäskriptit","el":"Userscripts","he":"סקריפטים של משתמש","ro":"Userscripturi","hu":"Felhasználói szkriptek","fa":"اسکریپت‌های کاربر","ur":"یوزر اسکرپٹس","jv":"Userscript","bg":"Потребителски скриптове","hr":"Korisničke skripte","sk":"Používateľské skripty"},
+"Resource Swapper": {"id":"Penukar Resource","ms":"Penukar Sumber","ko":"리소스 스왑","zh":"资源替换器","ja":"リソーススワッパー","es":"Cambiador de recursos","pt":"Trocador de recursos","de":"Ressourcen-Swapper","fr":"Remplaçant de ressources","it":"Sostituzione risorse","nl":"Resource-swapper","ru":"Подмена ресурсов","uk":"Підміна ресурсів","pl":"Podmiana zasobów","cs":"Výměna zdrojů","tr":"Kaynak Değiştirici","vi":"Trình thay thế tài nguyên","th":"ตัวสลับทรัพยากร","ar":"مبدّل الموارد","hi":"रिसोर्स स्वैपर","bn":"রিসোর্স সোয়াপার","fil":"Resource Swapper","zt":"資源替換器","sv":"Resursbytare","da":"Ressourceskifter","no":"Ressursbytter","fi":"Resurssinvaihtaja","el":"Εναλλάκτης πόρων","he":"מחליף משאבים","ro":"Înlocuitor de resurse","hu":"Erőforráscserélő","fa":"جایگزین منابع","ur":"ریسورس سویپر","jv":"Panuker Sumber Daya","bg":"Заместител на ресурси","hr":"Zamjena resursa","sk":"Výmena zdrojov"},
+"Client Settings": {"id":"Pengaturan Client","ms":"Tetapan Klien","ko":"클라이언트 설정","zh":"客户端设置","ja":"クライアント設定","es":"Ajustes del cliente","pt":"Configurações do cliente","de":"Client-Einstellungen","fr":"Paramètres du client","it":"Impostazioni client","nl":"Client-instellingen","ru":"Настройки клиента","uk":"Налаштування клієнта","pl":"Ustawienia klienta","cs":"Nastavení klienta","tr":"İstemci Ayarları","vi":"Cài đặt ứng dụng","th":"การตั้งค่าไคลเอนต์","ar":"إعدادات العميل","hi":"क्लाइंट सेटिंग्स","bn":"ক্লায়েন্ট সেটিংস","fil":"Mga Setting ng Client","zt":"用戶端設定","sv":"Klientinställningar","da":"Klientindstillinger","no":"Klientinnstillinger","fi":"Asiakasohjelman asetukset","el":"Ρυθμίσεις πελάτη","he":"הגדרות לקוח","ro":"Setări client","hu":"Kliensbeállítások","fa":"تنظیمات کلاینت","ur":"کلائنٹ کی ترتیبات","jv":"Setelan Klien","bg":"Настройки на клиента","hr":"Postavke klijenta","sk":"Nastavenia klienta"},
+"More": {"id":"Lainnya","ms":"Lagi","ko":"더보기","zh":"更多","ja":"その他","es":"Más","pt":"Mais","de":"Mehr","fr":"Plus","it":"Altro","nl":"Meer","ru":"Ещё","uk":"Ще","pl":"Więcej","cs":"Více","tr":"Daha Fazla","vi":"Thêm","th":"เพิ่มเติม","ar":"المزيد","hi":"और","bn":"আরও","fil":"Higit pa","zt":"更多","sv":"Mer","da":"Mere","no":"Mer","fi":"Lisää","el":"Περισσότερα","he":"עוד","ro":"Mai multe","hu":"Továbbiak","fa":"بیشتر","ur":"مزید","jv":"Liyane","bg":"Още","hr":"Više","sk":"Viac"},
+"Themes": {"id":"Tema","ms":"Tema","ko":"테마","zh":"主题","ja":"テーマ","es":"Temas","pt":"Temas","de":"Designs","fr":"Thèmes","it":"Temi","nl":"Thema's","ru":"Темы","uk":"Теми","pl":"Motywy","cs":"Motivy","tr":"Temalar","vi":"Giao diện","th":"ธีม","ar":"السمات","hi":"थीम","bn":"থিম","fil":"Mga Tema","zt":"主題","sv":"Teman","da":"Temaer","no":"Temaer","fi":"Teemat","el":"Θέματα","he":"ערכות נושא","ro":"Teme","hu":"Témák","fa":"پوسته‌ها","ur":"تھیمز","jv":"Tema","bg":"Теми","hr":"Teme","sk":"Témy"},
+"History": {"id":"Riwayat","ms":"Sejarah","ko":"기록","zh":"历史","ja":"履歴","es":"Historial","pt":"Histórico","de":"Verlauf","fr":"Historique","it":"Cronologia","nl":"Geschiedenis","ru":"История","uk":"Історія","pl":"Historia","cs":"Historie","tr":"Geçmiş","vi":"Lịch sử","th":"ประวัติ","ar":"السجل","hi":"इतिहास","bn":"ইতিহাস","fil":"Kasaysayan","zt":"歷史","sv":"Historik","da":"Historik","no":"Historikk","fi":"Historia","el":"Ιστορικό","he":"היסטוריה","ro":"Istoric","hu":"Előzmények","fa":"تاریخچه","ur":"ہسٹری","jv":"Riwayat","bg":"История","hr":"Povijest","sk":"História"},
+"Profiles": {"id":"Profil","ms":"Profil","ko":"프로필","zh":"配置文件","ja":"プロファイル","es":"Perfiles","pt":"Perfis","de":"Profile","fr":"Profils","it":"Profili","nl":"Profielen","ru":"Профили","uk":"Профілі","pl":"Profile","cs":"Profily","tr":"Profiller","vi":"Hồ sơ","th":"โปรไฟล์","ar":"الملفات الشخصية","hi":"प्रोफ़ाइल","bn":"প্রোফাইল","fil":"Mga Profile","zt":"設定檔","sv":"Profiler","da":"Profiler","no":"Profiler","fi":"Profiilit","el":"Προφίλ","he":"פרופילים","ro":"Profiluri","hu":"Profilok","fa":"نمایه‌ها","ur":"پروفائلز","jv":"Profil","bg":"Профили","hr":"Profili","sk":"Profily"},
+"Keybinds": {"id":"Tombol Pintas","ms":"Pintasan Kekunci","ko":"키 설정","zh":"快捷键","ja":"キー設定","es":"Atajos de teclado","pt":"Atalhos","de":"Tastenbelegung","fr":"Raccourcis","it":"Scorciatoie","nl":"Sneltoetsen","ru":"Горячие клавиши","uk":"Гарячі клавіші","pl":"Skróty klawiszowe","cs":"Klávesové zkratky","tr":"Tuş Atamaları","vi":"Phím tắt","th":"ปุ่มลัด","ar":"اختصارات المفاتيح","hi":"कीबाइंड","bn":"কীবাইন্ড","fil":"Mga Keybind","zt":"按鍵綁定","sv":"Tangentbindningar","da":"Tastebindinger","no":"Tastebindinger","fi":"Näppäinasettelut","el":"Συντομεύσεις πλήκτρων","he":"קיצורי מקשים","ro":"Comenzi rapide de taste","hu":"Billentyűkötések","fa":"کلیدهای میانبر","ur":"کی بائنڈز","jv":"Keybind","bg":"Клавишни комбинации","hr":"Tipkovni prečaci","sk":"Klávesové skratky"},
+"Diagnostics": {"id":"Diagnostik","ms":"Diagnostik","ko":"진단","zh":"诊断","ja":"診断","es":"Diagnóstico","pt":"Diagnóstico","de":"Diagnose","fr":"Diagnostics","it":"Diagnostica","nl":"Diagnostiek","ru":"Диагностика","uk":"Діагностика","pl":"Diagnostyka","cs":"Diagnostika","tr":"Tanılama","vi":"Chẩn đoán","th":"การวินิจฉัย","ar":"التشخيص","hi":"डायग्नोस्टिक्स","bn":"ডায়াগনস্টিকস","fil":"Mga Diagnostic","zt":"診斷","sv":"Diagnostik","da":"Diagnostik","no":"Diagnostikk","fi":"Diagnostiikka","el":"Διαγνωστικά","he":"אבחון","ro":"Diagnosticare","hu":"Diagnosztika","fa":"عیب‌یابی","ur":"تشخیص","jv":"Diagnostik","bg":"Диагностика","hr":"Dijagnostika","sk":"Diagnostika"},
+"What's new": {"id":"Yang baru","ms":"Apa yang baharu","ko":"새로운 소식","zh":"新功能","ja":"新着情報","es":"Novedades","pt":"Novidades","de":"Was ist neu","fr":"Nouveautés","it":"Novità","nl":"Wat is er nieuw","ru":"Что нового","uk":"Що нового","pl":"Co nowego","cs":"Co je nového","tr":"Yenilikler","vi":"Có gì mới","th":"มีอะไรใหม่","ar":"ما الجديد","hi":"नया क्या है","bn":"নতুন কী","fil":"Ano'ng bago","zt":"新功能","sv":"Nyheter i versionen","da":"Hvad er nyt","no":"Hva er nytt","fi":"Mitä uutta","el":"Τι νέο υπάρχει","he":"מה חדש","ro":"Noutăți","hu":"Újdonságok","fa":"چه چیز تازه است","ur":"نیا کیا ہے","jv":"Apa sing anyar","bg":"Какво е новото","hr":"Što je novo","sk":"Čo je nové"},
+"Maintenance": {"id":"Pemeliharaan","ms":"Penyelenggaraan","ko":"유지보수","zh":"维护","ja":"メンテナンス","es":"Mantenimiento","pt":"Manutenção","de":"Wartung","fr":"Maintenance","it":"Manutenzione","nl":"Onderhoud","ru":"Обслуживание","uk":"Обслуговування","pl":"Konserwacja","cs":"Údržba","tr":"Bakım","vi":"Bảo trì","th":"การบำรุงรักษา","ar":"الصيانة","hi":"रखरखाव","bn":"রক্ষণাবেক্ষণ","fil":"Maintenance","zt":"維護","sv":"Underhåll","da":"Vedligeholdelse","no":"Vedlikehold","fi":"Ylläpito","el":"Συντήρηση","he":"תחזוקה","ro":"Mentenanță","hu":"Karbantartás","fa":"نگهداری","ur":"دیکھ بھال","jv":"Pangopènan","bg":"Поддръжка","hr":"Održavanje","sk":"Údržba"},
+"Restart Client": {"id":"Mulai Ulang Client","ms":"Mulakan Semula Klien","ko":"클라이언트 재시작","zh":"重启客户端","ja":"クライアントを再起動","es":"Reiniciar cliente","pt":"Reiniciar cliente","de":"Client neu starten","fr":"Redémarrer le client","it":"Riavvia il client","nl":"Client herstarten","ru":"Перезапустить клиент","uk":"Перезапустити клієнт","pl":"Uruchom klienta ponownie","cs":"Restartovat klienta","tr":"İstemciyi Yeniden Başlat","vi":"Khởi động lại ứng dụng","th":"เริ่มไคลเอนต์ใหม่","ar":"إعادة تشغيل العميل","hi":"क्लाइंट रीस्टार्ट करें","bn":"ক্লায়েন্ট রিস্টার্ট করুন","fil":"I-restart ang Client","zt":"重新啟動用戶端","sv":"Starta om klienten","da":"Genstart klienten","no":"Start klienten på nytt","fi":"Käynnistä asiakasohjelma uudelleen","el":"Επανεκκίνηση πελάτη","he":"הפעל מחדש את הלקוח","ro":"Repornește clientul","hu":"Kliens újraindítása","fa":"راه‌اندازی مجدد کلاینت","ur":"کلائنٹ دوبارہ شروع کریں","jv":"Miwiti Maneh Klien","bg":"Рестартирай клиента","hr":"Ponovno pokreni klijent","sk":"Reštartovať klienta"},
+"Open Krunker (Play)": {"id":"Buka Krunker (Main)","ms":"Buka Krunker (Main)","ko":"Krunker 열기 (플레이)","zh":"打开 Krunker（开始游戏）","ja":"Krunkerを開く（プレイ）","es":"Abrir Krunker (Jugar)","pt":"Abrir Krunker (Jogar)","de":"Krunker öffnen (Spielen)","fr":"Ouvrir Krunker (Jouer)","it":"Apri Krunker (Gioca)","nl":"Krunker openen (Spelen)","ru":"Открыть Krunker (Играть)","uk":"Відкрити Krunker (Грати)","pl":"Otwórz Krunker (Graj)","cs":"Otevřít Krunker (Hrát)","tr":"Krunker'ı Aç (Oyna)","vi":"Mở Krunker (Chơi)","th":"เปิด Krunker (เล่น)","ar":"فتح Krunker (العب)","hi":"Krunker खोलें (खेलें)","bn":"Krunker খুলুন (খেলুন)","fil":"Buksan ang Krunker (Maglaro)","zt":"開啟 Krunker（遊玩）","sv":"Öppna Krunker (Spela)","da":"Åbn Krunker (Spil)","no":"Åpne Krunker (Spill)","fi":"Avaa Krunker (Pelaa)","el":"Άνοιγμα Krunker (Παίξε)","he":"פתח את Krunker (שחק)","ro":"Deschide Krunker (Joacă)","hu":"Krunker megnyitása (Játék)","fa":"باز کردن Krunker (بازی)","ur":"Krunker کھولیں (کھیلیں)","jv":"Bukak Krunker (Dolanan)","bg":"Отвори Krunker (Играй)","hr":"Otvori Krunker (Igraj)","sk":"Otvoriť Krunker (Hrať)"},
+"Rejoin": {"id":"Gabung Lagi","ms":"Sertai Semula","ko":"다시 참가","zh":"重新加入","ja":"再参加","es":"Volver a unirse","pt":"Reentrar","de":"Erneut beitreten","fr":"Rejoindre","it":"Riunisciti","nl":"Opnieuw deelnemen","ru":"Перезайти","uk":"Перезайти","pl":"Dołącz ponownie","cs":"Znovu se připojit","tr":"Yeniden Katıl","vi":"Vào lại","th":"เข้าร่วมอีกครั้ง","ar":"إعادة الانضمام","hi":"दोबारा जुड़ें","bn":"আবার যোগ দিন","fil":"Sumali Muli","zt":"重新加入","sv":"Anslut igen","da":"Tilslut igen","no":"Bli med igjen","fi":"Liity uudelleen","el":"Επανασύνδεση","he":"הצטרף מחדש","ro":"Reintră","hu":"Újracsatlakozás","fa":"پیوستن دوباره","ur":"دوبارہ شامل ہوں","jv":"Gabung Maneh","bg":"Присъедини се отново","hr":"Ponovno se pridruži","sk":"Znova sa pripojiť"},
+"Save current game": {"id":"Simpan game saat ini","ms":"Simpan permainan semasa","ko":"현재 게임 저장","zh":"保存当前游戏","ja":"現在のゲームを保存","es":"Guardar partida actual","pt":"Salvar jogo atual","de":"Aktuelles Spiel speichern","fr":"Enregistrer la partie en cours","it":"Salva partita corrente","nl":"Huidig spel opslaan","ru":"Сохранить текущую игру","uk":"Зберегти поточну гру","pl":"Zapisz bieżącą grę","cs":"Uložit aktuální hru","tr":"Mevcut oyunu kaydet","vi":"Lưu trận hiện tại","th":"บันทึกเกมปัจจุบัน","ar":"حفظ اللعبة الحالية","hi":"मौजूदा गेम सहेजें","bn":"বর্তমান গেম সংরক্ষণ করুন","fil":"I-save ang kasalukuyang laro","zt":"儲存目前的遊戲","sv":"Spara pågående spel","da":"Gem nuværende spil","no":"Lagre nåværende spill","fi":"Tallenna nykyinen peli","el":"Αποθήκευση τρέχοντος παιχνιδιού","he":"שמור את המשחק הנוכחי","ro":"Salvează jocul curent","hu":"Aktuális játék mentése","fa":"ذخیره بازی فعلی","ur":"موجودہ گیم محفوظ کریں","jv":"Simpen game saiki","bg":"Запази текущата игра","hr":"Spremi trenutnu igru","sk":"Uložiť aktuálnu hru"},
+"Play Krunker": {"id":"Main Krunker","ms":"Main Krunker","ko":"Krunker 플레이","zh":"玩 Krunker","ja":"Krunkerをプレイ","es":"Jugar a Krunker","pt":"Jogar Krunker","de":"Krunker spielen","fr":"Jouer à Krunker","it":"Gioca a Krunker","nl":"Krunker spelen","ru":"Играть в Krunker","uk":"Грати в Krunker","pl":"Graj w Krunker","cs":"Hrát Krunker","tr":"Krunker Oyna","vi":"Chơi Krunker","th":"เล่น Krunker","ar":"العب Krunker","hi":"Krunker खेलें","bn":"Krunker খেলুন","fil":"Maglaro ng Krunker","zt":"遊玩 Krunker","sv":"Spela Krunker","da":"Spil Krunker","no":"Spill Krunker","fi":"Pelaa Krunkeria","el":"Παίξε Krunker","he":"שחק ב-Krunker","ro":"Joacă Krunker","hu":"Játssz a Krunkerrel","fa":"بازی Krunker","ur":"Krunker کھیلیں","jv":"Dolanan Krunker","bg":"Играй Krunker","hr":"Igraj Krunker","sk":"Hrať Krunker"},
+"KRH Website": {"id":"Situs KRH","ms":"Laman Web KRH","ko":"KRH 웹사이트","zh":"KRH 网站","ja":"KRHウェブサイト","es":"Sitio web de KRH","pt":"Site do KRH","de":"KRH-Website","fr":"Site KRH","it":"Sito KRH","nl":"KRH-website","ru":"Сайт KRH","uk":"Сайт KRH","pl":"Strona KRH","cs":"Web KRH","tr":"KRH Web Sitesi","vi":"Trang web KRH","th":"เว็บไซต์ KRH","ar":"موقع KRH","hi":"KRH वेबसाइट","bn":"KRH ওয়েবসাইট","fil":"Website ng KRH","zt":"KRH 網站","sv":"KRH-webbplats","da":"KRH-hjemmeside","no":"KRH-nettsted","fi":"KRH-sivusto","el":"Ιστότοπος KRH","he":"אתר KRH","ro":"Site-ul KRH","hu":"KRH weboldal","fa":"وب‌سایت KRH","ur":"KRH ویب سائٹ","jv":"Situs KRH","bg":"Сайт на KRH","hr":"KRH web stranica","sk":"Web KRH"},
+"Client settings": {"id":"Pengaturan client","ms":"Tetapan klien","ko":"클라이언트 설정","zh":"客户端设置","ja":"クライアント設定","es":"Ajustes del cliente","pt":"Configurações do cliente","de":"Client-Einstellungen","fr":"Paramètres du client","it":"Impostazioni client","nl":"Client-instellingen","ru":"Настройки клиента","uk":"Налаштування клієнта","pl":"Ustawienia klienta","cs":"Nastavení klienta","tr":"İstemci ayarları","vi":"Cài đặt ứng dụng","th":"การตั้งค่าไคลเอนต์","ar":"إعدادات العميل","hi":"क्लाइंट सेटिंग्स","bn":"ক্লায়েন্ট সেটিংস","fil":"Mga setting ng Client","zt":"用戶端設定","sv":"Klientinställningar","da":"Klientindstillinger","no":"Klientinnstillinger","fi":"Asiakasohjelman asetukset","el":"Ρυθμίσεις πελάτη","he":"הגדרות לקוח","ro":"Setări client","hu":"Kliensbeállítások","fa":"تنظیمات کلاینت","ur":"کلائنٹ کی ترتیبات","jv":"Setelan klien","bg":"Настройки на клиента","hr":"Postavke klijenta","sk":"Nastavenia klienta"},
+"Releases": {"id":"Rilis","ms":"Keluaran","ko":"릴리스","zh":"发行版","ja":"リリース","es":"Versiones","pt":"Lançamentos","de":"Releases","fr":"Versions","it":"Versioni","nl":"Releases","ru":"Релизы","uk":"Релізи","pl":"Wydania","cs":"Vydání","tr":"Sürümler","vi":"Phiên bản","th":"รุ่นที่เผยแพร่","ar":"الإصدارات","hi":"रिलीज़","bn":"রিলিজ","fil":"Mga Release","zt":"版本發布","sv":"Utgåvor","da":"Udgivelser","no":"Utgivelser","fi":"Julkaisut","el":"Εκδόσεις","he":"גרסאות","ro":"Versiuni","hu":"Kiadások","fa":"نسخه‌های منتشرشده","ur":"ریلیزز","jv":"Rilis","bg":"Версии","hr":"Izdanja","sk":"Vydania"},
+"Report a problem": {"id":"Laporkan masalah","ms":"Laporkan masalah","ko":"문제 신고","zh":"报告问题","ja":"問題を報告","es":"Informar de un problema","pt":"Relatar um problema","de":"Problem melden","fr":"Signaler un problème","it":"Segnala un problema","nl":"Probleem melden","ru":"Сообщить о проблеме","uk":"Повідомити про проблему","pl":"Zgłoś problem","cs":"Nahlásit problém","tr":"Sorun bildir","vi":"Báo cáo sự cố","th":"รายงานปัญหา","ar":"الإبلاغ عن مشكلة","hi":"समस्या रिपोर्ट करें","bn":"সমস্যা রিপোর্ট করুন","fil":"Mag-ulat ng problema","zt":"回報問題","sv":"Rapportera ett problem","da":"Rapportér et problem","no":"Rapporter et problem","fi":"Ilmoita ongelmasta","el":"Αναφορά προβλήματος","he":"דווח על בעיה","ro":"Raportează o problemă","hu":"Probléma jelentése","fa":"گزارش مشکل","ur":"مسئلے کی اطلاع دیں","jv":"Laporake masalah","bg":"Съобщи за проблем","hr":"Prijavi problem","sk":"Nahlásiť problém"},
+"Source code": {"id":"Kode sumber","ms":"Kod sumber","ko":"소스 코드","zh":"源代码","ja":"ソースコード","es":"Código fuente","pt":"Código-fonte","de":"Quellcode","fr":"Code source","it":"Codice sorgente","nl":"Broncode","ru":"Исходный код","uk":"Вихідний код","pl":"Kod źródłowy","cs":"Zdrojový kód","tr":"Kaynak kodu","vi":"Mã nguồn","th":"ซอร์สโค้ด","ar":"الشيفرة المصدرية","hi":"सोर्स कोड","bn":"সোর্স কোড","fil":"Source code","zt":"原始碼","sv":"Källkod","da":"Kildekode","no":"Kildekode","fi":"Lähdekoodi","el":"Πηγαίος κώδικας","he":"קוד מקור","ro":"Cod sursă","hu":"Forráskód","fa":"کد منبع","ur":"سورس کوڈ","jv":"Kode sumber","bg":"Изходен код","hr":"Izvorni kod","sk":"Zdrojový kód"},
+"Dashboard shortcut": {"id":"Pintasan dasbor","ms":"Pintasan papan pemuka","ko":"대시보드 단축키","zh":"控制面板快捷键","ja":"ダッシュボードのショートカット","es":"Atajo del panel","pt":"Atalho do painel","de":"Dashboard-Tastenkürzel","fr":"Raccourci du tableau de bord","it":"Scorciatoia dashboard","nl":"Dashboard-sneltoets","ru":"Горячая клавиша панели","uk":"Гаряча клавіша панелі","pl":"Skrót panelu","cs":"Zkratka přehledu","tr":"Panel kısayolu","vi":"Phím tắt bảng điều khiển","th":"ปุ่มลัดแดชบอร์ด","ar":"اختصار لوحة التحكم","hi":"डैशबोर्ड शॉर्टकट","bn":"ড্যাশবোর্ড শর্টকাট","fil":"Shortcut ng dashboard","zt":"儀表板快捷鍵","sv":"Genväg till översikten","da":"Genvej til dashboard","no":"Snarvei til dashbordet","fi":"Hallintapaneelin pikanäppäin","el":"Συντόμευση πίνακα ελέγχου","he":"קיצור לוח הבקרה","ro":"Comandă rapidă panou","hu":"Irányítópult gyorsbillentyű","fa":"میانبر داشبورد","ur":"ڈیش بورڈ شارٹ کٹ","jv":"Trabasan dasbor","bg":"Клавиш за таблото","hr":"Prečac nadzorne ploče","sk":"Skratka prehľadu"},
+"All keybinds": {"id":"Semua tombol pintas","ms":"Semua pintasan kekunci","ko":"모든 키 설정","zh":"所有快捷键","ja":"すべてのキー設定","es":"Todos los atajos","pt":"Todos os atalhos","de":"Alle Tastenbelegungen","fr":"Tous les raccourcis","it":"Tutte le scorciatoie","nl":"Alle sneltoetsen","ru":"Все горячие клавиши","uk":"Усі гарячі клавіші","pl":"Wszystkie skróty","cs":"Všechny zkratky","tr":"Tüm tuş atamaları","vi":"Tất cả phím tắt","th":"ปุ่มลัดทั้งหมด","ar":"كل اختصارات المفاتيح","hi":"सभी कीबाइंड","bn":"সব কীবাইন্ড","fil":"Lahat ng keybind","zt":"所有按鍵綁定","sv":"Alla tangentbindningar","da":"Alle tastebindinger","no":"Alle tastebindinger","fi":"Kaikki näppäinasettelut","el":"Όλες οι συντομεύσεις","he":"כל קיצורי המקשים","ro":"Toate comenzile de taste","hu":"Összes billentyűkötés","fa":"همه کلیدهای میانبر","ur":"تمام کی بائنڈز","jv":"Kabeh keybind","bg":"Всички клавишни комбинации","hr":"Svi tipkovni prečaci","sk":"Všetky klávesové skratky"},
+"Brightness": {"id":"Kecerahan","ms":"Kecerahan","ko":"밝기","zh":"亮度","ja":"明るさ","es":"Brillo","pt":"Brilho","de":"Helligkeit","fr":"Luminosité","it":"Luminosità","nl":"Helderheid","ru":"Яркость","uk":"Яскравість","pl":"Jasność","cs":"Jas","tr":"Parlaklık","vi":"Độ sáng","th":"ความสว่าง","ar":"السطوع","hi":"चमक","bn":"উজ্জ্বলতা","fil":"Liwanag","zt":"亮度","sv":"Ljusstyrka","da":"Lysstyrke","no":"Lysstyrke","fi":"Kirkkaus","el":"Φωτεινότητα","he":"בהירות","ro":"Luminozitate","hu":"Fényerő","fa":"روشنایی","ur":"روشنی","jv":"Padhang","bg":"Яркост","hr":"Svjetlina","sk":"Jas"},
+"Panel solidness": {"id":"Kepekatan panel","ms":"Ketebalan panel","ko":"패널 불투명도","zh":"面板不透明度","ja":"パネルの不透明度","es":"Opacidad del panel","pt":"Opacidade do painel","de":"Panel-Deckkraft","fr":"Opacité des panneaux","it":"Opacità pannelli","nl":"Paneelondoorzichtigheid","ru":"Плотность панелей","uk":"Щільність панелей","pl":"Krycie paneli","cs":"Průhlednost panelů","tr":"Panel opaklığı","vi":"Độ đặc của bảng","th":"ความทึบของแผง","ar":"كثافة اللوحات","hi":"पैनल की ठोसता","bn":"প্যানেলের ঘনত্ব","fil":"Kapal ng panel","zt":"面板不透明度","sv":"Panelens täthet","da":"Panelernes tæthed","no":"Panelenes tetthet","fi":"Paneelien peittävyys","el":"Αδιαφάνεια πάνελ","he":"אטימות הפאנלים","ro":"Opacitatea panourilor","hu":"Panelek átlátszatlansága","fa":"غلظت پنل‌ها","ur":"پینل کی گاڑھاپن","jv":"Kekandelan panel","bg":"Плътност на панелите","hr":"Neprozirnost ploča","sk":"Priehľadnosť panelov"},
+"Effects": {"id":"Efek","ms":"Kesan","ko":"효과","zh":"效果","ja":"エフェクト","es":"Efectos","pt":"Efeitos","de":"Effekte","fr":"Effets","it":"Effetti","nl":"Effecten","ru":"Эффекты","uk":"Ефекти","pl":"Efekty","cs":"Efekty","tr":"Efektler","vi":"Hiệu ứng","th":"เอฟเฟกต์","ar":"التأثيرات","hi":"प्रभाव","bn":"ইফেক্ট","fil":"Mga Effect","zt":"特效","sv":"Effekter","da":"Effekter","no":"Effekter","fi":"Tehosteet","el":"Εφέ","he":"אפקטים","ro":"Efecte","hu":"Effektek","fa":"جلوه‌ها","ur":"اثرات","jv":"Efek","bg":"Ефекти","hr":"Efekti","sk":"Efekty"},
+"Glass blur": {"id":"Blur kaca","ms":"Kabur kaca","ko":"유리 블러","zh":"玻璃模糊","ja":"ガラスぼかし","es":"Desenfoque de cristal","pt":"Desfoque de vidro","de":"Glas-Unschärfe","fr":"Flou de verre","it":"Sfocatura vetro","nl":"Glasonscherpte","ru":"Размытие стекла","uk":"Розмиття скла","pl":"Rozmycie szkła","cs":"Rozmazání skla","tr":"Cam bulanıklığı","vi":"Độ mờ kính","th":"ความเบลอกระจก","ar":"ضبابية الزجاج","hi":"ग्लास ब्लर","bn":"গ্লাস ব্লার","fil":"Glass blur","zt":"玻璃模糊","sv":"Glasoskärpa","da":"Glasslør","no":"Glassuskarphet","fi":"Lasin sumennus","el":"Θάμπωμα γυαλιού","he":"טשטוש זכוכית","ro":"Estompare sticlă","hu":"Üvegelmosás","fa":"تاری شیشه","ur":"شیشے کا دھندلاپن","jv":"Kabur kaca","bg":"Размазване на стъклото","hr":"Zamućenje stakla","sk":"Rozostrenie skla"},
+"Animations": {"id":"Animasi","ms":"Animasi","ko":"애니메이션","zh":"动画","ja":"アニメーション","es":"Animaciones","pt":"Animações","de":"Animationen","fr":"Animations","it":"Animazioni","nl":"Animaties","ru":"Анимации","uk":"Анімації","pl":"Animacje","cs":"Animace","tr":"Animasyonlar","vi":"Hoạt ảnh","th":"แอนิเมชัน","ar":"الحركات","hi":"एनिमेशन","bn":"অ্যানিমেশন","fil":"Mga Animation","zt":"動畫","sv":"Animationer","da":"Animationer","no":"Animasjoner","fi":"Animaatiot","el":"Κινούμενα σχέδια","he":"אנימציות","ro":"Animații","hu":"Animációk","fa":"انیمیشن‌ها","ur":"اینیمیشنز","jv":"Animasi","bg":"Анимации","hr":"Animacije","sk":"Animácie"},
+"Theme": {"id":"Tema","ms":"Tema","ko":"테마","zh":"主题","ja":"テーマ","es":"Tema","pt":"Tema","de":"Design","fr":"Thème","it":"Tema","nl":"Thema","ru":"Тема","uk":"Тема","pl":"Motyw","cs":"Motiv","tr":"Tema","vi":"Giao diện","th":"ธีม","ar":"السمة","hi":"थीम","bn":"থিম","fil":"Tema","zt":"主題","sv":"Tema","da":"Tema","no":"Tema","fi":"Teema","el":"Θέμα","he":"ערכת נושא","ro":"Temă","hu":"Téma","fa":"پوسته","ur":"تھیم","jv":"Tema","bg":"Тема","hr":"Tema","sk":"Téma"},
+"Bright": {"id":"Terang","ms":"Cerah","ko":"밝게","zh":"明亮","ja":"明るい","es":"Claro","pt":"Claro","de":"Hell","fr":"Clair","it":"Chiaro","nl":"Licht","ru":"Светлая","uk":"Світла","pl":"Jasny","cs":"Světlý","tr":"Parlak","vi":"Sáng","th":"สว่าง","ar":"فاتح","hi":"उजला","bn":"উজ্জ্বল","fil":"Maliwanag","zt":"明亮","sv":"Ljus","da":"Lyst","no":"Lys","fi":"Vaalea","el":"Φωτεινό","he":"בהיר","ro":"Luminos","hu":"Világos","fa":"روشن","ur":"روشن","jv":"Padhang","bg":"Светла","hr":"Svijetla","sk":"Svetlá"},
+"Dark": {"id":"Gelap","ms":"Gelap","ko":"어둡게","zh":"暗色","ja":"暗い","es":"Oscuro","pt":"Escuro","de":"Dunkel","fr":"Sombre","it":"Scuro","nl":"Donker","ru":"Тёмная","uk":"Темна","pl":"Ciemny","cs":"Tmavý","tr":"Koyu","vi":"Tối","th":"มืด","ar":"داكن","hi":"गहरा","bn":"গাঢ়","fil":"Madilim","zt":"深色","sv":"Mörk","da":"Mørkt","no":"Mørk","fi":"Tumma","el":"Σκούρο","he":"כהה","ro":"Întunecat","hu":"Sötét","fa":"تیره","ur":"گہرا","jv":"Peteng","bg":"Тъмна","hr":"Tamna","sk":"Tmavá"},
+"Balanced (default)": {"id":"Seimbang (bawaan)","ms":"Seimbang (lalai)","ko":"균형 (기본)","zh":"均衡（默认）","ja":"バランス（デフォルト）","es":"Equilibrado (predeterminado)","pt":"Equilibrado (padrão)","de":"Ausgewogen (Standard)","fr":"Équilibré (par défaut)","it":"Bilanciato (predefinito)","nl":"Gebalanceerd (standaard)","ru":"Сбалансированная (по умолчанию)","uk":"Збалансована (за замовчуванням)","pl":"Zrównoważony (domyślny)","cs":"Vyvážený (výchozí)","tr":"Dengeli (varsayılan)","vi":"Cân bằng (mặc định)","th":"สมดุล (ค่าเริ่มต้น)","ar":"متوازن (افتراضي)","hi":"संतुलित (डिफ़ॉल्ट)","bn":"সুষম (ডিফল্ট)","fil":"Balanse (default)","zt":"平衡（預設）","sv":"Balanserad (standard)","da":"Afbalanceret (standard)","no":"Balansert (standard)","fi":"Tasapainoinen (oletus)","el":"Ισορροπημένο (προεπιλογή)","he":"מאוזן (ברירת מחדל)","ro":"Echilibrat (implicit)","hu":"Kiegyensúlyozott (alapértelmezett)","fa":"متعادل (پیش‌فرض)","ur":"متوازن (طے شدہ)","jv":"Imbang (bawaan)","bg":"Балансирана (по подразбиране)","hr":"Uravnoteženo (zadano)","sk":"Vyvážená (predvolené)"},
+"Performance doctor": {"id":"Dokter performa","ms":"Doktor prestasi","ko":"성능 닥터","zh":"性能医生","ja":"パフォーマンスドクター","es":"Doctor de rendimiento","pt":"Médico de desempenho","de":"Leistungsdoktor","fr":"Docteur de performance","it":"Medico delle prestazioni","nl":"Prestatiedokter","ru":"Доктор производительности","uk":"Лікар продуктивності","pl":"Doktor wydajności","cs":"Doktor výkonu","tr":"Performans doktoru","vi":"Bác sĩ hiệu năng","th":"หมอประสิทธิภาพ","ar":"طبيب الأداء","hi":"परफ़ॉर्मेंस डॉक्टर","bn":"পারফরম্যান্স ডাক্তার","fil":"Performance doctor","zt":"效能醫生","sv":"Prestandadoktor","da":"Ydelseslæge","no":"Ytelseslege","fi":"Suorituskykylääkäri","el":"Γιατρός απόδοσης","he":"רופא ביצועים","ro":"Doctor de performanță","hu":"Teljesítményorvos","fa":"پزشک عملکرد","ur":"پرفارمنس ڈاکٹر","jv":"Dhokter kinerja","bg":"Доктор на производителността","hr":"Doktor performansi","sk":"Doktor výkonu"},
+"Run check": {"id":"Jalankan pemeriksaan","ms":"Jalankan semakan","ko":"검사 실행","zh":"运行检查","ja":"チェックを実行","es":"Ejecutar comprobación","pt":"Executar verificação","de":"Prüfung starten","fr":"Lancer la vérification","it":"Avvia controllo","nl":"Controle uitvoeren","ru":"Запустить проверку","uk":"Запустити перевірку","pl":"Uruchom kontrolę","cs":"Spustit kontrolu","tr":"Kontrolü çalıştır","vi":"Chạy kiểm tra","th":"เริ่มตรวจสอบ","ar":"بدء الفحص","hi":"जाँच चलाएँ","bn":"পরীক্ষা চালান","fil":"Magsagawa ng check","zt":"執行檢查","sv":"Kör kontroll","da":"Kør kontrol","no":"Kjør kontroll","fi":"Suorita tarkistus","el":"Εκτέλεση ελέγχου","he":"הפעל בדיקה","ro":"Rulează verificarea","hu":"Ellenőrzés futtatása","fa":"اجرای بررسی","ur":"جانچ چلائیں","jv":"Jalanake pamriksa","bg":"Стартирай проверка","hr":"Pokreni provjeru","sk":"Spustiť kontrolu"},
+"Copy report": {"id":"Salin laporan","ms":"Salin laporan","ko":"보고서 복사","zh":"复制报告","ja":"レポートをコピー","es":"Copiar informe","pt":"Copiar relatório","de":"Bericht kopieren","fr":"Copier le rapport","it":"Copia rapporto","nl":"Rapport kopiëren","ru":"Копировать отчёт","uk":"Копіювати звіт","pl":"Kopiuj raport","cs":"Kopírovat zprávu","tr":"Raporu kopyala","vi":"Sao chép báo cáo","th":"คัดลอกรายงาน","ar":"نسخ التقرير","hi":"रिपोर्ट कॉपी करें","bn":"রিপোর্ট কপি করুন","fil":"Kopyahin ang ulat","zt":"複製報告","sv":"Kopiera rapport","da":"Kopiér rapport","no":"Kopier rapport","fi":"Kopioi raportti","el":"Αντιγραφή αναφοράς","he":"העתק דוח","ro":"Copiază raportul","hu":"Jelentés másolása","fa":"کپی گزارش","ur":"رپورٹ کاپی کریں","jv":"Salin laporan","bg":"Копирай отчета","hr":"Kopiraj izvješće","sk":"Kopírovať správu"},
+"Krunker news": {"id":"Berita Krunker","ms":"Berita Krunker","ko":"Krunker 뉴스","zh":"Krunker 新闻","ja":"Krunkerニュース","es":"Noticias de Krunker","pt":"Notícias do Krunker","de":"Krunker-News","fr":"Actus Krunker","it":"Notizie Krunker","nl":"Krunker-nieuws","ru":"Новости Krunker","uk":"Новини Krunker","pl":"Wiadomości o Krunker","cs":"Novinky Krunker","tr":"Krunker haberleri","vi":"Tin Krunker","th":"ข่าว Krunker","ar":"أخبار Krunker","hi":"Krunker समाचार","bn":"Krunker সংবাদ","fil":"Balita sa Krunker","zt":"Krunker 新聞","sv":"Krunker-nyheter","da":"Krunker-nyheder","no":"Krunker-nyheter","fi":"Krunker-uutiset","el":"Νέα Krunker","he":"חדשות Krunker","ro":"Știri Krunker","hu":"Krunker-hírek","fa":"اخبار Krunker","ur":"Krunker خبریں","jv":"Warta Krunker","bg":"Новини от Krunker","hr":"Krunker vijesti","sk":"Novinky Krunker"},
+"Font": {"id":"Font","ms":"Fon","ko":"글꼴","zh":"字体","ja":"フォント","es":"Fuente","pt":"Fonte","de":"Schrift","fr":"Police","it":"Carattere","nl":"Lettertype","ru":"Шрифт","uk":"Шрифт","pl":"Czcionka","cs":"Písmo","tr":"Yazı Tipi","vi":"Phông chữ","th":"ฟอนต์","ar":"الخط","hi":"फ़ॉन्ट","bn":"ফন্ট","fil":"Font","zt":"字型","sv":"Teckensnitt","da":"Skrifttype","no":"Skrifttype","fi":"Fontti","el":"Γραμματοσειρά","he":"גופן","ro":"Font","hu":"Betűtípus","fa":"قلم","ur":"فونٹ","jv":"Fon","bg":"Шрифт","hr":"Font","sk":"Písmo"},
+"Font Family": {"id":"Jenis Font","ms":"Jenis Fon","ko":"글꼴 종류","zh":"字体类型","ja":"フォントの種類","es":"Tipo de fuente","pt":"Tipo de fonte","de":"Schriftfamilie","fr":"Famille de police","it":"Famiglia di caratteri","nl":"Lettertypefamilie","ru":"Семейство шрифтов","uk":"Родина шрифтів","pl":"Rodzina czcionek","cs":"Rodina písma","tr":"Yazı Tipi Ailesi","vi":"Họ phông chữ","th":"ตระกูลฟอนต์","ar":"عائلة الخط","hi":"फ़ॉन्ट फ़ैमिली","bn":"ফন্ট ফ্যামিলি","fil":"Pamilya ng Font","zt":"字型家族","sv":"Teckensnittsfamilj","da":"Skrifttypefamilie","no":"Skrifttypefamilie","fi":"Fonttiperhe","el":"Οικογένεια γραμματοσειράς","he":"משפחת גופנים","ro":"Familie de fonturi","hu":"Betűcsalád","fa":"خانواده قلم","ur":"فونٹ فیملی","jv":"Kulawarga Fon","bg":"Семейство шрифтове","hr":"Obitelj fontova","sk":"Rodina písma"},
+"Font Color": {"id":"Warna Font","ms":"Warna Fon","ko":"글꼴 색상","zh":"字体颜色","ja":"フォントの色","es":"Color de fuente","pt":"Cor da fonte","de":"Schriftfarbe","fr":"Couleur de police","it":"Colore del carattere","nl":"Letterkleur","ru":"Цвет шрифта","uk":"Колір шрифту","pl":"Kolor czcionki","cs":"Barva písma","tr":"Yazı Rengi","vi":"Màu chữ","th":"สีฟอนต์","ar":"لون الخط","hi":"फ़ॉन्ट रंग","bn":"ফন্টের রঙ","fil":"Kulay ng Font","zt":"字型顏色","sv":"Teckenfärg","da":"Skriftfarve","no":"Skriftfarge","fi":"Fontin väri","el":"Χρώμα γραμματοσειράς","he":"צבע גופן","ro":"Culoarea fontului","hu":"Betűszín","fa":"رنگ قلم","ur":"فونٹ کا رنگ","jv":"Warna Fon","bg":"Цвят на шрифта","hr":"Boja fonta","sk":"Farba písma"},
+"Text Size": {"id":"Ukuran Teks","ms":"Saiz Teks","ko":"글자 크기","zh":"文字大小","ja":"文字サイズ","es":"Tamaño del texto","pt":"Tamanho do texto","de":"Textgröße","fr":"Taille du texte","it":"Dimensione testo","nl":"Tekstgrootte","ru":"Размер текста","uk":"Розмір тексту","pl":"Rozmiar tekstu","cs":"Velikost textu","tr":"Metin Boyutu","vi":"Cỡ chữ","th":"ขนาดข้อความ","ar":"حجم النص","hi":"टेक्स्ट आकार","bn":"টেক্সটের আকার","fil":"Laki ng Teksto","zt":"文字大小","sv":"Textstorlek","da":"Tekststørrelse","no":"Tekststørrelse","fi":"Tekstin koko","el":"Μέγεθος κειμένου","he":"גודל טקסט","ro":"Dimensiunea textului","hu":"Szövegméret","fa":"اندازه متن","ur":"متن کا سائز","jv":"Ukuran Teks","bg":"Размер на текста","hr":"Veličina teksta","sk":"Veľkosť textu"},
+"Interface Language": {"id":"Bahasa Antarmuka","ms":"Bahasa Antara Muka","ko":"인터페이스 언어","zh":"界面语言","ja":"表示言語","es":"Idioma de la interfaz","pt":"Idioma da interface","de":"Oberflächensprache","fr":"Langue de l'interface","it":"Lingua dell'interfaccia","nl":"Interfacetaal","ru":"Язык интерфейса","uk":"Мова інтерфейсу","pl":"Język interfejsu","cs":"Jazyk rozhraní","tr":"Arayüz Dili","vi":"Ngôn ngữ giao diện","th":"ภาษาของอินเทอร์เฟซ","ar":"لغة الواجهة","hi":"इंटरफ़ेस भाषा","bn":"ইন্টারফেসের ভাষা","fil":"Wika ng Interface","zt":"介面語言","sv":"Gränssnittsspråk","da":"Grænsefladesprog","no":"Grensesnittspråk","fi":"Käyttöliittymän kieli","el":"Γλώσσα διεπαφής","he":"שפת הממשק","ro":"Limba interfeței","hu":"Felület nyelve","fa":"زبان رابط","ur":"انٹرفیس کی زبان","jv":"Basa Antarmuka","bg":"Език на интерфейса","hr":"Jezik sučelja","sk":"Jazyk rozhrania"},
+"Refresh": {"id":"Segarkan","ms":"Muat semula","ko":"새로고침","zh":"刷新","ja":"更新","es":"Actualizar","pt":"Atualizar","de":"Aktualisieren","fr":"Actualiser","it":"Aggiorna","nl":"Vernieuwen","ru":"Обновить","uk":"Оновити","pl":"Odśwież","cs":"Obnovit","tr":"Yenile","vi":"Làm mới","th":"รีเฟรช","ar":"تحديث","hi":"रिफ़्रेश","bn":"রিফ্রেশ","fil":"I-refresh","zt":"重新整理","sv":"Uppdatera","da":"Opdater","no":"Oppdater","fi":"Päivitä","el":"Ανανέωση","he":"רענן","ro":"Reîmprospătează","hu":"Frissítés","fa":"تازه‌سازی","ur":"ریفریش","jv":"Segerake","bg":"Обнови","hr":"Osvježi","sk":"Obnoviť"},
+"Dismiss": {"id":"Tutup","ms":"Ketepikan","ko":"닫기","zh":"忽略","ja":"閉じる","es":"Descartar","pt":"Dispensar","de":"Verwerfen","fr":"Ignorer","it":"Ignora","nl":"Negeren","ru":"Скрыть","uk":"Приховати","pl":"Odrzuć","cs":"Zavřít","tr":"Kapat","vi":"Bỏ qua","th":"ปิดทิ้ง","ar":"تجاهل","hi":"खारिज करें","bn":"বাদ দিন","fil":"Isantabi","zt":"忽略","sv":"Avfärda","da":"Afvis","no":"Avvis","fi":"Hylkää","el":"Παράβλεψη","he":"התעלם","ro":"Ignoră","hu":"Elvetés","fa":"رد کردن","ur":"مسترد کریں","jv":"Tutup","bg":"Отхвърли","hr":"Odbaci","sk":"Zavrieť"},
+"Turn back on": {"id":"Nyalakan lagi","ms":"Hidupkan semula","ko":"다시 켜기","zh":"重新开启","ja":"再びオンにする","es":"Volver a activar","pt":"Ativar novamente","de":"Wieder einschalten","fr":"Réactiver","it":"Riattiva","nl":"Weer inschakelen","ru":"Включить снова","uk":"Увімкнути знову","pl":"Włącz ponownie","cs":"Znovu zapnout","tr":"Yeniden aç","vi":"Bật lại","th":"เปิดอีกครั้ง","ar":"إعادة التشغيل","hi":"फिर से चालू करें","bn":"আবার চালু করুন","fil":"Buksan muli","zt":"重新開啟","sv":"Slå på igen","da":"Slå til igen","no":"Slå på igjen","fi":"Ota takaisin käyttöön","el":"Ενεργοποίηση ξανά","he":"הפעל שוב","ro":"Reactivează","hu":"Újra bekapcsolás","fa":"روشن کردن دوباره","ur":"دوبارہ آن کریں","jv":"Urubake maneh","bg":"Включи отново","hr":"Ponovno uključi","sk":"Zapnúť znova"},
+"Scripts turned off": {"id":"Skrip dimatikan","ms":"Skrip dimatikan","ko":"꺼진 스크립트","zh":"已关闭的脚本","ja":"オフにされたスクリプト","es":"Scripts desactivados","pt":"Scripts desativados","de":"Skripte deaktiviert","fr":"Scripts désactivés","it":"Script disattivati","nl":"Scripts uitgeschakeld","ru":"Скрипты отключены","uk":"Скрипти вимкнено","pl":"Skrypty wyłączone","cs":"Skripty vypnuty","tr":"Betikler kapatıldı","vi":"Script đã bị tắt","th":"สคริปต์ถูกปิด","ar":"تم إيقاف السكربتات","hi":"स्क्रिप्ट बंद कर दी गईं","bn":"স্ক্রিপ্ট বন্ধ করা হয়েছে","fil":"Naka-off ang mga script","zt":"腳本已關閉","sv":"Skript avstängda","da":"Scripts slået fra","no":"Skript slått av","fi":"Skriptit poistettu käytöstä","el":"Τα σενάρια απενεργοποιήθηκαν","he":"הסקריפטים כובו","ro":"Scripturi dezactivate","hu":"Szkriptek kikapcsolva","fa":"اسکریپت‌ها خاموش شدند","ur":"اسکرپٹس بند کر دی گئیں","jv":"Skrip dipateni","bg":"Скриптовете са изключени","hr":"Skripte su isključene","sk":"Skripty vypnuté"},
+"Read on KRH": {"id":"Baca di KRH","ms":"Baca di KRH","ko":"KRH에서 읽기","zh":"在 KRH 阅读","ja":"KRHで読む","es":"Leer en KRH","pt":"Ler no KRH","de":"Auf KRH lesen","fr":"Lire sur KRH","it":"Leggi su KRH","nl":"Lezen op KRH","ru":"Читать на KRH","uk":"Читати на KRH","pl":"Czytaj na KRH","cs":"Číst na KRH","tr":"KRH'de oku","vi":"Đọc trên KRH","th":"อ่านบน KRH","ar":"اقرأ على KRH","hi":"KRH पर पढ़ें","bn":"KRH-এ পড়ুন","fil":"Basahin sa KRH","zt":"在 KRH 閱讀","sv":"Läs på KRH","da":"Læs på KRH","no":"Les på KRH","fi":"Lue KRH:ssa","el":"Διαβάστε στο KRH","he":"קרא ב-KRH","ro":"Citește pe KRH","hu":"Olvasd a KRH-n","fa":"در KRH بخوانید","ur":"KRH پر پڑھیں","jv":"Waca ing KRH","bg":"Прочети в KRH","hr":"Pročitaj na KRH","sk":"Čítať na KRH"},
+"Open News on KRH": {"id":"Buka Berita di KRH","ms":"Buka Berita di KRH","ko":"KRH에서 뉴스 열기","zh":"在 KRH 打开新闻","ja":"KRHでニュースを開く","es":"Abrir noticias en KRH","pt":"Abrir notícias no KRH","de":"News auf KRH öffnen","fr":"Ouvrir les actus sur KRH","it":"Apri le notizie su KRH","nl":"Nieuws openen op KRH","ru":"Открыть новости на KRH","uk":"Відкрити новини на KRH","pl":"Otwórz wiadomości na KRH","cs":"Otevřít novinky na KRH","tr":"Haberleri KRH'de aç","vi":"Mở tin tức trên KRH","th":"เปิดข่าวบน KRH","ar":"افتح الأخبار على KRH","hi":"KRH पर समाचार खोलें","bn":"KRH-এ সংবাদ খুলুন","fil":"Buksan ang Balita sa KRH","zt":"在 KRH 開啟新聞","sv":"Öppna nyheter på KRH","da":"Åbn nyheder på KRH","no":"Åpne nyheter på KRH","fi":"Avaa uutiset KRH:ssa","el":"Άνοιγμα νέων στο KRH","he":"פתח חדשות ב-KRH","ro":"Deschide știrile pe KRH","hu":"Hírek megnyitása a KRH-n","fa":"باز کردن اخبار در KRH","ur":"KRH پر خبریں کھولیں","jv":"Bukak Warta ing KRH","bg":"Отвори новините в KRH","hr":"Otvori vijesti na KRH","sk":"Otvoriť novinky na KRH"},
+"Language & Font": {"id":"Bahasa & Font","ms":"Bahasa & Fon","ko":"언어 및 글꼴","zh":"语言与字体","ja":"言語とフォント","es":"Idioma y fuente","pt":"Idioma e fonte","de":"Sprache & Schrift","fr":"Langue et police","it":"Lingua e carattere","nl":"Taal en lettertype","ru":"Язык и шрифт","uk":"Мова та шрифт","pl":"Język i czcionka","cs":"Jazyk a písmo","tr":"Dil ve Yazı Tipi","vi":"Ngôn ngữ và phông chữ","th":"ภาษาและฟอนต์","ar":"اللغة والخط","hi":"भाषा और फ़ॉन्ट","bn":"ভাষা ও ফন্ট","fil":"Wika at Font","zt":"語言與字型","sv":"Språk och teckensnitt","da":"Sprog og skrifttype","no":"Språk og skrifttype","fi":"Kieli ja fontti","el":"Γλώσσα και γραμματοσειρά","he":"שפה וגופן","ro":"Limbă și font","hu":"Nyelv és betűtípus","fa":"زبان و قلم","ur":"زبان اور فونٹ","jv":"Basa & Fon","bg":"Език и шрифт","hr":"Jezik i font","sk":"Jazyk a písmo"}
 };
+
+/** The table for one language: English text -> translation ({} for English or an unknown code). */
+export function uiPack(lang: string): Record<string, string> {
+  const pack: Record<string, string> = {};
+  if (lang === 'en') return pack;
+  for (const k of Object.keys(UI_DICT)) { const t = UI_DICT[k][lang]; if (t) pack[k] = t; }
+  return pack;
+}

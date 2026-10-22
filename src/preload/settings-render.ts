@@ -178,20 +178,30 @@ export function hookSettings(): void {
 // rows land — otherwise they'd stay hidden after the initial sync pass.
 let activeSearch: { query: string; panels: HTMLElement[] } | null = null;
 
+// The dashboard's search box wants to know how many settings match (for its counter and the "no match" note).
+let searchResultListener: ((count: number) => void) | null = null;
+
 /** Re-run the active search filter (no-op when not searching). Async sections call
- *  this after appending their rows. */
+ *  this after appending their rows. Every word of the query has to match, in the
+ *  setting's own text or in the name of its category ("performance fps" works). */
 function reapplySearch(): void {
   if (!activeSearch) return;
   const { query, panels } = activeSearch;
+  const words = query.split(/\s+/).filter(Boolean);
+  let total = 0;
   panels.forEach((panel) => {
+    const catText = ((panel.dataset.cat || '') + ' ' + (panel.querySelector('.krh-cat-head')?.textContent || '')).toLowerCase();
     let visible = 0;
     panel.querySelectorAll('.krh-row').forEach((el) => {
-      const match = !el.classList.contains('krh-row-hidden') && (el.textContent || '').toLowerCase().includes(query);
+      const text = (el.textContent || '').toLowerCase();
+      const match = !el.classList.contains('krh-row-hidden') && words.every((w) => text.includes(w) || catText.includes(w));
       (el as HTMLElement).style.display = match ? '' : 'none';
       if (match) visible++;
     });
     panel.style.display = visible > 0 ? '' : 'none';
+    total += visible;
   });
+  if (searchResultListener) searchResultListener(total);
 }
 
 function applySearchFilter(container: HTMLElement, holder: HTMLElement, searchQuery: string, panels: HTMLElement[]): void {
@@ -362,6 +372,14 @@ export function renderDashboardSettings(): void {
   // Every category is here. Three of them work on the game page itself (Accounts, Userscripts, Backup & Reset),
   // so in the dashboard they show the part that works without the game and point to the game for the rest.
   renderSettings(undefined, { forceHeader: true, dashboard: true });
+}
+
+/** Search box of the KRH Dashboard's Client Settings page. An empty query shows the normal category view again. */
+export function searchDashboardSettings(query: string, onResult?: (count: number) => void): void {
+  searchResultListener = onResult ?? null;
+  const q = query.trim();
+  if (!q && onResult) onResult(-1);
+  updateSearch(q);
 }
 
 function renderSettings(searchQuery?: string, opts?: RenderOptions): void {

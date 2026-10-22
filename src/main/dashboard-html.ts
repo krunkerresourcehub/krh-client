@@ -1,7 +1,7 @@
 // The KRH Dashboard page (one self-contained document, loaded as a data: URL). Everything it shows comes from the
 // main process through window.krhDash.call('dash:...'); file names are only ever put on the page as text.
 
-import { UI_DICT } from './i18n-dict';
+import { LANGS, FONTS, RTL_LANGS, LANG_TAGS } from '../shared/look-options';
 import { MATERIAL_ICONS_WOFF2 } from './material-icons-font';
 
 const CSS = `
@@ -54,6 +54,13 @@ pre.diag{white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow:aut
 .vercard{display:flex;align-items:center;gap:16px}.vercard .big{font-size:26px;font-weight:800;letter-spacing:.02em}.vercard .sm{color:var(--dim);font-size:12.5px}
 .note{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding:10px 14px;margin-bottom:12px;border-radius:10px;background:rgba(53,214,255,.08);border:1px solid rgba(53,214,255,.3);color:var(--dim)}
 #settHolder{min-height:420px;position:relative}
+.ssearch{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.ssearch:focus-within{border-color:var(--acc);box-shadow:0 0 0 2px rgba(53,214,255,.18)}
+.ssearch .material-icons{color:var(--dim);font-size:20px}
+.ssearch input[type=text]{flex:1;min-width:0;background:transparent;border:none;outline:none;padding:6px 2px}
+.ssx{all:unset;cursor:pointer;color:var(--dim);font-size:20px;line-height:1;padding:2px 8px;border-radius:6px}.ssx:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+.ssc{color:var(--dim);font-size:12px;white-space:nowrap}
+.snone{padding:18px;text-align:center;color:var(--dim);border:1px dashed var(--line);border-radius:9px;margin:0 0 12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .tile{all:unset;cursor:pointer;display:block;padding:16px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
 .tile:hover{border-color:var(--acc);transform:translateY(-1px)}.tile b{display:block;font-size:15px;margin-bottom:3px}.tile span{color:var(--dim);font-size:12.5px}
@@ -267,8 +274,10 @@ const BODY = `
    <div class="card"><h2>Release notes for your version</h2><div class="md" id="upNotes">Loading...</div></div>
   </section>
   <section id="p-settings" hidden>
-   <h1>Client Settings</h1><p class="sub">The same options as Settings &gt; Client in the game. Everything here is saved at once.</p>
+   <h1>Client Settings</h1><p class="sub">The same options as Settings &gt; Client in the game. Everything here is saved at once. Type in the search box (or press Ctrl+F) to find a setting in any category.</p>
    <div class="note"><span>Options that act on the page you are playing reach an open game after it reloads.</span><span class="row"><button class="btn ghost" id="reloadGame">Reload game now</button><button class="btn ghost" id="restartBtn2">Restart client</button></span></div>
+   <div class="ssearch"><span class="material-icons">search</span><input type="text" id="settSearchDash" placeholder="Search settings, e.g. fps, crosshair, sound, hotkey" autocomplete="off" spellcheck="false" data-no-i18n><button class="ssx" id="settSearchClear" title="Clear search" hidden>&times;</button><span class="ssc" id="settSearchCount"></span></div>
+   <p class="snone" id="settNone" hidden>No setting matches that. Try a shorter or different word.</p>
    <div id="settHolder"></div>
   </section>
   <section id="p-themes" hidden>
@@ -323,6 +332,9 @@ document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click
 const doRestart = () => { if (confirm('Restart KRH Client now? An open game will close.')) call('restart-client'); };
 $('restartBtn').onclick = doRestart; if ($('restartBtn2')) $('restartBtn2').onclick = doRestart;
 $('reloadGame').onclick = async () => { const r = await call('reload-game'); toast(r && r.ok ? 'Game reloaded' : 'The game is not open'); };
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F') && !$('p-settings').hidden) { e.preventDefault(); const si = $('settSearchDash'); si.focus(); si.select(); }
+});
 document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
   const o = e.target.closest('[data-open]'); if (o) call('open', o.dataset.open).then((r) => { if (r && r.error) toast(r.error); });
@@ -578,16 +590,22 @@ async function loadGuard() {
 }
 
 // ── Language & Font ──
-const DICT = ${JSON.stringify(UI_DICT)};
-const LANGS = [['en', 'English'], ['id', 'Bahasa Indonesia'], ['ms', 'Bahasa Melayu'], ['ko', '한국어'], ['zh', '中文（简体）'], ['ja', '日本語'], ['es', 'Español'], ['pt', 'Português (Brasil)']];
-const FONTS = [['', 'Default'], ['comic', 'Comic Sans', "'Comic Sans MS','Comic Neue','Chalkboard SE',cursive"], ['arial', 'Arial', 'Arial,Helvetica,sans-serif'], ['verdana', 'Verdana', 'Verdana,Geneva,sans-serif'], ['tahoma', 'Tahoma', 'Tahoma,Geneva,sans-serif'], ['trebuchet', 'Trebuchet MS', "'Trebuchet MS',Helvetica,sans-serif"], ['segoe', 'Segoe UI', "'Segoe UI',system-ui,sans-serif"], ['system', 'System UI', "system-ui,-apple-system,'Segoe UI',sans-serif"], ['georgia', 'Georgia (serif)', "Georgia,'Times New Roman',serif"], ['times', 'Times New Roman (serif)', "'Times New Roman',Times,serif"], ['palatino', 'Palatino (serif)', "'Palatino Linotype',Palatino,'Book Antiqua',serif"], ['courier', 'Courier New (mono)', "'Courier New',Courier,monospace"], ['consolas', 'Consolas (mono)', "Consolas,'Lucida Console',monospace"], ['impact', 'Impact (bold)', "Impact,'Arial Black',sans-serif"], ['custom', 'Custom (type a font name)', '']];
+let DICT = {};
+const LANGS = ${JSON.stringify(LANGS)};
+const FONTS = ${JSON.stringify(FONTS)};
+const RTL = ${JSON.stringify(RTL_LANGS)}; const TAGS = ${JSON.stringify(LANG_TAGS)};
 LANGS.forEach((l) => { const o = document.createElement('option'); o.value = l[0]; o.textContent = l[1]; o.setAttribute('data-no-i18n', ''); $('lgLang').append(o); });
-FONTS.forEach((f) => { const o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; $('lgFont').append(o); });
+const fontGroups = {};
+FONTS.forEach((f) => {
+  const o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; o.setAttribute('data-no-i18n', '');
+  if (f[3]) { if (!fontGroups[f[3]]) { const og = document.createElement('optgroup'); og.label = f[3]; fontGroups[f[3]] = og; $('lgFont').append(og); } fontGroups[f[3]].append(o); }
+  else $('lgFont').append(o);
+});
 const origText = new WeakMap(), origAttr = new WeakMap(); let shown = 'en', busy = false;
+let lowerKeys = {};
 function trText(src) {
   const t = src.trim(); if (!t || t.length > 90 || shown === 'en') return null;
-  let r = null; const e = DICT[t] || DICT[Object.keys(DICT).find((k) => k.toLowerCase() === t.toLowerCase())];
-  if (e && e[shown]) r = e[shown]; if (!r) return null;
+  const r = DICT[t] || DICT[lowerKeys[t.toLowerCase()]]; if (!r) return null;
   return src.slice(0, src.indexOf(t)) + r + src.slice(src.indexOf(t) + t.length);
 }
 const SKIPT = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, CODE: 1, PRE: 1 }; const ATTRS = ['placeholder', 'title', 'aria-label'];
@@ -597,12 +615,22 @@ function walkT(n) {
   ATTRS.forEach((a) => { const v = n.getAttribute(a); if (v === null) return; const o = origAttr.get(n) || {}; const base = a in o ? o[a] : v; const t = trText(base); if (t !== null) { o[a] = base; origAttr.set(n, o); n.setAttribute(a, t.trim()); } else if (a in o) { n.setAttribute(a, o[a]); delete o[a]; } });
   for (let c = n.firstChild; c; c = c.nextSibling) walkT(c);
 }
-function applyLang() { shown = DICT && prefs.lang ? prefs.lang : 'en'; document.documentElement.lang = shown; busy = true; walkT(document.body); busy = false; }
+async function applyLang() {
+  const want = prefs.lang || 'en';
+  if (want !== 'en' && want !== loadedPack) { try { DICT = await call('i18n-pack', want); } catch (e) { DICT = {}; } lowerKeys = {}; Object.keys(DICT).forEach((k) => { lowerKeys[k.toLowerCase()] = k; }); loadedPack = want; }
+  if (want === 'en') { DICT = {}; lowerKeys = {}; loadedPack = 'en'; }
+  shown = want; document.documentElement.lang = TAGS[shown] || shown; document.documentElement.dir = RTL.indexOf(shown) >= 0 ? 'rtl' : 'ltr';
+  busy = true; walkT(document.body); busy = false;
+}
+let loadedPack = 'en';
 let tPend = 0; new MutationObserver((muts) => { if (busy || shown === 'en') return; if (tPend) return; tPend = setTimeout(() => { tPend = 0; busy = true; muts.forEach((m) => { m.addedNodes.forEach((x) => walkT(x)); if (m.type === 'characterData') walkT(m.target); }); busy = false; }, 40); }).observe(document.body, { childList: true, subtree: true, characterData: true });
 function applyFontLook() {
   const b = document.body; const f = FONTS.find((x) => x[0] === prefs.font); let stack = f ? f[2] : '';
   if (prefs.font === 'custom') { const nm = String(prefs.fontCustom || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim(); stack = nm ? "'" + nm + "',sans-serif" : ''; }
   if (stack) { b.style.setProperty('--ufont', stack); b.dataset.ufont = ''; } else { b.style.removeProperty('--ufont'); delete b.dataset.ufont; }
+  const g = f && f[4] ? f[4] : ''; let gl = document.getElementById('krhGfont');
+  if (!g) { if (gl) gl.remove(); }
+  else { const href = 'https://fonts.googleapis.com/css2?family=' + g + '&display=swap'; if (!gl) { gl = document.createElement('link'); gl.id = 'krhGfont'; gl.rel = 'stylesheet'; document.head.append(gl); } if (gl.getAttribute('href') !== href) gl.setAttribute('href', href); }
   if (prefs.color) { b.style.setProperty('--ink', prefs.color); b.style.setProperty('--dim', prefs.color + 'cc'); } else { b.style.removeProperty('--ink'); b.style.removeProperty('--dim'); }
   window.krhDash.setZoom(Number(prefs.size) || 100);
 }
@@ -622,7 +650,7 @@ $('lgColorDef').onchange = () => { prefs.color = $('lgColorDef').checked ? '' : 
 $('lgSize').oninput = () => { prefs.size = Number($('lgSize').value); $('lgSizeV').textContent = prefs.size + '%'; };
 $('lgSize').onchange = () => commitLook(false);
 $('lgReset').onclick = () => { prefs.font = ''; prefs.fontCustom = ''; prefs.color = ''; prefs.size = 100; syncLookControls(); commitLook(false); toast('Font reset'); };
-const applyLangOld = applyLang; applyLang = function () { applyLangOld(); applyFontLook(); syncLookControls(); };
+const applyLangOld = applyLang; applyLang = async function () { await applyLangOld(); applyFontLook(); syncLookControls(); };
 
 // Coming back from hidden (you pressed the dashboard key in the game): play the entrance again.
 document.addEventListener('visibilitychange', () => {
@@ -638,7 +666,7 @@ applyLook(); stagger($('p-home'));
 `;
 
 export const DASHBOARD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>KRH Dashboard</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https:; font-src data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'unsafe-inline'; img-src data: https:; font-src data: https://fonts.gstatic.com;">
 <style>${CSS}</style></head><body>${BODY}<script>${JS}</script></body></html>`;
 
 export const DASHBOARD_DATA_URL = 'data:text/html;charset=utf-8,' + encodeURIComponent(DASHBOARD_HTML);
