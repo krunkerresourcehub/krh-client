@@ -1177,7 +1177,7 @@ async function launchApp(): Promise<void> {
       prefsPath: join(app.getPath('userData'), 'KRH Client', 'dashboard.json'),
       userCss,
       userscripts: userscriptManager,
-      onCssChanged: applyUserCss,
+      onCssChanged: () => { applyUserCss(); },
       play: () => { if (gameActive && !win.isDestroyed()) showWindow(win); else launchGame(); },
       playUrl: (url) => launchGame(url),
       openHub: () => { if (!hub.isDestroyed()) { void setHubSuspended(hub, false); showWindow(hub); } },
