@@ -11,6 +11,9 @@ import { config, Keybind, DEFAULT_KEYBINDS, SavedAccount, DEFAULT_CONFIG, Social
 import { initSwapperProtocol, registerSwapperFileProtocol, ResourceSwapper, filePathToSwapURL, EXTERNAL_SWAP_FILE, EXTERNAL_EXAMPLE } from './swapper';
 import { listSkyImages, resolveSkyImage, SKIES_DIR, SKY_TEXTURE_RE, SKY_IMAGE_EXTS } from './sky-textures';
 import { UserscriptManager } from './userscripts';
+import { UserscriptGuard } from './userscript-guard';
+import { runPerfDoctor } from './perf-doctor';
+import { getKrunkerNews } from './news-feed';
 import { UserCssManager } from './user-css';
 import { openDashboard, closeDashboard, isDashboardVisible, isDashboardFocused, floatDashboard } from './dashboard';
 import { GAME_PROBE_JS, clearLock, lockdownPage, readLock, scanLaunchFlags, scanProcesses, scanScripts, writeLock } from './integrity';
@@ -25,7 +28,7 @@ import { installEscapeLock, handleEscapeInput, setEscapeFastRelease, releaseEsca
 import { normalisePresets } from '../shared/presets';
 import { cleanCrosshairImage } from '../shared/crosshair-image';
 import { updateWithoutInstaller, applyLiteAndRelaunch, cleanupLite } from './lite-update';
-import { createHubWindow, openSiteWindow, showWindow, setHubSuspended, authDeepLinkToHubUrl } from './hub-window';
+import { createHubWindow, openSiteWindow, showWindow, setHubSuspended, authDeepLinkToHubUrl, HUB_URL } from './hub-window';
 import { loadBlocklist, userListsDir } from './user-lists';
 import { createSplash, splashStatus, splashPrompt, splashAlive, splashElapsed, getSplash, onSplashUserClosed, closeSplash } from './splash';
 import { DiscordRPC } from './discord-rpc';
@@ -729,6 +732,9 @@ async function launchApp(): Promise<void> {
   const usConfig = config.get('userscripts') || { enabled: true, path: '' };
   const usDir = usConfig.path || join(app.getPath('userData'), 'KRH Client');
   const userscriptManager = usConfig.enabled && !safeMode ? new UserscriptManager(usDir) : null;
+  // Switches off a userscript that crashes or hangs the game right after it was added or changed.
+  const scriptGuard = userscriptManager ? new UserscriptGuard(join(app.getPath('userData'), 'KRH Client', 'userscript-health.json'), userscriptManager) : null;
+  let healthyTimer: NodeJS.Timeout | null = null;
   // Any number of user .css files, each with its own on/off switch (Dashboard > Custom CSS)
   const userCss = new UserCssManager(join(app.getPath('userData'), 'KRH Client', 'user-css'));
   electronLog.log(`[KRH] Userscripts: ${userscriptManager ? 'enabled' : 'disabled'} (${usDir})`);
@@ -980,6 +986,11 @@ async function launchApp(): Promise<void> {
     if (win.isDestroyed()) return;
     if (!gameActive) {
       gameActive = true;
+      if (scriptGuard) {
+        void scriptGuard.beginSession();
+        if (healthyTimer) clearTimeout(healthyTimer);
+        healthyTimer = setTimeout(() => { void scriptGuard.markHealthy(); }, 5 * 60_000);
+      }
       win.webContents.setAudioMuted(false);
       void win.loadURL(url);
       applyTwitch(config.get('twitch'));
@@ -1047,6 +1058,30 @@ async function launchApp(): Promise<void> {
     onHidden: () => { if (!(gameActive && !win.isDestroyed() && win.isVisible())) openDash(); },
   });
   hub.on('blur', () => { if (!hub.isDestroyed()) hub.setAlwaysOnTop(false); });
+
+  // A userscript that crashes or hangs the game right after it was added or changed is switched off and the game reloads.
+  const handleGameFailure = async (reason: string): Promise<void> => {
+    if (!scriptGuard || !gameActive || win.isDestroyed()) return;
+    const names = await scriptGuard.failure(reason);
+    if (names.length === 0) return;
+    electronLog.warn(`[KRH] Userscript guard: ${reason}; turned off ${names.join(', ')}`);
+    win.webContents.reload();
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.webContents.send('krh-toast', `Turned off ${names.join(', ')}: ${reason}. Dashboard > Home has the details.`);
+    }, 6000);
+  };
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason !== 'clean-exit') void handleGameFailure(`the game crashed (${details.reason})`);
+  });
+  win.on('unresponsive', () => {
+    if (scriptGuard && scriptGuard.sessionAgeSec() < 180) void handleGameFailure('the game stopped responding');
+  });
+  ipcMain.on('userscript-error', (_e, file: unknown) => {
+    if (!scriptGuard || typeof file !== 'string' || file.length > 200) return;
+    void scriptGuard.loadError(file).then((off) => {
+      if (off && !win.isDestroyed()) win.webContents.send('krh-toast', `Turned off ${off}: it failed with an error on 3 launches in a row.`);
+    });
+  });
 
   // While you play the KRH website window is hidden and frozen. After a short while its page is unloaded too
   // (about:blank), so no website code, animation or memory stays alive next to the game. It loads again when the
@@ -1206,6 +1241,27 @@ async function launchApp(): Promise<void> {
           return true;
         },
         applyLowEndAndRestart: () => { applyLowEndPreset(); relaunchApp(); },
+        perfDoctor: () => runPerfDoctor({
+          performance: () => (config.get('performance') ?? {}) as { fpsUnlocked?: boolean; frameCap?: number; cpuThrottle?: number; cpuThrottleMenu?: number; processPriority?: string },
+          advanced: () => (config.get('advanced') ?? {}) as { gpuProfile?: string; ignoreDisplayScaling?: boolean; perfTweaks?: boolean },
+          instantReplayOn: () => (config.get('extras') as Partial<ExtrasConfig> | undefined)?.instantReplay?.enabled === true,
+          gameActive: () => gameActive,
+          gameWindow: () => (win.isDestroyed() ? null : win),
+          version: appVersion,
+        }),
+        news: (force) => getKrunkerNews(join(app.getPath('userData'), 'KRH Client', 'news-feed-cache.json'), force),
+        openHubRoute: (route) => {
+          if (hub.isDestroyed()) return;
+          hubParkedUrl = null;
+          void setHubSuspended(hub, false);
+          void hub.loadURL(HUB_URL + '#' + route);
+          showWindow(hub);
+        },
+        scriptGuard: {
+          list: () => (scriptGuard ? scriptGuard.list() : []),
+          reenable: async (file) => (scriptGuard ? scriptGuard.reenable(file) : false),
+          dismiss: (file) => { scriptGuard?.dismiss(file); },
+        },
         checkUpdates: async () => ({ latest: (await checkForUpdate(appVersion))?.version ?? null }),
         fetchChangelog: (version) => fetchChangelog(version),
         keybinds: () => getKeybinds(),
@@ -1301,16 +1357,17 @@ async function launchApp(): Promise<void> {
     };
     const prioritySetting = config.get('performance')?.processPriority || 'Normal';
     const priorityVal = PRIORITY_MAP[prioritySetting];
-    if (priorityVal !== undefined) {
+    // "Normal" is what Windows already uses: nothing to set, and no timer that queries every process each second.
+    if (priorityVal !== undefined && prioritySetting !== 'Normal') {
       try { os.setPriority(process.pid, priorityVal); } catch { /* ignore */ }
-      // Apply to child processes periodically
+      // Apply to child processes now and then (new windows start with the default priority)
       setInterval(() => {
         for (const m of app.getAppMetrics()) {
           if (m.pid !== process.pid) {
             try { os.setPriority(m.pid, priorityVal); } catch { /* ignore */ }
           }
         }
-      }, 1000);
+      }, 5000);
       electronLog.log(`[KRH] Process priority set to ${prioritySetting}`);
     }
   }

@@ -57,9 +57,22 @@ interface BgPrefs {
   glass: number;
   /** Motion in the dashboard (entrance, hover, glow drift). */
   anim: boolean;
+  /** Interface language (Language & Font): en, id, ms, ko, zh, ja, es, pt. */
+  lang: string;
+  /** Font family id ('' = the default font), a custom installed font name, text color ('' = default) and size in %. */
+  font: string; fontCustom: string; color: string; size: number;
 }
-// 2.0.1: a lighter default look. Saved looks from 2.0.0.0 (no `ver`) get the new picture darkening once.
-const DEFAULT_PREFS: BgPrefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true };
+export const LANG_IDS = ['en', 'id', 'ms', 'ko', 'zh', 'ja', 'es', 'pt'] as const;
+const FONT_IDS = ['', 'comic', 'arial', 'verdana', 'tahoma', 'trebuchet', 'segoe', 'system', 'georgia', 'times', 'palatino', 'courier', 'consolas', 'impact', 'custom'];
+const cleanLook = (r: Partial<BgPrefs>): Pick<BgPrefs, 'lang' | 'font' | 'fontCustom' | 'color' | 'size'> => ({
+  lang: (LANG_IDS as readonly unknown[]).includes(r.lang) ? (r.lang as string) : 'en',
+  font: FONT_IDS.includes(String(r.font ?? '')) ? String(r.font ?? '') : '',
+  fontCustom: typeof r.fontCustom === 'string' ? r.fontCustom.replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 40) : '',
+  color: typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color) ? r.color : '',
+  size: clampInt(r.size, 80, 150, 100),
+});
+// 2.1.0: a lighter default look. Saved looks from 2.0.0.0 (no `ver`) get the new picture darkening once.
+const DEFAULT_PREFS: BgPrefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, lang: 'en', font: '', fontCustom: '', color: '', size: 100 };
 const clampInt = (v: unknown, lo: number, hi: number, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
 // Krunker's sandbox is the game itself (krunker.io/?sandbox), so it runs in the game window, not in a tab.
 const SANDBOX_URL = 'https://krunker.io/?sandbox';
@@ -90,6 +103,7 @@ function readPrefs(path: string): BgPrefs {
       bright: clampInt(raw.bright, 0, 100, DEFAULT_PREFS.bright),
       glass: clampInt(raw.glass, 0, 100, DEFAULT_PREFS.glass),
       anim: raw.anim !== false,
+      ...cleanLook(raw),
       mode,
       file: typeof raw.file === 'string' ? basename(raw.file) : '',
       url: typeof raw.url === 'string' && /^https:\/\//i.test(raw.url) && raw.url.length < 2000 ? raw.url : '',
@@ -312,6 +326,7 @@ function registerIpc(deps: DashboardDeps): void {
       bright: clampInt(r.bright, 0, 100, DEFAULT_PREFS.bright),
       glass: clampInt(r.glass, 0, 100, DEFAULT_PREFS.glass),
       anim: r.anim !== false,
+      ...cleanLook(r),
     };
     try { writeFileSync(deps.prefsPath, JSON.stringify({ ver: 2, ...next }, null, 2), 'utf-8'); }
     catch (err) { electronLog.warn('[KRH] Could not save the dashboard look:', (err as Error).message); }

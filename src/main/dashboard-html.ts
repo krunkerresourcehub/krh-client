@@ -1,6 +1,7 @@
 // The KRH Dashboard page (one self-contained document, loaded as a data: URL). Everything it shows comes from the
 // main process through window.krhDash.call('dash:...'); file names are only ever put on the page as text.
 
+import { UI_DICT } from './i18n-dict';
 import { MATERIAL_ICONS_WOFF2 } from './material-icons-font';
 
 const CSS = `
@@ -128,6 +129,16 @@ nav button.on::before{content:"";position:absolute;left:0;top:22%;bottom:22%;wid
 .tip{display:flex;align-items:center;gap:14px}.tip .material-icons{font-size:30px;color:var(--acc)}.tip>div{flex:1}.tip p{margin:2px 0 0}
 tr.hl td{background:rgba(53,214,255,.1)}tr.hl td:first-child{box-shadow:inset 3px 0 0 var(--acc)}
 
+.drrow{display:block;position:relative;margin:8px 0;padding:10px 14px 10px 16px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.drrow::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--lv,#7aa6ff)}
+.drrow b{display:block;margin-bottom:2px}.drrow span{color:var(--dim);font-size:12.5px;line-height:1.5}
+.drrow.ok{--lv:#5cf2a8}.drrow.info{--lv:#7aa6ff}.drrow.warn{--lv:#ffc065}.drrow.bad{--lv:#ff6b8a}
+.drsum{margin:8px 0 0;font-weight:700}
+.newscard h2{margin-bottom:4px}.tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.tag{padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:11.5px;color:var(--dim)}
+#guardCard{border-color:#ffc065}#guardCard h2{color:#ffc065}
+.look-row select,.look-row input[type=text]{flex:1;min-width:160px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);font:inherit}
+.look-row input[type=color]{width:46px;height:34px;border:none;background:none;padding:0;cursor:pointer}
+body[data-ufont] *:not(.material-icons):not(code):not(pre):not(textarea.code):not(.kbd){font-family:var(--ufont) !important}
 @keyframes krhRise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 @keyframes krhSlide{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 @keyframes krhDrift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(2.5%,-2%) scale(1.07)}}
@@ -171,6 +182,7 @@ const BODY = `
   <button data-p="settings">Client Settings</button>
   <div class="more">More</div>
   <button data-p="themes">Themes</button>
+  <button data-p="news">Krunker news</button>
   <button data-p="servers">Servers</button>
   <button data-p="history">History</button>
   <button data-p="profiles">Profiles</button>
@@ -186,6 +198,7 @@ const BODY = `
    <h1>Home</h1><p class="sub">Jump straight to the game, the KRH website or the places people ask for most.</p>
    <div class="card vercard"><div><div class="big" id="verBig">KRH Client</div><div class="sm" id="verSub"></div></div></div>
    <div class="card tip"><span class="material-icons">keyboard</span><div><h2>Dashboard shortcut</h2><p>The dashboard is hidden while you play. Press <span class="kbd" id="tipKey">Ctrl+Shift+D</span> in the game to open it over the game, and press it again (or click back into the game) to go back. You can change the key in Client Settings &gt; General &gt; Hotkeys.</p></div><button class="btn ghost" data-go="keybinds">All keybinds</button></div>
+   <div class="card" id="guardCard" hidden><h2>Scripts turned off</h2><p>These userscripts were switched off because the game crashed or kept failing after you added or changed them.</p><div class="list" id="guardList"></div></div>
    <div class="card" id="gamesCard"><h2>Games</h2><p>Jump back into the game you were in, or keep the ones you like.</p><div class="list" id="gLast"></div>
     <div class="row" style="margin-top:10px"><input type="text" id="gName" placeholder="Name for this game (optional)" maxlength="40"><button class="btn ghost" id="gSave">Save current game</button></div><div class="list" id="gFavs"></div></div>
    <div class="grid">
@@ -238,8 +251,14 @@ const BODY = `
    <h1>Keybinds</h1><p class="sub">Every KRH Client hotkey in one list. Change them in Settings &gt; General &gt; Hotkeys.</p>
    <div class="card"><table><tbody id="kbBody"></tbody></table><div class="row" style="margin-top:12px"><button class="btn ghost" data-go="settings">Open settings</button></div></div>
   </section>
+  <section id="p-news" hidden>
+   <h1>Krunker news</h1><p class="sub">The latest Krunker updates and events from the KRH website.</p>
+   <div class="card"><div class="row"><button class="btn" id="newsRefresh">Refresh</button><button class="btn ghost" id="newsOpen">Open News on KRH</button></div><p id="newsStatus" style="margin:10px 0 0"></p></div>
+   <div id="newsList"></div>
+  </section>
   <section id="p-diag" hidden>
    <h1>Diagnostics</h1><p class="sub">Everything useful for a bug report in one paste: versions, your PC, the settings that matter for performance and the end of the log. E-mail addresses and tokens are hidden.</p>
+   <div class="card"><h2>Performance doctor</h2><p>Low FPS or lag? One click checks the Electron build, your FPS and GPU settings, display scaling and which processes use CPU. Run it while the game is open for the real picture.</p><div class="row"><button class="btn" id="drRun">Run check</button><button class="btn ghost" id="drCopy" hidden>Copy report</button></div><p class="drsum" id="drSum"></p><div id="drList"></div></div>
    <div class="card"><div class="row"><button class="btn" id="dgCopy">Copy report</button><button class="btn ghost" id="dgRefresh">Refresh</button><button class="btn ghost" id="dgLogs">Open logs folder</button></div><pre class="diag" id="dgText">Loading...</pre></div>
   </section>
   <section id="p-updates" hidden>
@@ -258,6 +277,13 @@ const BODY = `
     <div class="look-row"><label for="thBright">Brightness</label><input type="range" id="thBright" min="0" max="100" value="62"><output id="thBrightV">62</output></div>
     <div class="look-row"><label for="thGlass">Panel solidness</label><input type="range" id="thGlass" min="0" max="100" value="42"><output id="thGlassV">42</output></div>
     <div class="row" style="margin-top:8px"><button class="chip" data-look="bright">Bright</button><button class="chip" data-look="balanced">Balanced (default)</button><button class="chip" data-look="dark">Dark</button></div></div>
+   <div class="card"><h2>Language & Font</h2><p>Choose the language of the dashboard and how its text looks. Menus and buttons are translated; long explanations stay in English.</p>
+    <div class="look-row"><label for="lgLang">Language</label><select id="lgLang"></select></div>
+    <div class="look-row"><label for="lgFont">Font Family</label><select id="lgFont"></select></div>
+    <div class="look-row" id="lgCustomRow" hidden><label for="lgCustom">Font name</label><input type="text" id="lgCustom" maxlength="40" placeholder="Any font installed on this PC, e.g. Segoe Print"></div>
+    <div class="look-row"><label for="lgColor">Font Color</label><input type="color" id="lgColor" value="#f7f4ff"><label style="width:auto"><input type="checkbox" id="lgColorDef" checked> Default</label></div>
+    <div class="look-row"><label for="lgSize">Text Size</label><input type="range" id="lgSize" min="80" max="150" step="5" value="100"><output id="lgSizeV">100%</output></div>
+    <div class="row" style="margin-top:8px"><button class="chip" id="lgReset">Reset to default</button></div></div>
    <div class="card"><h2>Effects</h2><p>Glass blur and motion look nice but use graphics power. Switch them off if the dashboard feels slow on your PC.</p><div class="edrow"><label><input type="checkbox" id="thFx" checked> Glass blur</label><label><input type="checkbox" id="thAnim" checked> Animations</label></div></div>
    <div class="card"><h2>Theme</h2><p>Colours and glass effect of the whole dashboard.</p><div class="tgrid" id="thGrid"></div></div>
    <div class="card"><h2>Custom image</h2><p>Use your own picture behind the theme: add one from your computer, pick one from your backgrounds folder, or use a link. Choose Default to go back to the theme's own look.</p>
@@ -290,7 +316,7 @@ function show(p) {
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === p));
   if (p === 'scripts') loadScripts(); if (p === 'css') loadCss(); if (p === 'themes') { loadThemes(); loadBg(); } if (p === 'look') loadCache();
   if (p === 'home') loadGames(); if (p === 'servers') loadServers(false); if (p === 'history') loadHistory();
-  if (p === 'profiles') loadProfiles(); if (p === 'keybinds') loadKeybinds(); if (p === 'diag') loadDiag(); if (p === 'updates') loadUpdates();
+  if (p === 'profiles') loadProfiles(); if (p === 'keybinds') loadKeybinds(); if (p === 'diag') loadDiag(); if (p === 'news') loadNews(false); if (p === 'home') loadGuard(); if (p === 'updates') loadUpdates();
   if (p === 'settings') document.dispatchEvent(new Event('krh-dash-settings'));
 }
 document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => show(b.dataset.p)));
@@ -356,7 +382,7 @@ $('cAdd').onclick = async () => { const r = await call('css-add'); if (r && r.er
 $('sFolder').onclick = () => call('folder', 'scripts'); $('cFolder').onclick = () => call('folder', 'css');
 $('wFolder').onclick = () => call('folder', 'swapper'); $('bFolder').onclick = () => call('folder', 'backgrounds');
 
-let prefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true };
+let prefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, lang: 'en', font: '', fontCustom: '', color: '', size: 100 };
 async function applyBg() {
   const r = await call('bg'); const bg = $('bg');
   bg.style.backgroundImage = r.image ? 'url("' + r.image + '")' : '';
@@ -372,7 +398,7 @@ async function loadBg() {
 }
 function syncBgFields() { const m = $('bMode').value; $('bFile').style.display = m === 'file' ? '' : 'none'; $('bUrl').style.display = m === 'url' ? '' : 'none'; }
 async function saveBg() {
-  prefs = { mode: $('bMode').value, file: $('bFile').value || '', url: $('bUrl').value.trim(), dim: Number($('bDim').value), theme: prefs.theme, fx: prefs.fx, bright: prefs.bright, glass: prefs.glass, anim: prefs.anim };
+  prefs = { mode: $('bMode').value, file: $('bFile').value || '', url: $('bUrl').value.trim(), dim: Number($('bDim').value), theme: prefs.theme, fx: prefs.fx, bright: prefs.bright, glass: prefs.glass, anim: prefs.anim, lang: prefs.lang, font: prefs.font, fontCustom: prefs.fontCustom, color: prefs.color, size: prefs.size };
   syncBgFields(); await call('bg-save', prefs); applyBg();
 }
 ['bMode', 'bFile'].forEach((id) => $(id).addEventListener('change', saveBg));
@@ -504,6 +530,100 @@ function countUp(node, text) {
 }
 window.addEventListener('blur', () => document.body.classList.add('idle'));
 window.addEventListener('focus', () => document.body.classList.remove('idle'));
+
+// ── Performance doctor ──
+let drReport = '';
+async function runDoctor() {
+  $('drRun').disabled = true; $('drSum').textContent = 'Checking... (about 2 seconds)'; $('drList').textContent = '';
+  try {
+    const r = await call('perf-doctor'); drReport = r.report;
+    $('drSum').textContent = r.counts.bad ? r.counts.bad + ' problem(s) and ' + r.counts.warn + ' warning(s) found' : r.counts.warn ? r.counts.warn + ' warning(s), nothing serious' : 'Nothing wrong found';
+    r.items.forEach((i, n) => { const row = el('div', 'drrow ' + i.level); row.style.setProperty('--i', String(Math.min(n, 12))); row.append(el('b', '', i.title), el('span', '', i.detail)); $('drList').append(row); });
+    $('drCopy').hidden = false;
+  } catch (e) { $('drSum').textContent = 'The check failed: ' + String(e && e.message || e); }
+  $('drRun').disabled = false;
+}
+$('drRun').onclick = runDoctor;
+$('drCopy').onclick = async () => { if (drReport) { await call('copy-text', drReport); toast('Report copied'); } };
+
+// ── Krunker news ──
+async function loadNews(force) {
+  $('newsStatus').textContent = 'Loading...';
+  let r; try { r = await call('news', force === true); } catch (e) { r = { ok: false, error: String(e && e.message || e) }; }
+  const box = $('newsList'); box.textContent = '';
+  if (!r.ok) { $('newsStatus').textContent = 'Could not load the news (' + r.error + '). Check your connection and press Refresh.'; return; }
+  $('newsStatus').textContent = r.stale ? 'You are offline: showing the last saved news.' : 'Updated ' + r.feed.generated;
+  const add = (c) => {
+    const card = el('div', 'card newscard'); card.append(el('h2', '', c.label + ' - ' + c.title));
+    if (c.intro) card.append(el('p', '', c.intro));
+    if (c.sections.length) { const tg = el('div', 'tags'); c.sections.forEach((t) => tg.append(el('span', 'tag', t))); card.append(tg); }
+    const row = el('div', 'row'); if (c.videos) row.append(el('span', 'meta', c.videos + (c.videos > 1 ? ' videos' : ' video')));
+    const b = el('button', 'btn ghost', 'Read on KRH'); b.onclick = () => call('news-open', c.route); row.append(b); card.append(row); box.append(card);
+  };
+  r.feed.updates.forEach(add); r.feed.events.forEach(add); stagger(box);
+}
+$('newsRefresh').onclick = () => loadNews(true);
+$('newsOpen').onclick = () => call('news-open', 'news-updates');
+
+// ── Userscripts the client switched off ──
+async function loadGuard() {
+  let r; try { r = await call('guard-list'); } catch (e) { return; }
+  $('guardCard').hidden = !r.items.length; const l = $('guardList'); l.textContent = '';
+  r.items.forEach((i) => {
+    const row = el('div', 'item'); row.append(el('span', '', i.file + ' - ' + i.reason));
+    const on = el('button', 'btn ghost', 'Turn back on'); on.onclick = async () => { await call('guard-reenable', i.file); toast('Switched on again (reload the game to use it)'); loadGuard(); };
+    const x = el('button', 'btn ghost', 'Dismiss'); x.onclick = async () => { await call('guard-dismiss', i.file); loadGuard(); };
+    row.append(on, x); l.append(row);
+  });
+}
+
+// ── Language & Font ──
+const DICT = ${JSON.stringify(UI_DICT)};
+const LANGS = [['en', 'English'], ['id', 'Bahasa Indonesia'], ['ms', 'Bahasa Melayu'], ['ko', '한국어'], ['zh', '中文（简体）'], ['ja', '日本語'], ['es', 'Español'], ['pt', 'Português (Brasil)']];
+const FONTS = [['', 'Default'], ['comic', 'Comic Sans', "'Comic Sans MS','Comic Neue','Chalkboard SE',cursive"], ['arial', 'Arial', 'Arial,Helvetica,sans-serif'], ['verdana', 'Verdana', 'Verdana,Geneva,sans-serif'], ['tahoma', 'Tahoma', 'Tahoma,Geneva,sans-serif'], ['trebuchet', 'Trebuchet MS', "'Trebuchet MS',Helvetica,sans-serif"], ['segoe', 'Segoe UI', "'Segoe UI',system-ui,sans-serif"], ['system', 'System UI', "system-ui,-apple-system,'Segoe UI',sans-serif"], ['georgia', 'Georgia (serif)', "Georgia,'Times New Roman',serif"], ['times', 'Times New Roman (serif)', "'Times New Roman',Times,serif"], ['palatino', 'Palatino (serif)', "'Palatino Linotype',Palatino,'Book Antiqua',serif"], ['courier', 'Courier New (mono)', "'Courier New',Courier,monospace"], ['consolas', 'Consolas (mono)', "Consolas,'Lucida Console',monospace"], ['impact', 'Impact (bold)', "Impact,'Arial Black',sans-serif"], ['custom', 'Custom (type a font name)', '']];
+LANGS.forEach((l) => { const o = document.createElement('option'); o.value = l[0]; o.textContent = l[1]; o.setAttribute('data-no-i18n', ''); $('lgLang').append(o); });
+FONTS.forEach((f) => { const o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; $('lgFont').append(o); });
+const origText = new WeakMap(), origAttr = new WeakMap(); let shown = 'en', busy = false;
+function trText(src) {
+  const t = src.trim(); if (!t || t.length > 90 || shown === 'en') return null;
+  let r = null; const e = DICT[t] || DICT[Object.keys(DICT).find((k) => k.toLowerCase() === t.toLowerCase())];
+  if (e && e[shown]) r = e[shown]; if (!r) return null;
+  return src.slice(0, src.indexOf(t)) + r + src.slice(src.indexOf(t) + t.length);
+}
+const SKIPT = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, CODE: 1, PRE: 1 }; const ATTRS = ['placeholder', 'title', 'aria-label'];
+function walkT(n) {
+  if (n.nodeType === 3) { const base = origText.has(n) ? origText.get(n) : n.nodeValue; const t = trText(base); if (t !== null) { if (!origText.has(n)) origText.set(n, base); if (n.nodeValue !== t) n.nodeValue = t; } else if (origText.has(n)) { n.nodeValue = origText.get(n); origText.delete(n); } return; }
+  if (n.nodeType !== 1 || SKIPT[n.nodeName] || n.hasAttribute('data-no-i18n')) return;
+  ATTRS.forEach((a) => { const v = n.getAttribute(a); if (v === null) return; const o = origAttr.get(n) || {}; const base = a in o ? o[a] : v; const t = trText(base); if (t !== null) { o[a] = base; origAttr.set(n, o); n.setAttribute(a, t.trim()); } else if (a in o) { n.setAttribute(a, o[a]); delete o[a]; } });
+  for (let c = n.firstChild; c; c = c.nextSibling) walkT(c);
+}
+function applyLang() { shown = DICT && prefs.lang ? prefs.lang : 'en'; document.documentElement.lang = shown; busy = true; walkT(document.body); busy = false; }
+let tPend = 0; new MutationObserver((muts) => { if (busy || shown === 'en') return; if (tPend) return; tPend = setTimeout(() => { tPend = 0; busy = true; muts.forEach((m) => { m.addedNodes.forEach((x) => walkT(x)); if (m.type === 'characterData') walkT(m.target); }); busy = false; }, 40); }).observe(document.body, { childList: true, subtree: true, characterData: true });
+function applyFontLook() {
+  const b = document.body; const f = FONTS.find((x) => x[0] === prefs.font); let stack = f ? f[2] : '';
+  if (prefs.font === 'custom') { const nm = String(prefs.fontCustom || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim(); stack = nm ? "'" + nm + "',sans-serif" : ''; }
+  if (stack) { b.style.setProperty('--ufont', stack); b.dataset.ufont = ''; } else { b.style.removeProperty('--ufont'); delete b.dataset.ufont; }
+  if (prefs.color) { b.style.setProperty('--ink', prefs.color); b.style.setProperty('--dim', prefs.color + 'cc'); } else { b.style.removeProperty('--ink'); b.style.removeProperty('--dim'); }
+  window.krhDash.setZoom(Number(prefs.size) || 100);
+}
+function syncLookControls() {
+  $('lgLang').value = prefs.lang || 'en'; $('lgFont').value = prefs.font || ''; $('lgCustom').value = prefs.fontCustom || '';
+  $('lgCustomRow').hidden = prefs.font !== 'custom'; $('lgColorDef').checked = !prefs.color; if (prefs.color) $('lgColor').value = prefs.color;
+  $('lgSize').value = prefs.size || 100; $('lgSizeV').textContent = (prefs.size || 100) + '%';
+}
+function commitLook(langChanged) { applyFontLook(); if (langChanged) applyLang(); $('lgCustomRow').hidden = prefs.font !== 'custom'; return call('bg-save', prefs); }
+$('lgLang').onchange = () => { prefs.lang = $('lgLang').value; commitLook(true); };
+$('lgFont').onchange = () => { prefs.font = $('lgFont').value; commitLook(false); };
+$('lgCustom').oninput = () => { prefs.fontCustom = $('lgCustom').value; applyFontLook(); };
+$('lgCustom').onchange = () => commitLook(false);
+$('lgColor').oninput = () => { prefs.color = $('lgColor').value; $('lgColorDef').checked = false; applyFontLook(); };
+$('lgColor').onchange = () => commitLook(false);
+$('lgColorDef').onchange = () => { prefs.color = $('lgColorDef').checked ? '' : $('lgColor').value; commitLook(false); };
+$('lgSize').oninput = () => { prefs.size = Number($('lgSize').value); $('lgSizeV').textContent = prefs.size + '%'; };
+$('lgSize').onchange = () => commitLook(false);
+$('lgReset').onclick = () => { prefs.font = ''; prefs.fontCustom = ''; prefs.color = ''; prefs.size = 100; syncLookControls(); commitLook(false); toast('Font reset'); };
+const applyLangOld = applyLang; applyLang = function () { applyLangOld(); applyFontLook(); syncLookControls(); };
+
 // Coming back from hidden (you pressed the dashboard key in the game): play the entrance again.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || prefs.anim === false) return;
@@ -513,7 +633,7 @@ async function refreshTip() { try { const r = await call('keybinds'); const row 
 refreshTip();
 
 loadGames();
-call('info').then((i) => { $('ver').textContent = 'v' + i.version; $('verBig').textContent = 'KRH Client v' + i.version; $('verSub').textContent = 'Electron ' + i.electron + '  |  Chromium ' + i.chrome + '  |  ' + i.platform; $('wPath').textContent = i.swapDir; prefs = i.prefs; applyTheme(prefs.theme); applyFx(); applyLook(); applyBg(); });
+call('info').then((i) => { $('ver').textContent = 'v' + i.version; $('verBig').textContent = 'KRH Client v' + i.version; $('verSub').textContent = 'Electron ' + i.electron + '  |  Chromium ' + i.chrome + '  |  ' + i.platform; $('wPath').textContent = i.swapDir; prefs = i.prefs; applyTheme(prefs.theme); applyFx(); applyLook(); applyBg(); applyLang(); loadGuard(); });
 applyLook(); stagger($('p-home'));
 `;
 

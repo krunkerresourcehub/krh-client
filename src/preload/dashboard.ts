@@ -1,6 +1,6 @@
 // Preload of the KRH Dashboard window: a small bridge to the main process, plus the same settings panel the game's
 // settings window shows (renderDashboardSettings), built when the page asks for it.
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webFrame } from 'electron';
 import { ALL_CLIENT_CSS } from '../main/client-ui';
 import { renderDashboardSettings } from './settings-render';
 
@@ -8,6 +8,10 @@ contextBridge.exposeInMainWorld('krhDash', {
   call: (channel: string, ...args: unknown[]): Promise<unknown> => {
     if (typeof channel !== 'string' || !channel.startsWith('dash:')) return Promise.reject(new Error('blocked channel'));
     return ipcRenderer.invoke(channel, ...args);
+  },
+  /** Text size (Themes > Language & Font): zooms the whole dashboard, 80-150 %. */
+  setZoom: (percent: number): void => {
+    if (typeof percent === 'number' && percent >= 80 && percent <= 150) webFrame.setZoomFactor(percent / 100);
   },
 });
 

@@ -152,6 +152,8 @@ function executeScript(
     _console.log('[KRH] Userscript executed:', instance.meta.name || instance.filename);
   } catch (err) {
     _console.error('[KRH] Userscript error in', instance.filename, ':', err);
+    // The main process counts repeated failures (a script that throws on every start gets switched off).
+    try { ipcRenderer.send('userscript-error', instance.filename, String(err instanceof Error ? err.message : err).slice(0, 200)); } catch { /* ignore */ }
   }
 }
 

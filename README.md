@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-2.0.1-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-2.0.1-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-2.0.1-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-2.0.1-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-2.1.0-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-2.1.0-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-2.1.0-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-2.1.0-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -33,10 +33,14 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
 
 ## Features
 
-### KRH Dashboard and website integration (2.0.0.0, refreshed in 2.0.1)
+### KRH Dashboard and website integration (2.0.0.0, refreshed in 2.0.1 and 2.1.0)
 
 - **KRH Dashboard** (the first window; while you play it is hidden, and `Ctrl+Shift+D` shows it over the game and hides it again, changeable under Settings > Client > Hotkeys): Home, Custom CSS, Userscripts, Resource Swapper and Client Settings, plus Themes, Servers (ping per region, favourite regions), History, Profiles, Keybinds, Diagnostics (a copyable bug report), What's new and Maintenance (cache limit, clear cache, clear Krunker data). Quick buttons open Play, the KRH website, Krunker Social, the Krunker Editor and the Krunker Viewer, and Restart Client is always one click away
 - **Themes**: Aurora Glass (default), Sky (new, bright), Midnight, Crimson Night, Emerald, Sunset and Slate, plus your own background picture (from your computer, your backgrounds folder or a link)
+- **Performance doctor** (2.1.0): Diagnostics > Run check explains low FPS (Electron build, FPS and GPU settings, display scaling, busy processes) and copies a report
+- **Userscript guard** (2.1.0): a new or edited userscript that crashes or hangs the game is switched off automatically; Home shows what was turned off
+- **Krunker news** (2.1.0): updates and events from the KRH website on the dashboard
+- **Language & Font** (2.1.0): dashboard language (English, Indonesian, Malay, Korean, Chinese, Japanese, Spanish, Portuguese) plus font, color and size
 - **Krunker Sandbox** (2.0.1) button next to Krunker Viewer (opens `krunker.io/?sandbox` in the game window)
 - **Light while you play** (2.0.1): the dashboard window is closed and the KRH website window unloads itself while a game runs, so nothing extra runs next to the game; both come back when you need them
 - **Brightness** (2.0.1): the dashboard now starts lighter, and Themes > Brightness has a Brightness slider, a Panel solidness slider and three one-click looks (Bright, Balanced, Dark). Your picture's own Darken slider is separate

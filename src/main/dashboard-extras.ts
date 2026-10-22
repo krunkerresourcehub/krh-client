@@ -10,6 +10,9 @@ import { getStats, kd, fmtDuration, summaryText, topMap } from './session-stats'
 import { renderMarkdown } from '../shared/markdown';
 import { redact } from '../shared/redact';
 import { electronLog } from './logger';
+import type { DoctorResult } from './perf-doctor';
+import type { NewsResult } from './news-feed';
+import type { AutoDisabled } from './userscript-guard';
 
 export interface ExtraDeps {
   dataPath: string;
@@ -27,6 +30,10 @@ export interface ExtraDeps {
   applyProfile: (name: string) => Promise<boolean>;
   deleteProfile: (name: string) => boolean;
   applyLowEndAndRestart: () => void;
+  perfDoctor: () => Promise<DoctorResult>;
+  news: (force: boolean) => Promise<NewsResult>;
+  openHubRoute: (route: string) => void;
+  scriptGuard: { list: () => AutoDisabled[]; reenable: (file: string) => Promise<boolean>; dismiss: (file: string) => void };
   checkUpdates: () => Promise<{ latest: string | null }>;
   fetchChangelog: (version: string) => Promise<string>;
   keybinds: () => Record<string, { key: string; ctrl: boolean; shift: boolean; alt: boolean }>;
@@ -112,6 +119,27 @@ export function registerExtras(deps: ExtraDeps): void {
   };
   h('dash:diag', async () => ({ text: await report() }));
   h('dash:diag-copy', async () => { deps.copyText(await report()); return true; });
+
+  // ── Performance doctor ──
+  h('dash:perf-doctor', async () => deps.perfDoctor());
+  h('dash:copy-text', (_e, text: unknown) => {
+    if (typeof text !== 'string' || text.length === 0 || text.length > 20_000) return false;
+    deps.copyText(text);
+    return true;
+  });
+
+  // ── Krunker news ──
+  h('dash:news', async (_e, force: unknown) => deps.news(force === true));
+  h('dash:news-open', (_e, route: unknown) => {
+    if (typeof route !== 'string' || !/^[a-z0-9-]{1,40}$/.test(route)) return false;
+    deps.openHubRoute(route);
+    return true;
+  });
+
+  // ── Userscripts the client switched off because they crashed the game ──
+  h('dash:guard-list', () => ({ items: deps.scriptGuard.list() }));
+  h('dash:guard-reenable', async (_e, file: unknown) => ({ ok: typeof file === 'string' && file.length < 200 ? await deps.scriptGuard.reenable(file) : false }));
+  h('dash:guard-dismiss', (_e, file: unknown) => { if (typeof file === 'string' && file.length < 200) deps.scriptGuard.dismiss(file); return true; });
 
   // ── Servers ──
   h('dash:servers', async (_e, force: unknown) => {
