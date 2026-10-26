@@ -64,6 +64,24 @@ const KEYBIND_LABELS: Record<string, string> = {
 /** A Krunker game link: the real host, a game code, nothing else. */
 const GAME_URL = /^https:\/\/krunker\.io\/\?game=[A-Za-z0-9:._-]{3,64}$/;
 
+/** Turns whatever the person pasted into the one link shape we trust: https://krunker.io/?game=ID.
+ *  Accepts a full link, a link without https://, a link with extra bits after the game id, or a bare id like FRA:abc12. */
+const BARE_GAME_ID = /^[A-Za-z]{2,5}:[A-Za-z0-9._-]{2,40}$/;
+function normalizeGameLink(raw: string): string | null {
+  const s = raw.trim().replace(/^[<"'(]+|[>"')]+$/g, '');
+  if (!s || s.length > 300) return null;
+  if (BARE_GAME_ID.test(s)) return 'https://krunker.io/?game=' + s;
+  let u: URL;
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : 'https://' + s); } catch { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const host = u.hostname.toLowerCase();
+  if (host !== 'krunker.io' && host !== 'www.krunker.io') return null;
+  const game = u.searchParams.get('game');
+  if (!game) return null;
+  const url = 'https://krunker.io/?game=' + game;
+  return GAME_URL.test(url) ? url : null;
+}
+
 let dataPath = '';
 let cached: DashData | null = null;
 
@@ -169,8 +187,9 @@ export function registerExtras(deps: ExtraDeps): void {
     const cur = deps.currentGameUrl();
     return { last: d.lastGame, favorites: d.favGames, current: cur && GAME_URL.test(cur) ? cur : null };
   });
-  h('dash:game-join', (_e, url: unknown) => {
-    if (typeof url !== 'string' || !GAME_URL.test(url)) return { error: 'That is not a Krunker game link.' };
+  h('dash:game-join', (_e, raw: unknown) => {
+    const url = typeof raw === 'string' ? normalizeGameLink(raw) : null;
+    if (!url) return { error: 'That is not a Krunker game link.' };
     deps.launchGame(url);
     return { ok: true };
   });

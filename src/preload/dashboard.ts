@@ -42,7 +42,7 @@ function wireSettingsSearch(): void {
     const q = input.value;
     if (clear) clear.hidden = q.length === 0;
     searchDashboardSettings(q, (n) => {
-      if (count) count.textContent = n < 0 ? '' : n + (n === 1 ? ' setting' : ' settings');
+      if (count) count.textContent = n < 0 ? '' : String(n);
       if (none) none.hidden = n !== 0;
     });
   };

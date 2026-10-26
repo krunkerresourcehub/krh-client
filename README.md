@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-2.1.2-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-2.1.2-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-2.1.2-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-2.1.2-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-2.1.3-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-2.1.3-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-2.1.3-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-2.1.3-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -40,7 +40,7 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
 - **Performance doctor** (2.1.0): Diagnostics > Run check explains low FPS (Electron build, FPS and GPU settings, display scaling, busy processes) and copies a report
 - **Userscript guard** (2.1.0): a new or edited userscript that crashes or hangs the game is switched off automatically; Home shows what was turned off
 - **Krunker news** (2.1.0): updates and events from the KRH website on the dashboard
-- **Language & Font** (2.1.0): dashboard language plus font, color and size. 2.1.2: 38 languages (see PATCHNOTES-2.1.2.md) and 150 font families
+- **Language & Font** (2.1.0): dashboard language plus font, color and size. 2.1.3: 38 languages (see PATCHNOTES-2.1.3.md) and 150 font families
 - **Krunker Sandbox** (2.0.1) button next to Krunker Viewer (opens `krunker.io/?sandbox` in the game window)
 - **Light while you play** (2.0.1): the dashboard window is closed and the KRH website window unloads itself while a game runs, so nothing extra runs next to the game; both come back when you need them
 - **Brightness** (2.0.1): the dashboard now starts lighter, and Themes > Brightness has a Brightness slider, a Panel solidness slider and three one-click looks (Bright, Balanced, Dark). Your picture's own Darken slider is separate
@@ -48,7 +48,7 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
 - **Dashboard over the game** (2.0.1): `Ctrl+Shift+D` floats the dashboard above the (fullscreen) game, also works from the KRH website window, and pressing it again, clicking back into the game or closing the dashboard hides it. The game keeps running. A short reminder of the key shows once per session when the game opens
 - **Userscript editor**: write or paste a script, press Save and the script is on (the open game can be reloaded). Userscripts use a `// ==UserScript==` header; Tampermonkey-only features (`GM_*`, `@match`) are not supported
 - **CSS editor**: write CSS and see it in the open game while you type, with a switch per file; files stack in name order on top of your theme
-- **Client Settings** in the dashboard are the same options as Settings > Client in the game and are saved to the same place. 2.1.2: a search box on top (or `Ctrl+F`) finds a setting in any category while you type
+- **Client Settings** in the dashboard are the same options as Settings > Client in the game and are saved to the same place. 2.1.3: a search box on top (or `Ctrl+F`) finds a setting in any category while you type
 - **Use in KRH Client** on the KRH website (only inside KRH Client): Ready CSS posts and legal userscripts are added to your Custom CSS / userscripts and switched on. The client only takes files from the KRH website's own storage, checks their size and never runs anything itself. Cheat scripts cannot be switched on from the website
 - **Fair-play lockdown**: if the client finds a known cheat client, a cheat script, a cheat menu in the game page or a debugger flag, it locks itself (every window closes, only a Quit / Check again window stays). It is a client-side check that knows only the cheats on its list (`src/main/integrity.ts`), not a replacement for server-side anti-cheat
 

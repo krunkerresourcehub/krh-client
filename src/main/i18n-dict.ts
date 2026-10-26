@@ -152,10 +152,13 @@ export const UI_DICT: Record<string, Record<string, string>> = {
 "Language & Font": {"id":"Bahasa & Font","ms":"Bahasa & Fon","ko":"언어 및 글꼴","zh":"语言与字体","ja":"言語とフォント","es":"Idioma y fuente","pt":"Idioma e fonte","de":"Sprache & Schrift","fr":"Langue et police","it":"Lingua e carattere","nl":"Taal en lettertype","ru":"Язык и шрифт","uk":"Мова та шрифт","pl":"Język i czcionka","cs":"Jazyk a písmo","tr":"Dil ve Yazı Tipi","vi":"Ngôn ngữ và phông chữ","th":"ภาษาและฟอนต์","ar":"اللغة والخط","hi":"भाषा और फ़ॉन्ट","bn":"ভাষা ও ফন্ট","fil":"Wika at Font","zt":"語言與字型","sv":"Språk och teckensnitt","da":"Sprog og skrifttype","no":"Språk og skrifttype","fi":"Kieli ja fontti","el":"Γλώσσα και γραμματοσειρά","he":"שפה וגופן","ro":"Limbă și font","hu":"Nyelv és betűtípus","fa":"زبان و قلم","ur":"زبان اور فونٹ","jv":"Basa & Fon","bg":"Език и шрифт","hr":"Jezik i font","sk":"Jazyk a písmo"}
 };
 
+import { DASH_DICT } from './i18n-dash';
+
 /** The table for one language: English text -> translation ({} for English or an unknown code). */
 export function uiPack(lang: string): Record<string, string> {
   const pack: Record<string, string> = {};
   if (lang === 'en') return pack;
   for (const k of Object.keys(UI_DICT)) { const t = UI_DICT[k][lang]; if (t) pack[k] = t; }
+  for (const k of Object.keys(DASH_DICT)) { const t = DASH_DICT[k][lang]; if (t) pack[k] = t; }
   return pack;
 }

@@ -1,6 +1,6 @@
 {
   "name": "krh-client",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "KRH Client - Krunker Resource Hub client",
   "main": "dist/main/index.js",
   "homepage": "https://github.com/krunkerresourcehub/krh-client",

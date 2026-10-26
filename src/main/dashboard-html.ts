@@ -206,7 +206,10 @@ const BODY = `
    <div class="card vercard"><div><div class="big" id="verBig">KRH Client</div><div class="sm" id="verSub"></div></div></div>
    <div class="card tip"><span class="material-icons">keyboard</span><div><h2>Dashboard shortcut</h2><p>The dashboard is hidden while you play. Press <span class="kbd" id="tipKey">Ctrl+Shift+D</span> in the game to open it over the game, and press it again (or click back into the game) to go back. You can change the key in Client Settings &gt; General &gt; Hotkeys.</p></div><button class="btn ghost" data-go="keybinds">All keybinds</button></div>
    <div class="card" id="guardCard" hidden><h2>Scripts turned off</h2><p>These userscripts were switched off because the game crashed or kept failing after you added or changed them.</p><div class="list" id="guardList"></div></div>
-   <div class="card" id="gamesCard"><h2>Games</h2><p>Jump back into the game you were in, or keep the ones you like.</p><div class="list" id="gLast"></div>
+   <div class="card" id="gamesCard"><h2>Games</h2><p>Jump back into the game you were in, or keep the ones you like.</p>
+    <p style="margin:12px 0 6px">Have a game link? Paste it here and join.</p>
+    <div class="row"><input type="text" id="gJoinUrl" placeholder="Paste a Krunker game link, for example krunker.io/?game=FRA:abc12" maxlength="300" autocomplete="off" spellcheck="false"><button class="btn" id="gJoinGo">Join game</button></div>
+    <div class="list" id="gLast"></div>
     <div class="row" style="margin-top:10px"><input type="text" id="gName" placeholder="Name for this game (optional)" maxlength="40"><button class="btn ghost" id="gSave">Save current game</button></div><div class="list" id="gFavs"></div></div>
    <div class="grid">
     <button class="tile" data-open="play"><b>Play Krunker</b><span>Open or bring up the game window</span></button>
@@ -276,7 +279,7 @@ const BODY = `
   <section id="p-settings" hidden>
    <h1>Client Settings</h1><p class="sub">The same options as Settings &gt; Client in the game. Everything here is saved at once. Type in the search box (or press Ctrl+F) to find a setting in any category.</p>
    <div class="note"><span>Options that act on the page you are playing reach an open game after it reloads.</span><span class="row"><button class="btn ghost" id="reloadGame">Reload game now</button><button class="btn ghost" id="restartBtn2">Restart client</button></span></div>
-   <div class="ssearch"><span class="material-icons">search</span><input type="text" id="settSearchDash" placeholder="Search settings, e.g. fps, crosshair, sound, hotkey" autocomplete="off" spellcheck="false" data-no-i18n><button class="ssx" id="settSearchClear" title="Clear search" hidden>&times;</button><span class="ssc" id="settSearchCount"></span></div>
+   <div class="ssearch"><span class="material-icons">search</span><input type="text" id="settSearchDash" placeholder="Search settings, e.g. fps, crosshair, sound, hotkey" autocomplete="off" spellcheck="false"><button class="ssx" id="settSearchClear" title="Clear search" hidden>&times;</button><span class="ssc" id="settSearchCount"></span></div>
    <p class="snone" id="settNone" hidden>No setting matches that. Try a shorter or different word.</p>
    <div id="settHolder"></div>
   </section>
@@ -286,7 +289,7 @@ const BODY = `
     <div class="look-row"><label for="thBright">Brightness</label><input type="range" id="thBright" min="0" max="100" value="62"><output id="thBrightV">62</output></div>
     <div class="look-row"><label for="thGlass">Panel solidness</label><input type="range" id="thGlass" min="0" max="100" value="42"><output id="thGlassV">42</output></div>
     <div class="row" style="margin-top:8px"><button class="chip" data-look="bright">Bright</button><button class="chip" data-look="balanced">Balanced (default)</button><button class="chip" data-look="dark">Dark</button></div></div>
-   <div class="card"><h2>Language & Font</h2><p>Choose the language of the dashboard and how its text looks. Menus and buttons are translated; long explanations stay in English.</p>
+   <div class="card"><h2>Language & Font</h2><p>Choose the language of the dashboard and how its text looks.</p>
     <div class="look-row"><label for="lgLang">Language</label><select id="lgLang"></select></div>
     <div class="look-row"><label for="lgFont">Font Family</label><select id="lgFont"></select></div>
     <div class="look-row" id="lgCustomRow" hidden><label for="lgCustom">Font name</label><input type="text" id="lgCustom" maxlength="40" placeholder="Any font installed on this PC, e.g. Segoe Print"></div>
@@ -435,6 +438,15 @@ async function loadGames() {
     const x = el('button', 'x', '\u2715'); x.title = 'Remove'; x.onclick = async () => { await call('game-fav-remove', f.url); loadGames(); }; row.append(nm, j, x); favs.append(row); });
   $('gSave').disabled = !r.current;
 }
+async function joinByLink() {
+  const v = $('gJoinUrl').value.trim();
+  if (!v) { toast('Paste a game link first'); return; }
+  const r = await call('game-join', v);
+  if (r && r.error) { toast(r.error); return; }
+  toast('Opening Krunker...'); $('gJoinUrl').value = '';
+}
+$('gJoinGo').onclick = joinByLink;
+$('gJoinUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); joinByLink(); } });
 $('gSave').onclick = async () => { const r = await call('game-fav-add', $('gName').value); if (r.error) toast(r.error); else { $('gName').value = ''; toast('Saved'); } loadGames(); };
 
 async function loadServers(force) {
@@ -604,7 +616,7 @@ FONTS.forEach((f) => {
 const origText = new WeakMap(), origAttr = new WeakMap(); let shown = 'en', busy = false;
 let lowerKeys = {};
 function trText(src) {
-  const t = src.trim(); if (!t || t.length > 90 || shown === 'en') return null;
+  const t = src.trim(); if (!t || t.length > 700 || shown === 'en') return null;
   const r = DICT[t] || DICT[lowerKeys[t.toLowerCase()]]; if (!r) return null;
   return src.slice(0, src.indexOf(t)) + r + src.slice(src.indexOf(t) + t.length);
 }
