@@ -8,8 +8,10 @@ import { electronLog } from './logger';
 
 export interface UpdateInfo {
   version: string;
+  /** Installer link. Empty when the release could only be read from the release page (no installer details). */
   downloadUrl: string;
   fileSize: number;
+  /** SHA-256 of the installer. Empty when GitHub gave none: such an installer is never run (the lite update still is, it has its own SHA-512). */
   sha256: string;
   notes: string;
 }
@@ -156,9 +158,39 @@ function fetchLatestRelease(currentVersion: string): Promise<GithubRelease | nul
   });
 }
 
+/**
+ * Same answer as the API, without the API: github.com/<repo>/releases/latest redirects to .../tag/vX.Y.Z.
+ * The API allows only 60 requests an hour per IP address, and shared networks hit that limit all the time, which
+ * looked exactly like "there is no update" (the check just returned null). The redirect has no such limit.
+ */
+function fetchLatestTag(currentVersion: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const req = httpsGet(UPDATE_CONFIG.releasesUrl, { headers: { 'User-Agent': 'KrunkerKRHClient/' + currentVersion } }, (res) => {
+      res.resume();
+      const loc = res.headers.location || '';
+      const m = /\/releases\/tag\/v?([^/?#]+)$/i.exec(loc);
+      if (m && res.statusCode && res.statusCode >= 300 && res.statusCode < 400) { resolve(decodeURIComponent(m[1])); return; }
+      electronLog.warn('[KRH-Update] Release page gave no tag (status', res.statusCode, ')');
+      resolve(null);
+    });
+    req.setTimeout(CHECK_TIMEOUT_MS, () => { req.destroy(); resolve(null); });
+    req.on('error', () => resolve(null));
+  });
+}
+
+/** The latest release: from the API, or (API refused / rate limited) from the release page redirect. */
+async function getLatestRelease(currentVersion: string): Promise<GithubRelease | null> {
+  const api = await fetchLatestRelease(currentVersion);
+  if (api) return api;
+  const tag = await fetchLatestTag(currentVersion);
+  if (!tag) return null;
+  electronLog.warn('[KRH-Update] GitHub API unavailable; using the release page instead:', tag);
+  return { tag_name: 'v' + tag, html_url: `https://github.com/krunkerresourcehub/krh-client/releases/tag/v${tag}`, assets: [] };
+}
+
 export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo | null> {
   if (!UPDATES_ENABLED) return null;
-  const release = await fetchLatestRelease(currentVersion);
+  const release = await getLatestRelease(currentVersion);
   if (!release) return null;
 
   const remoteVersion = (release.tag_name || '').replace(/^v/i, '');
@@ -172,30 +204,28 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo
     return null;
   }
 
+  // The lite update (app.asar only) needs neither the installer nor its digest, so a release whose installer
+  // is missing or has no digest is still an update. Only the installer fallback needs them (see index.ts).
   const pattern = updateAssetPattern();
   const setupAsset = (release.assets || []).find((a) => pattern.test(a.name));
-  if (!setupAsset) {
-    electronLog.error('[KRH-Update] No installable asset matching', String(pattern), 'in release', remoteVersion);
-    return null;
+  let downloadUrl = '';
+  let sha256 = '';
+  let fileSize = 0;
+  if (setupAsset && isAllowedRedirect(setupAsset.browser_download_url)) {
+    downloadUrl = setupAsset.browser_download_url;
+    fileSize = setupAsset.size;
+    // GitHub returns the digest as "sha256:<hex>"
+    sha256 = (setupAsset.digest || '').replace(/^sha256:/i, '');
+  } else {
+    electronLog.warn('[KRH-Update] No usable installer asset in release', remoteVersion, '(the lite update can still work)');
   }
+  if (!sha256) electronLog.warn('[KRH-Update] No SHA-256 digest for the installer; it will not be run');
 
-  if (!isAllowedRedirect(setupAsset.browser_download_url)) {
-    electronLog.error('[KRH-Update] Download URL points to untrusted host:', setupAsset.browser_download_url);
-    return null;
-  }
-
-  // GitHub returns the digest as "sha256:<hex>"
-  const sha256 = (setupAsset.digest || '').replace(/^sha256:/i, '');
-  if (!sha256) {
-    electronLog.error('[KRH-Update] No SHA-256 digest found for asset');
-    return null;
-  }
-
-  electronLog.log('[KRH-Update] Update available:', remoteVersion, '| SHA-256:', sha256.substring(0, 16) + '...');
+  electronLog.log('[KRH-Update] Update available:', remoteVersion, '| SHA-256:', sha256 ? sha256.substring(0, 16) + '...' : '(none)');
   return {
     version: remoteVersion,
-    downloadUrl: setupAsset.browser_download_url,
-    fileSize: setupAsset.size,
+    downloadUrl,
+    fileSize,
     sha256,
     notes: release.body || '',
   };
@@ -207,7 +237,7 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo
  */
 export async function checkForUpdateNotice(currentVersion: string): Promise<UpdateNotice | null> {
   if (!UPDATES_ENABLED) return null;
-  const release = await fetchLatestRelease(currentVersion);
+  const release = await getLatestRelease(currentVersion);
   if (!release) return null;
 
   const remoteVersion = (release.tag_name || '').replace(/^v/i, '');
@@ -247,6 +277,8 @@ function verifyChecksum(filePath: string, expectedSha256: string): Promise<boole
 }
 
 export function downloadUpdate(url: string, destPath: string, onProgress: ProgressCallback, expectedSha256?: string): Promise<void> {
+  if (!url || !isAllowedRedirect(url)) return Promise.reject(new Error('This release has no installer to download'));
+  if (!expectedSha256) return Promise.reject(new Error('The installer has no SHA-256 digest, so it was not downloaded'));
   return new Promise((resolve, reject) => {
     const tmpPath = destPath + '.tmp';
     let retries = 0;

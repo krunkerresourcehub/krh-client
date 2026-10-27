@@ -15,10 +15,10 @@ KRH Client is the official client of the [Krunker Resource Hub](https://krunker-
 
 | File | For |
 | --- | --- |
-| `KRH-Client-2.1.3-Windows-Setup.exe` | Windows 64-bit, installer |
-| `KRH-Client-2.1.3-Windows-Portable.exe` | Windows 64-bit, no installation |
-| `KRH-Client-2.1.3-Linux-Installer.deb` | Debian, Ubuntu, Mint |
-| `KRH-Client-2.1.3-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
+| `KRH-Client-2.1.4-Windows-Setup.exe` | Windows 64-bit, installer |
+| `KRH-Client-2.1.4-Windows-Portable.exe` | Windows 64-bit, no installation |
+| `KRH-Client-2.1.4-Linux-Installer.deb` | Debian, Ubuntu, Mint |
+| `KRH-Client-2.1.4-Linux-Portable.AppImage` | Linux, run `chmod +x` first |
 
 The builds are not code-signed, so Windows SmartScreen may show an "Unknown publisher" warning on first launch. Check the SHA-256 checksums on the release page before running a download.
 
@@ -67,7 +67,7 @@ The builds are not code-signed, so Windows SmartScreen may show an "Unknown publ
   - quality presets (Low / Medium / High) and 30 or 60 FPS
   - audio: game audio, system audio (Windows), or none, with an optional microphone mixed in
   - files are saved to `Videos/KRH Client`
-- **Area screenshot** (`Shift+F9`): freeze the game, drag a box over the part you want, and it is copied to the clipboard (the full-window screenshot stays on `F9`)
+- **Area screenshot** (`Shift+F9`, or tap `Shift`): freeze the game, drag a box over the part you want, and it is copied to the clipboard (the full-window screenshot stays on `F9`). Like the Snipping Tool: hold `Shift` while dragging for a square, hold `Space` to move the box, tap `Shift` again for the whole window (2.1.4)
 - **Ranked leaderboard search**: loads the top 1000 players and adds a search box to the leaderboard (works on the social page and in the in-game leaderboard)
 - **CPU throttling** (in game and in menus) for systems where the GPU is the bottleneck
 - **Cleaner Menu** and **Selectable Chat** options
@@ -184,7 +184,7 @@ The game hotkeys can be rebound in the settings. The tab shortcuts (`Ctrl+T`/`W`
 | `F7` | Pause / resume recording |
 | `F8` | Start / stop recording |
 | `F9` | Screenshot of the game window (copied to the clipboard) |
-| `Shift+F9` | Screenshot of a selected area |
+| `Shift+F9` | Screenshot of a selected area (hold `Shift` = square, hold `Space` = move, tap `Shift` = whole window) |
 | `F11` | Toggle fullscreen |
 | `F12` | DevTools |
 | `Ctrl+L` | Copy game link |
