@@ -18,12 +18,12 @@ import { UserCssManager } from './user-css';
 import { openDashboard, closeDashboard, isDashboardVisible, isDashboardFocused, floatDashboard } from './dashboard';
 import { GAME_PROBE_JS, clearLock, lockdownPage, readLock, scanLaunchFlags, scanProcesses, scanScripts, writeLock } from './integrity';
 import { registerSiteBridge } from './site-bridge';
-import { recordGameUrl, cacheLimitMb } from './dashboard-extras';
+import { recordGameUrl, recordGameTitle, cacheLimitMb } from './dashboard-extras';
 import exampleClassRoulette from '../../assets/example-userscripts/classRoulette.js?raw';
 import exampleQuickSell from '../../assets/example-userscripts/quickSellByRarity.js?raw';
 import { ALL_CLIENT_CSS, HIDE_ADS_CSS, CONSENT_DISMISS_JS } from './client-ui';
 import { electronLog, rendererLog, getLogPath, closeLogStreams } from './logger';
-import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, RELEASES_URL } from './updater';
+import { checkForUpdate, downloadUpdate, installUpdate, checkForUpdateNotice, diagnoseUpdate, RELEASES_URL } from './updater';
 import { installEscapeLock, handleEscapeInput, setEscapeFastRelease, releaseEscapeShortcut } from './escape-lock';
 import { normalisePresets } from '../shared/presets';
 import { cleanCrosshairImage } from '../shared/crosshair-image';
@@ -35,7 +35,7 @@ import { DiscordRPC } from './discord-rpc';
 import { listThemes, getThemeCSS, listLoadingThemes, getLoadingScreenCSS, GAME_THEMES_DIR, SOCIAL_THEMES_DIR } from './css-themes';
 import { TabManager } from './tab-manager';
 import { openRankedQueue, loadQueueMaps, DEFAULT_RANKED_AUDIO_URL } from './ranked-queue';
-import { takeScreenshot, takeAreaScreenshot, openScreenshotsFolder } from './screenshot';
+import { takeScreenshot, takeAreaScreenshot, openScreenshotsFolder, revealLastScreenshot } from './screenshot';
 import { toggleRecording, togglePauseRecording, stopRecording, openRecordingsFolder, startReplayBuffer, stopReplayBuffer, saveReplayClip, setReplaySeconds, replayActive } from './recorder';
 import { installPackFromUrl, installPackFromFile, listPacks, deletePack, PACK_ID_RE } from './packs';
 import { encodeShare, decodeShare } from './share-code';
@@ -1263,6 +1263,17 @@ async function launchApp(): Promise<void> {
           dismiss: (file) => { scriptGuard?.dismiss(file); },
         },
         checkUpdates: async () => ({ latest: (await checkForUpdate(appVersion))?.version ?? null }),
+        diagnoseUpdates: async () => {
+          const ui = config.get('ui');
+          const install = process.env.PORTABLE_EXECUTABLE_DIR ? 'portable' : process.env.APPIMAGE ? 'appimage' : (process.platform === 'win32' && app.isPackaged ? 'installer' : 'other');
+          const d = await diagnoseUpdate(appVersion, { updateMode: String(config.get('updateMode') || 'ask'), skippedVersion: ui?.skippedUpdateVersion || '', install });
+          let logTail = '';
+          try {
+            const raw = readFileSync(getLogPath(), 'utf8').slice(-120000);
+            logTail = raw.split('\n').filter((l) => l.includes('[KRH-Update]')).slice(-25).join('\n');
+          } catch { /* no log yet */ }
+          return { ...d, logTail };
+        },
         fetchChangelog: (version) => fetchChangelog(version),
         keybinds: () => getKeybinds(),
         cacheSizeBytes: () => ses.getCacheSize(),
@@ -1550,6 +1561,7 @@ async function launchApp(): Promise<void> {
   // Remember the game you are in, for the dashboard's "Rejoin last game" button.
   win.webContents.on('did-navigate', (_e, url) => recordGameUrl(url));
   win.webContents.on('did-navigate-in-page', (_e, url) => recordGameUrl(url));
+  win.webContents.on('page-title-updated', (_e, title) => recordGameTitle(win.webContents.getURL(), title));
 
   // Automatic cache limit (Dashboard > Dashboard): checked shortly after start and then every half hour while no
   // game is open; the cache is only ever deleted, never your login or settings.
@@ -1722,7 +1734,6 @@ async function launchApp(): Promise<void> {
       rankedAlert: bool(v.rankedAlert, d.rankedAlert),
       chatDraft: bool(v.chatDraft, d.chatDraft),
       accountEndMessage: bool(v.accountEndMessage, d.accountEndMessage),
-      shiftSnip: bool(v.shiftSnip, d.shiftSnip),
       escapeFastRelease: bool(v.escapeFastRelease, d.escapeFastRelease),
       settingPresets: normalisePresets(v.settingPresets),
       nameColors: { friends: str(v.nameColors?.friends, '', 4000), clans: str(v.nameColors?.clans, '', 4000) },
@@ -1870,12 +1881,6 @@ async function launchApp(): Promise<void> {
     }
     config.set('endMessages', all);
     return true;
-  });
-
-  // Tap Shift to snip: the page reports a clean tap of Shift (menus only, see preload/shift-snip.ts).
-  ipcMain.on('krh-snip-request', (e) => {
-    if (e.sender !== win.webContents || !gameActive || win.isDestroyed()) return;
-    void takeAreaScreenshot(win);
   });
 
   // Example userscripts (Class Roulette and Quick Sell by Rarity, both from Kute): copied into the userscripts
@@ -2216,6 +2221,7 @@ async function launchApp(): Promise<void> {
   ipcMain.handle('open-backgrounds-folder', () => shell.openPath(join(swapDir, 'backgrounds')));
   ipcMain.handle('open-skies-folder', () => shell.openPath(join(swapDir, SKIES_DIR)));
   ipcMain.handle('open-screenshots-folder', () => openScreenshotsFolder());
+  ipcMain.handle('reveal-screenshot', () => revealLastScreenshot());
   ipcMain.handle('open-recordings-folder', () => openRecordingsFolder());
 
   ipcMain.handle('game-server-ping', async () => {

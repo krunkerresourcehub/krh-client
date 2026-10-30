@@ -95,7 +95,6 @@ export interface ExtrasConfig {
   /** Remember Krunker's Match End Message separately for every account (adapted from Kute). */
   accountEndMessage: boolean;
   /** A quick tap of Shift (in menus) starts the same area snip as the Screenshot Area hotkey, like Snipping Tool. */
-  shiftSnip: boolean;
   /** Escape out of a match without the ~2 s wait before you can click back in (adapted from NM/NZ Client). */
   escapeFastRelease: boolean;
   /** Match and life accuracy under the top-centre HUD (an estimate; adapted from NM/NZ Client). */
@@ -485,7 +484,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     rankedAlert: true,
     chatDraft: true,
     accountEndMessage: false,
-    shiftSnip: true,
     escapeFastRelease: true,
     nameColors: { friends: '', clans: '' },
     settingPresets: [],

@@ -1,7 +1,7 @@
 // The KRH Dashboard page (one self-contained document, loaded as a data: URL). Everything it shows comes from the
 // main process through window.krhDash.call('dash:...'); file names are only ever put on the page as text.
 
-import { LANGS, FONTS, RTL_LANGS, LANG_TAGS } from '../shared/look-options';
+import { FONTS } from '../shared/look-options';
 import { MATERIAL_ICONS_WOFF2 } from './material-icons-font';
 
 const CSS = `
@@ -209,7 +209,8 @@ const BODY = `
    <div class="card" id="gamesCard"><h2>Games</h2><p>Jump back into the game you were in, or keep the ones you like.</p>
     <p style="margin:12px 0 6px">Have a game link? Paste it here and join.</p>
     <div class="row"><input type="text" id="gJoinUrl" placeholder="Paste a Krunker game link, for example krunker.io/?game=FRA:abc12" maxlength="300" autocomplete="off" spellcheck="false"><button class="btn" id="gJoinGo">Join game</button></div>
-    <div class="list" id="gLast"></div>
+    <div class="row" style="margin:12px 0 4px;justify-content:space-between"><b>Recent games</b><button class="btn ghost" id="gClear">Clear</button></div>
+     <div class="list" id="gLast"></div>
     <div class="row" style="margin-top:10px"><input type="text" id="gName" placeholder="Name for this game (optional)" maxlength="40"><button class="btn ghost" id="gSave">Save current game</button></div><div class="list" id="gFavs"></div></div>
    <div class="grid">
     <button class="tile" data-open="play"><b>Play Krunker</b><span>Open or bring up the game window</span></button>
@@ -273,7 +274,7 @@ const BODY = `
   </section>
   <section id="p-updates" hidden>
    <h1>What's new</h1><p class="sub" id="upSub"></p>
-   <div class="card"><div class="row"><button class="btn" id="upCheck">Check for updates</button><button class="btn ghost" data-link="https://github.com/krunkerresourcehub/krh-client/releases">Open releases</button></div><p id="upNote" style="margin:10px 0 0"></p></div>
+   <div class="card"><div class="row"><button class="btn" id="upCheck">Check for updates</button><button class="btn ghost" data-link="https://github.com/krunkerresourcehub/krh-client/releases">Open releases</button><button class="btn ghost" id="upCopy" hidden>Copy report</button></div><p id="upNote" style="margin:10px 0 0"></p><pre id="upReport" hidden style="margin:10px 0 0;white-space:pre-wrap;font-size:12px;line-height:1.5;opacity:.9"></pre></div>
    <div class="card"><h2>Release notes for your version</h2><div class="md" id="upNotes">Loading...</div></div>
   </section>
   <section id="p-settings" hidden>
@@ -289,8 +290,7 @@ const BODY = `
     <div class="look-row"><label for="thBright">Brightness</label><input type="range" id="thBright" min="0" max="100" value="62"><output id="thBrightV">62</output></div>
     <div class="look-row"><label for="thGlass">Panel solidness</label><input type="range" id="thGlass" min="0" max="100" value="42"><output id="thGlassV">42</output></div>
     <div class="row" style="margin-top:8px"><button class="chip" data-look="bright">Bright</button><button class="chip" data-look="balanced">Balanced (default)</button><button class="chip" data-look="dark">Dark</button></div></div>
-   <div class="card"><h2>Language & Font</h2><p>Choose the language of the dashboard and how its text looks.</p>
-    <div class="look-row"><label for="lgLang">Language</label><select id="lgLang"></select></div>
+   <div class="card"><h2>Font</h2><p>Choose how the dashboard text looks: font family, color and size.</p>
     <div class="look-row"><label for="lgFont">Font Family</label><select id="lgFont"></select></div>
     <div class="look-row" id="lgCustomRow" hidden><label for="lgCustom">Font name</label><input type="text" id="lgCustom" maxlength="40" placeholder="Any font installed on this PC, e.g. Segoe Print"></div>
     <div class="look-row"><label for="lgColor">Font Color</label><input type="color" id="lgColor" value="#f7f4ff"><label style="width:auto"><input type="checkbox" id="lgColorDef" checked> Default</label></div>
@@ -397,7 +397,7 @@ $('cAdd').onclick = async () => { const r = await call('css-add'); if (r && r.er
 $('sFolder').onclick = () => call('folder', 'scripts'); $('cFolder').onclick = () => call('folder', 'css');
 $('wFolder').onclick = () => call('folder', 'swapper'); $('bFolder').onclick = () => call('folder', 'backgrounds');
 
-let prefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, lang: 'en', font: '', fontCustom: '', color: '', size: 100 };
+let prefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, font: '', fontCustom: '', color: '', size: 100 };
 async function applyBg() {
   const r = await call('bg'); const bg = $('bg');
   bg.style.backgroundImage = r.image ? 'url("' + r.image + '")' : '';
@@ -413,7 +413,7 @@ async function loadBg() {
 }
 function syncBgFields() { const m = $('bMode').value; $('bFile').style.display = m === 'file' ? '' : 'none'; $('bUrl').style.display = m === 'url' ? '' : 'none'; }
 async function saveBg() {
-  prefs = { mode: $('bMode').value, file: $('bFile').value || '', url: $('bUrl').value.trim(), dim: Number($('bDim').value), theme: prefs.theme, fx: prefs.fx, bright: prefs.bright, glass: prefs.glass, anim: prefs.anim, lang: prefs.lang, font: prefs.font, fontCustom: prefs.fontCustom, color: prefs.color, size: prefs.size };
+  prefs = { mode: $('bMode').value, file: $('bFile').value || '', url: $('bUrl').value.trim(), dim: Number($('bDim').value), theme: prefs.theme, fx: prefs.fx, bright: prefs.bright, glass: prefs.glass, anim: prefs.anim, font: prefs.font, fontCustom: prefs.fontCustom, color: prefs.color, size: prefs.size };
   syncBgFields(); await call('bg-save', prefs); applyBg();
 }
 ['bMode', 'bFile'].forEach((id) => $(id).addEventListener('change', saveBg));
@@ -428,11 +428,16 @@ const REGIONS = { SV: 'Silicon Valley', TOK: 'Tokyo', FRA: 'Frankfurt', MBI: 'Mu
 
 async function loadGames() {
   const r = await call('games'); const last = $('gLast'); last.replaceChildren();
-  if (r.last) {
-    const row = el('div', 'item'); const nm = el('span', 'nm', 'Last game: ' + r.last.url.split('=')[1]); const m = el('span', 'meta', ago(r.last.at));
-    const b = el('button', 'btn', 'Rejoin'); b.onclick = async () => { const x = await call('game-join', r.last.url); if (x.error) toast(x.error); };
-    row.append(nm, m, b); last.append(row);
-  } else last.append(el('div', 'empty', 'No game yet. The one you join next is remembered here.'));
+  // Recent games: the tab name of the game (for example "Sandstorm - Krunker") and its link. Both open the game.
+  const go = async (url) => { const x = await call('game-join', url); if (x.error) toast(x.error); };
+  (r.recent || []).forEach((g) => {
+    const row = el('div', 'item');
+    const nm = el('button', 'btn ghost', g.title || g.url.split('=')[1]); nm.title = 'Join this game'; nm.onclick = () => go(g.url);
+    const lk = el('button', 'btn ghost', g.url.replace(/^https?:\\/\\//, '')); lk.title = 'Join this game'; lk.style.opacity = '.8'; lk.onclick = () => go(g.url);
+    row.append(nm, lk, el('span', 'meta', ago(g.at))); last.append(row);
+  });
+  if (!(r.recent || []).length) last.append(el('div', 'empty', 'No game yet. The ones you join are remembered here, newest first.'));
+  $('gClear').hidden = !(r.recent || []).length;
   const favs = $('gFavs'); favs.replaceChildren();
   r.favorites.forEach((f) => { const row = el('div', 'item'); const nm = el('span', 'nm', f.name); const j = el('button', 'btn ghost', 'Join'); j.onclick = async () => { const x = await call('game-join', f.url); if (x.error) toast(x.error); };
     const x = el('button', 'x', '\u2715'); x.title = 'Remove'; x.onclick = async () => { await call('game-fav-remove', f.url); loadGames(); }; row.append(nm, j, x); favs.append(row); });
@@ -446,6 +451,7 @@ async function joinByLink() {
   toast('Opening Krunker...'); $('gJoinUrl').value = '';
 }
 $('gJoinGo').onclick = joinByLink;
+$('gClear').onclick = async () => { await call('games-clear'); loadGames(); };
 $('gJoinUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); joinByLink(); } });
 $('gSave').onclick = async () => { const r = await call('game-fav-add', $('gName').value); if (r.error) toast(r.error); else { $('gName').value = ''; toast('Saved'); } loadGames(); };
 
@@ -497,7 +503,15 @@ async function loadUpdates() {
   const r = await call('changelog'); const box = $('upNotes');
   if (r.html) box.innerHTML = r.html; else box.textContent = 'No release notes found for this version (they are published with each release on GitHub).';
 }
-$('upCheck').onclick = async () => { $('upNote').textContent = 'Checking...'; const r = await call('updates'); $('upNote').textContent = r.latest ? 'Version ' + r.latest + ' is available. It installs when you restart the client, or get it from the releases page.' : 'No newer version found.'; };
+let upLast = '';
+$('upCheck').onclick = async () => {
+  $('upNote').textContent = 'Checking...'; $('upReport').hidden = true; $('upCopy').hidden = true;
+  const r = await call('updates');
+  $('upNote').textContent = r.available ? 'Version ' + r.latest + ' is available. It installs when you restart the client, or get it from the releases page.' : (r.latest ? 'No newer version found.' : 'The latest version could not be read.');
+  upLast = r.report + (r.logTail ? '\\n\\nRecent update log lines:\\n' + r.logTail : '');
+  $('upReport').textContent = upLast; $('upReport').hidden = false; $('upCopy').hidden = false;
+};
+$('upCopy').onclick = async () => { try { await navigator.clipboard.writeText(upLast); $('upCopy').textContent = 'Copied'; } catch { $('upCopy').textContent = 'Copy failed'; } setTimeout(() => { $('upCopy').textContent = 'Copy report'; }, 1500); };
 
 async function loadCache() {
   const r = await call('cache-info'); $('chInfo').textContent = 'Krunker is using ' + (r.bytes / 1048576).toFixed(0) + ' MB of cache.'; $('chLimit').value = String(r.limitMb);
@@ -601,41 +615,14 @@ async function loadGuard() {
   });
 }
 
-// ── Language & Font ──
-let DICT = {};
-const LANGS = ${JSON.stringify(LANGS)};
+// ── Font ──
 const FONTS = ${JSON.stringify(FONTS)};
-const RTL = ${JSON.stringify(RTL_LANGS)}; const TAGS = ${JSON.stringify(LANG_TAGS)};
-LANGS.forEach((l) => { const o = document.createElement('option'); o.value = l[0]; o.textContent = l[1]; o.setAttribute('data-no-i18n', ''); $('lgLang').append(o); });
 const fontGroups = {};
 FONTS.forEach((f) => {
   const o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; o.setAttribute('data-no-i18n', '');
   if (f[3]) { if (!fontGroups[f[3]]) { const og = document.createElement('optgroup'); og.label = f[3]; fontGroups[f[3]] = og; $('lgFont').append(og); } fontGroups[f[3]].append(o); }
   else $('lgFont').append(o);
 });
-const origText = new WeakMap(), origAttr = new WeakMap(); let shown = 'en', busy = false;
-let lowerKeys = {};
-function trText(src) {
-  const t = src.trim(); if (!t || t.length > 700 || shown === 'en') return null;
-  const r = DICT[t] || DICT[lowerKeys[t.toLowerCase()]]; if (!r) return null;
-  return src.slice(0, src.indexOf(t)) + r + src.slice(src.indexOf(t) + t.length);
-}
-const SKIPT = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, CODE: 1, PRE: 1 }; const ATTRS = ['placeholder', 'title', 'aria-label'];
-function walkT(n) {
-  if (n.nodeType === 3) { const base = origText.has(n) ? origText.get(n) : n.nodeValue; const t = trText(base); if (t !== null) { if (!origText.has(n)) origText.set(n, base); if (n.nodeValue !== t) n.nodeValue = t; } else if (origText.has(n)) { n.nodeValue = origText.get(n); origText.delete(n); } return; }
-  if (n.nodeType !== 1 || SKIPT[n.nodeName] || n.hasAttribute('data-no-i18n')) return;
-  ATTRS.forEach((a) => { const v = n.getAttribute(a); if (v === null) return; const o = origAttr.get(n) || {}; const base = a in o ? o[a] : v; const t = trText(base); if (t !== null) { o[a] = base; origAttr.set(n, o); n.setAttribute(a, t.trim()); } else if (a in o) { n.setAttribute(a, o[a]); delete o[a]; } });
-  for (let c = n.firstChild; c; c = c.nextSibling) walkT(c);
-}
-async function applyLang() {
-  const want = prefs.lang || 'en';
-  if (want !== 'en' && want !== loadedPack) { try { DICT = await call('i18n-pack', want); } catch (e) { DICT = {}; } lowerKeys = {}; Object.keys(DICT).forEach((k) => { lowerKeys[k.toLowerCase()] = k; }); loadedPack = want; }
-  if (want === 'en') { DICT = {}; lowerKeys = {}; loadedPack = 'en'; }
-  shown = want; document.documentElement.lang = TAGS[shown] || shown; document.documentElement.dir = RTL.indexOf(shown) >= 0 ? 'rtl' : 'ltr';
-  busy = true; walkT(document.body); busy = false;
-}
-let loadedPack = 'en';
-let tPend = 0; new MutationObserver((muts) => { if (busy || shown === 'en') return; if (tPend) return; tPend = setTimeout(() => { tPend = 0; busy = true; muts.forEach((m) => { m.addedNodes.forEach((x) => walkT(x)); if (m.type === 'characterData') walkT(m.target); }); busy = false; }, 40); }).observe(document.body, { childList: true, subtree: true, characterData: true });
 function applyFontLook() {
   const b = document.body; const f = FONTS.find((x) => x[0] === prefs.font); let stack = f ? f[2] : '';
   if (prefs.font === 'custom') { const nm = String(prefs.fontCustom || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim(); stack = nm ? "'" + nm + "',sans-serif" : ''; }
@@ -647,22 +634,20 @@ function applyFontLook() {
   window.krhDash.setZoom(Number(prefs.size) || 100);
 }
 function syncLookControls() {
-  $('lgLang').value = prefs.lang || 'en'; $('lgFont').value = prefs.font || ''; $('lgCustom').value = prefs.fontCustom || '';
+  $('lgFont').value = prefs.font || ''; $('lgCustom').value = prefs.fontCustom || '';
   $('lgCustomRow').hidden = prefs.font !== 'custom'; $('lgColorDef').checked = !prefs.color; if (prefs.color) $('lgColor').value = prefs.color;
   $('lgSize').value = prefs.size || 100; $('lgSizeV').textContent = (prefs.size || 100) + '%';
 }
-function commitLook(langChanged) { applyFontLook(); if (langChanged) applyLang(); $('lgCustomRow').hidden = prefs.font !== 'custom'; return call('bg-save', prefs); }
-$('lgLang').onchange = () => { prefs.lang = $('lgLang').value; commitLook(true); };
-$('lgFont').onchange = () => { prefs.font = $('lgFont').value; commitLook(false); };
+function commitLook() { applyFontLook(); $('lgCustomRow').hidden = prefs.font !== 'custom'; return call('bg-save', prefs); }
+$('lgFont').onchange = () => { prefs.font = $('lgFont').value; commitLook(); };
 $('lgCustom').oninput = () => { prefs.fontCustom = $('lgCustom').value; applyFontLook(); };
-$('lgCustom').onchange = () => commitLook(false);
+$('lgCustom').onchange = () => commitLook();
 $('lgColor').oninput = () => { prefs.color = $('lgColor').value; $('lgColorDef').checked = false; applyFontLook(); };
-$('lgColor').onchange = () => commitLook(false);
-$('lgColorDef').onchange = () => { prefs.color = $('lgColorDef').checked ? '' : $('lgColor').value; commitLook(false); };
+$('lgColor').onchange = () => commitLook();
+$('lgColorDef').onchange = () => { prefs.color = $('lgColorDef').checked ? '' : $('lgColor').value; commitLook(); };
 $('lgSize').oninput = () => { prefs.size = Number($('lgSize').value); $('lgSizeV').textContent = prefs.size + '%'; };
-$('lgSize').onchange = () => commitLook(false);
-$('lgReset').onclick = () => { prefs.font = ''; prefs.fontCustom = ''; prefs.color = ''; prefs.size = 100; syncLookControls(); commitLook(false); toast('Font reset'); };
-const applyLangOld = applyLang; applyLang = async function () { await applyLangOld(); applyFontLook(); syncLookControls(); };
+$('lgSize').onchange = () => commitLook();
+$('lgReset').onclick = () => { prefs.font = ''; prefs.fontCustom = ''; prefs.color = ''; prefs.size = 100; syncLookControls(); commitLook(); toast('Font reset'); };
 
 // Coming back from hidden (you pressed the dashboard key in the game): play the entrance again.
 document.addEventListener('visibilitychange', () => {
@@ -673,7 +658,7 @@ async function refreshTip() { try { const r = await call('keybinds'); const row 
 refreshTip();
 
 loadGames();
-call('info').then((i) => { $('ver').textContent = 'v' + i.version; $('verBig').textContent = 'KRH Client v' + i.version; $('verSub').textContent = 'Electron ' + i.electron + '  |  Chromium ' + i.chrome + '  |  ' + i.platform; $('wPath').textContent = i.swapDir; prefs = i.prefs; applyTheme(prefs.theme); applyFx(); applyLook(); applyBg(); applyLang(); loadGuard(); });
+call('info').then((i) => { $('ver').textContent = 'v' + i.version; $('verBig').textContent = 'KRH Client v' + i.version; $('verSub').textContent = 'Electron ' + i.electron + '  |  Chromium ' + i.chrome + '  |  ' + i.platform; $('wPath').textContent = i.swapDir; prefs = i.prefs; applyTheme(prefs.theme); applyFx(); applyLook(); applyBg(); applyFontLook(); syncLookControls(); loadGuard(); });
 applyLook(); stagger($('p-home'));
 `;
 

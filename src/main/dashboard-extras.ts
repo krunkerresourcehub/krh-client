@@ -35,6 +35,8 @@ export interface ExtraDeps {
   openHubRoute: (route: string) => void;
   scriptGuard: { list: () => AutoDisabled[]; reenable: (file: string) => Promise<boolean>; dismiss: (file: string) => void };
   checkUpdates: () => Promise<{ latest: string | null }>;
+  /** Step-by-step explanation of the update check, plus the recent update lines of the log. */
+  diagnoseUpdates: () => Promise<{ latest: string | null; available: boolean; report: string; logTail: string }>;
   fetchChangelog: (version: string) => Promise<string>;
   keybinds: () => Record<string, { key: string; ctrl: boolean; shift: boolean; alt: boolean }>;
   cacheSizeBytes: () => Promise<number>;
@@ -42,13 +44,15 @@ export interface ExtraDeps {
 }
 
 interface FavoriteGame { name: string; url: string }
+interface RecentGame { url: string; /** Name of the game window tab, for example "Sandstorm - Krunker" ('' until the game has set it). */ title: string; at: number }
 interface DashData {
   lastGame: { url: string; at: number } | null;
+  recentGames: RecentGame[];
   favGames: FavoriteGame[];
   favRegions: string[];
   cacheLimitMb: number;
 }
-const DEFAULT_DATA: DashData = { lastGame: null, favGames: [], favRegions: [], cacheLimitMb: 0 };
+const DEFAULT_DATA: DashData = { lastGame: null, recentGames: [], favGames: [], favRegions: [], cacheLimitMb: 0 };
 
 /** Ping region codes (what the ping list shows) and the id the matchmaker filters by. */
 export const REGION_IDS: Record<string, string> = {
@@ -84,6 +88,19 @@ function normalizeGameLink(raw: string): string | null {
 
 let dataPath = '';
 let cached: DashData | null = null;
+const MAX_RECENT = 10;
+
+/** A tab name from the game window: plain text, no control characters, at most 80 characters. */
+function cleanTitle(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  let out = '';
+  for (const ch of raw) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (c < 32 || c === 127 || ch === '<' || ch === '>') continue;
+    out += ch;
+  }
+  return out.trim().slice(0, 80);
+}
 
 function load(): DashData {
   if (cached) return cached;
@@ -91,11 +108,16 @@ function load(): DashData {
     const raw = JSON.parse(readFileSync(dataPath, 'utf-8')) as Partial<DashData>;
     cached = {
       lastGame: raw.lastGame && typeof raw.lastGame.url === 'string' && GAME_URL.test(raw.lastGame.url) && typeof raw.lastGame.at === 'number' ? { url: raw.lastGame.url, at: raw.lastGame.at } : null,
+      recentGames: Array.isArray(raw.recentGames)
+        ? raw.recentGames.filter((g): g is RecentGame => !!g && typeof g.url === 'string' && GAME_URL.test(g.url) && typeof g.at === 'number').slice(0, MAX_RECENT)
+            .map((g) => ({ url: g.url, title: cleanTitle(g.title), at: g.at }))
+        : [],
       favGames: Array.isArray(raw.favGames) ? raw.favGames.filter((f): f is FavoriteGame => !!f && typeof f.name === 'string' && typeof f.url === 'string' && GAME_URL.test(f.url)).slice(0, 30).map((f) => ({ name: f.name.slice(0, 40), url: f.url })) : [],
       favRegions: Array.isArray(raw.favRegions) ? raw.favRegions.filter((r): r is string => typeof r === 'string' && r in REGION_IDS) : [],
       cacheLimitMb: [0, 500, 1000, 2000].includes(raw.cacheLimitMb as number) ? (raw.cacheLimitMb as number) : 0,
     };
-  } catch { cached = { ...DEFAULT_DATA, favGames: [], favRegions: [] }; }
+  } catch { cached = { ...DEFAULT_DATA, recentGames: [], favGames: [], favRegions: [] }; }
+  if (!cached.recentGames.length && cached.lastGame) cached.recentGames = [{ url: cached.lastGame.url, title: '', at: cached.lastGame.at }];
   return cached;
 }
 function save(): void {
@@ -109,8 +131,22 @@ export function initDashboardData(path: string): void { dataPath = path; cached 
 export function recordGameUrl(url: string): void {
   if (!dataPath || !GAME_URL.test(url)) return;
   const d = load();
-  if (d.lastGame?.url === url) return;
+  if (d.lastGame?.url === url && d.recentGames[0]?.url === url) return;
   d.lastGame = { url, at: Date.now() };
+  const old = d.recentGames.find((g) => g.url === url);
+  d.recentGames = [{ url, title: old ? old.title : '', at: d.lastGame.at }, ...d.recentGames.filter((g) => g.url !== url)].slice(0, MAX_RECENT);
+  save();
+}
+
+/** The game window's tab name (called when it changes): kept for the game that window is in. */
+export function recordGameTitle(url: string, title: string): void {
+  if (!dataPath || !GAME_URL.test(url)) return;
+  const t = cleanTitle(title);
+  if (!t) return;
+  const d = load();
+  const g = d.recentGames.find((x) => x.url === url);
+  if (!g || g.title === t) return;
+  g.title = t;
   save();
 }
 
@@ -185,7 +221,7 @@ export function registerExtras(deps: ExtraDeps): void {
   h('dash:games', () => {
     const d = load();
     const cur = deps.currentGameUrl();
-    return { last: d.lastGame, favorites: d.favGames, current: cur && GAME_URL.test(cur) ? cur : null };
+    return { last: d.lastGame, recent: d.recentGames, favorites: d.favGames, current: cur && GAME_URL.test(cur) ? cur : null };
   });
   h('dash:game-join', (_e, raw: unknown) => {
     const url = typeof raw === 'string' ? normalizeGameLink(raw) : null;
@@ -193,6 +229,7 @@ export function registerExtras(deps: ExtraDeps): void {
     deps.launchGame(url);
     return { ok: true };
   });
+  h('dash:games-clear', () => { const d = load(); d.recentGames = []; d.lastGame = null; save(); return true; });
   h('dash:game-fav-add', (_e, nameRaw: unknown) => {
     const cur = deps.currentGameUrl();
     if (!cur || !GAME_URL.test(cur)) return { error: 'Join a game first, then save it.' };
@@ -237,9 +274,13 @@ export function registerExtras(deps: ExtraDeps): void {
 
   // ── Updates and what's new ──
   h('dash:updates', async () => {
-    let latest: string | null = null;
-    try { latest = (await deps.checkUpdates()).latest; } catch (err) { electronLog.warn('[KRH] Update check failed:', (err as Error).message); }
-    return { current: deps.version, latest };
+    try {
+      const d = await deps.diagnoseUpdates();
+      return { current: deps.version, latest: d.latest, available: d.available, report: d.report, logTail: d.logTail };
+    } catch (err) {
+      electronLog.warn('[KRH] Update check failed:', (err as Error).message);
+      return { current: deps.version, latest: null, available: false, report: 'The update check failed: ' + (err as Error).message, logTail: '' };
+    }
   });
   h('dash:changelog', async () => {
     const md = await deps.fetchChangelog(deps.version);

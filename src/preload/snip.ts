@@ -2,8 +2,8 @@
 // Runs in the borderless overlay window that covers the game window. The main process sends a frozen
 // copy of the game view; the user drags a rectangle over it (Snipping Tool style) and the selection
 // is sent back in overlay CSS pixels. Esc or right-click cancels.
-// Like the Snipping Tool: hold Shift while dragging for a perfect square, hold Space while dragging to move the
-// box, and tap Shift once (without dragging) to capture the whole window.
+// Drag with the mouse, or hold Shift and move the mouse (release Shift to capture). Hold Ctrl while dragging for a
+// perfect square, hold Space while dragging to move the box.
 import { ipcRenderer } from 'electron';
 
 interface InitData { image: string; scale: number }
@@ -28,20 +28,21 @@ ipcRenderer.on('krh-snip-init', (_e, data: InitData) => {
   const sel = doc.createElement('div'); sel.id = 'sel';
   const size = doc.createElement('div'); size.id = 'size';
   const hint = doc.createElement('div'); hint.id = 'hint';
-  hint.textContent = 'Drag to select the area   \u2022   Hold Shift: square   \u2022   Hold Space: move   \u2022   Tap Shift: whole window   \u2022   Esc: cancel';
+  hint.textContent = 'Drag with the mouse or hold Shift   \u2022   Ctrl: square   \u2022   Space: move   \u2022   Esc: cancel';
   doc.body.append(bg, dim, sel, size, hint);
 
   // The box runs from a fixed corner (ax, ay) to the corner under the mouse (bx, by).
-  let ax = 0, ay = 0, bx = 0, by = 0, lastX = 0, lastY = 0, dragging = false;
-  let shiftDown = false, spaceDown = false;
-  let shiftArmed = false; // a Shift press seen by this overlay (Shift still held from Shift+F9 must not count)
-  let shiftUsed = false; // Shift was used for something else (dragging): releasing it is not a tap
+  let ax = 0, ay = 0, bx = 0, by = 0, lastX = 0, lastY = 0;
+  let dragBy: 'mouse' | 'shift' | null = null; // what started the drag, and so what ends it
+  let curX = -1, curY = -1; // last known mouse position (-1 = not seen yet)
+  let pendingShift = false; // Shift went down before the mouse moved: the drag starts at the first move
+  let ctrlDown = false, spaceDown = false;
   let rect = { x: 0, y: 0, w: 0, h: 0 };
   const MIN = 4;
 
   const draw = (): void => {
     let ex = bx, ey = by;
-    if (shiftDown) { // square: the longer side wins, the box grows away from the fixed corner
+    if (ctrlDown) { // square: the longer side wins, the box grows away from the fixed corner
       const size = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
       ex = ax + (bx >= ax ? size : -size);
       ey = ay + (by >= ay ? size : -size);
@@ -58,30 +59,37 @@ ipcRenderer.on('krh-snip-init', (_e, data: InitData) => {
   };
 
   const finish = (): void => {
-    dragging = false;
+    dragBy = null;
     if (rect.w >= MIN && rect.h >= MIN) ipcRenderer.send('krh-snip-done', rect);
     else { sel.style.display = 'none'; size.style.display = 'none'; dim.style.display = 'block'; hint.style.display = 'block'; }
   };
 
-  doc.addEventListener('mousedown', (e) => {
-    if (e.button === 2) { ipcRenderer.send('krh-snip-cancel'); return; }
-    if (e.button !== 0) return;
-    dragging = true; shiftUsed = true;
-    ax = bx = lastX = e.clientX; ay = by = lastY = e.clientY;
+  const startDrag = (x: number, y: number, how: 'mouse' | 'shift'): void => {
+    dragBy = how;
+    ax = bx = lastX = x;
+    ay = by = lastY = y;
     hint.style.display = 'none';
     draw();
+  };
+
+  doc.addEventListener('mousedown', (e) => {
+    if (e.button === 2) { ipcRenderer.send('krh-snip-cancel'); return; }
+    if (e.button !== 0 || dragBy) return;
+    startDrag(e.clientX, e.clientY, 'mouse');
   });
   doc.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
+    curX = e.clientX; curY = e.clientY;
+    if (pendingShift && !dragBy) { pendingShift = false; startDrag(curX, curY, 'shift'); return; }
+    if (!dragBy) return;
     if (spaceDown) { // move the whole box (both corners) with the mouse
-      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      const dx = curX - lastX, dy = curY - lastY;
       ax += dx; bx += dx; ay += dy; by += dy;
-    } else { bx = e.clientX; by = e.clientY; }
-    lastX = e.clientX; lastY = e.clientY;
+    } else { bx = curX; by = curY; }
+    lastX = curX; lastY = curY;
     draw();
   });
   doc.addEventListener('mouseup', (e) => {
-    if (!dragging || e.button !== 0) return;
+    if (dragBy !== 'mouse' || e.button !== 0) return;
     if (!spaceDown) { bx = e.clientX; by = e.clientY; }
     draw();
     finish();
@@ -90,23 +98,26 @@ ipcRenderer.on('krh-snip-init', (_e, data: InitData) => {
   doc.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { ipcRenderer.send('krh-snip-cancel'); return; }
     if (e.key === 'Shift') {
-      if (!e.repeat) { shiftArmed = true; shiftUsed = dragging; }
-      shiftDown = true;
-      if (dragging) { shiftUsed = true; draw(); }
+      // Repeats are Shift still held from the Shift+F9 hotkey: only a fresh press starts a Shift drag.
+      if (e.repeat || dragBy) return;
+      if (curX >= 0) startDrag(curX, curY, 'shift'); else pendingShift = true;
+    } else if (e.key === 'Control') {
+      ctrlDown = true;
+      if (dragBy) draw();
     } else if (e.key === ' ') {
-      spaceDown = true; shiftUsed = true;
+      spaceDown = true;
       e.preventDefault();
     }
   });
   doc.addEventListener('keyup', (e) => {
-    if (e.key === ' ') { spaceDown = false; return; }
-    if (e.key !== 'Shift') return;
-    shiftDown = false;
-    if (dragging) { draw(); return; }
-    // A clean tap of Shift (no drag, not held over from Shift+F9): take the whole window.
-    if (shiftArmed && !shiftUsed && rect.w < MIN) {
-      ipcRenderer.send('krh-snip-done', { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight });
+    if (e.key === 'Shift') {
+      pendingShift = false;
+      if (dragBy === 'shift') { draw(); finish(); }
+    } else if (e.key === 'Control') {
+      ctrlDown = false;
+      if (dragBy) draw();
+    } else if (e.key === ' ') {
+      spaceDown = false;
     }
-    shiftArmed = false;
   });
 });

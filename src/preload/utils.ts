@@ -242,7 +242,9 @@ export function setWatermark(enabled: boolean, version?: string): void {
 const TOAST_ID = 'krh-toast';
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function showToast(msg: string): void {
+export interface ToastAction { label: string; onClick: () => void }
+
+export function showToast(msg: string, action?: ToastAction): void {
     let el = document.getElementById(TOAST_ID) as HTMLDivElement | null;
     if (!el) {
         el = document.createElement('div');
@@ -255,9 +257,19 @@ export function showToast(msg: string): void {
         document.body.appendChild(el);
     }
     el.textContent = msg;
+    // A toast with a button can be clicked (menus, or after Esc in a match); a plain one never catches the mouse.
+    el.style.pointerEvents = action ? 'auto' : 'none';
+    if (action) {
+        const b = document.createElement('button');
+        b.textContent = action.label;
+        b.style.cssText = 'margin-left:12px;padding:3px 10px;border:0;border-radius:6px;background:#fbc02d;color:#202020;' +
+            'font:inherit;font-size:13px;cursor:pointer;';
+        b.onclick = (ev) => { ev.stopPropagation(); action.onClick(); if (el) el.style.opacity = '0'; el!.style.pointerEvents = 'none'; };
+        el.appendChild(b);
+    }
     void el.offsetWidth; // force reflow so re-shows re-trigger the fade
     el.style.opacity = '1';
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { if (el) el.style.opacity = '0'; }, 1800);
+    toastTimer = setTimeout(() => { if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; } }, action ? 6000 : 1800);
 }
 

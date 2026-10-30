@@ -9,8 +9,7 @@ import { basename, extname, join } from 'path';
 import type { UserscriptManager } from './userscripts';
 import { UserCssManager, safeCssName } from './user-css';
 import { DASHBOARD_DATA_URL } from './dashboard-html';
-import { LANG_IDS, FONT_IDS } from '../shared/look-options';
-import { uiPack } from './i18n-dict';
+import { FONT_IDS } from '../shared/look-options';
 import { devWindowIcon } from './platform';
 import { electronLog } from './logger';
 import { showWindow } from './hub-window';
@@ -59,21 +58,17 @@ interface BgPrefs {
   glass: number;
   /** Motion in the dashboard (entrance, hover, glow drift). */
   anim: boolean;
-  /** Interface language (Language & Font): a code from shared/look-options.ts (en, id, ms, ko, zh, ja, es, pt, de, fr ...). */
-  lang: string;
   /** Font family id ('' = the default font), a custom installed font name, text color ('' = default) and size in %. */
   font: string; fontCustom: string; color: string; size: number;
 }
-export { LANG_IDS };
-const cleanLook = (r: Partial<BgPrefs>): Pick<BgPrefs, 'lang' | 'font' | 'fontCustom' | 'color' | 'size'> => ({
-  lang: LANG_IDS.includes(String(r.lang)) ? (r.lang as string) : 'en',
+const cleanLook = (r: Partial<BgPrefs>): Pick<BgPrefs, 'font' | 'fontCustom' | 'color' | 'size'> => ({
   font: FONT_IDS.includes(String(r.font ?? '')) ? String(r.font ?? '') : '',
   fontCustom: typeof r.fontCustom === 'string' ? r.fontCustom.replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 40) : '',
   color: typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color) ? r.color : '',
   size: clampInt(r.size, 80, 150, 100),
 });
 // 2.1.0: a lighter default look. Saved looks from 2.0.0.0 (no `ver`) get the new picture darkening once.
-const DEFAULT_PREFS: BgPrefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, lang: 'en', font: '', fontCustom: '', color: '', size: 100 };
+const DEFAULT_PREFS: BgPrefs = { mode: 'default', file: '', url: '', dim: 8, theme: 'aurora', fx: true, bright: 62, glass: 42, anim: true, font: '', fontCustom: '', color: '', size: 100 };
 const clampInt = (v: unknown, lo: number, hi: number, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
 // Krunker's sandbox is the game itself (krunker.io/?sandbox), so it runs in the game window, not in a tab.
 const SANDBOX_URL = 'https://krunker.io/?sandbox';
@@ -190,8 +185,6 @@ function registerIpc(deps: DashboardDeps): void {
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
   };
 
-  // The translations of one language (the window never carries the whole table).
-  ipcMain.handle('dash:i18n-pack', (_e, lang: unknown) => uiPack(typeof lang === 'string' && LANG_IDS.includes(lang) ? lang : 'en'));
   ipcMain.handle('dash:info', () => ({
     version: deps.version, swapDir: deps.swapDir, prefs: readPrefs(deps.prefsPath),
     electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform + ' ' + process.arch,

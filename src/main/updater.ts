@@ -404,3 +404,89 @@ export function installUpdate(installerPath: string): void {
   app.quit();
 }
 
+
+
+// ── Update diagnostics (Dashboard > What's new > Check for updates) ──
+
+export interface UpdateDiagContext {
+  /** 'ask' shows a dialog at launch, 'background' downloads quietly and offers a restart button later. */
+  updateMode: string;
+  /** A version the user chose to skip in the dialog (never offered again). */
+  skippedVersion: string;
+  /** 'installer' | 'portable' | 'appimage' | 'other' */
+  install: string;
+}
+
+export interface UpdateDiagResult {
+  latest: string | null;
+  available: boolean;
+  /** Plain-text report, one finding per line: what the dashboard shows and what "Copy report" copies. */
+  report: string;
+}
+
+interface ApiProbe { status: number; remaining: string; resetMin: number; release: GithubRelease | null; error: string }
+
+function probeApi(currentVersion: string): Promise<ApiProbe> {
+  return new Promise((resolve) => {
+    const out: ApiProbe = { status: 0, remaining: '', resetMin: 0, release: null, error: '' };
+    const req = httpsGet(UPDATE_CONFIG.checkUrl, { headers: { 'User-Agent': 'KrunkerKRHClient/' + currentVersion, Accept: 'application/vnd.github+json' } }, (res) => {
+      out.status = res.statusCode || 0;
+      out.remaining = String(res.headers['x-ratelimit-remaining'] ?? '');
+      const reset = Number(res.headers['x-ratelimit-reset'] ?? 0);
+      if (reset > 0) out.resetMin = Math.max(0, Math.ceil((reset * 1000 - Date.now()) / 60000));
+      let data = '';
+      res.on('data', (c: Buffer) => { data += c.toString('utf8'); if (data.length > 2_000_000) req.destroy(); });
+      res.on('end', () => {
+        if (out.status === 200) { try { out.release = JSON.parse(data) as GithubRelease; } catch { out.error = 'the answer was not valid JSON'; } }
+        resolve(out);
+      });
+    });
+    req.setTimeout(CHECK_TIMEOUT_MS, () => { out.error = 'timed out after ' + CHECK_TIMEOUT_MS / 1000 + ' s'; req.destroy(); resolve(out); });
+    req.on('error', (e) => { out.error = e.message; resolve(out); });
+  });
+}
+
+/** Runs the same checks as the real update path and explains, line by line, why an update is (not) offered. */
+export async function diagnoseUpdate(currentVersion: string, ctx: UpdateDiagContext): Promise<UpdateDiagResult> {
+  const lines: string[] = [];
+  lines.push(`Installed version: ${currentVersion} (${ctx.install})`);
+  lines.push(`Update mode: ${ctx.updateMode === 'background' ? 'background (no dialog: a "Restart to update" button appears about 20 s after launch)' : 'ask (a dialog at launch)'}`);
+
+  const [api, pageTag] = await Promise.all([probeApi(currentVersion), fetchLatestTag(currentVersion)]);
+
+  if (api.release) lines.push(`GitHub API: OK${api.remaining ? ` (${api.remaining} requests left this hour)` : ''}`);
+  else if (api.status === 403 || api.status === 429) lines.push(`GitHub API: refused (HTTP ${api.status}), the hourly limit for this IP address is used up${api.resetMin ? `; it resets in about ${api.resetMin} min` : ''}. The client falls back to the release page.`);
+  else if (api.status) lines.push(`GitHub API: HTTP ${api.status}. The client falls back to the release page.`);
+  else lines.push(`GitHub API: not reachable (${api.error || 'no answer'}). Check the internet connection, VPN or firewall.`);
+  lines.push(pageTag ? `Release page: latest is v${pageTag}` : 'Release page: could not be read');
+
+  const apiTag = api.release?.tag_name ? api.release.tag_name.replace(/^v/i, '') : '';
+  const latest = apiTag || pageTag;
+  if (!latest) {
+    lines.push('Result: the latest version could not be read, so no update can be offered. Both GitHub sources failed.');
+    return { latest: null, available: false, report: lines.join('\n') };
+  }
+  if (apiTag && pageTag && apiTag !== pageTag) lines.push(`Warning: the API says v${apiTag} but the release page says v${pageTag}. The newest release is probably not marked "Latest", or is a pre-release.`);
+  if (!isSafeVersion(latest)) { lines.push(`Result: the version name "${latest}" is not valid for an update.`); return { latest, available: false, report: lines.join('\n') }; }
+
+  const available = versionLessThan(currentVersion, latest);
+  if (!available) {
+    lines.push(versionLessThan(latest, currentVersion)
+      ? `Result: you run v${currentVersion}, newer than the latest release (v${latest}). No update is offered.`
+      : `Result: you are up to date (latest release v${latest}).`);
+    return { latest, available: false, report: lines.join('\n') };
+  }
+  lines.push(`Result: v${latest} is available.`);
+
+  if (ctx.skippedVersion && ctx.skippedVersion === latest) lines.push(`Note: you chose "skip" for v${latest} earlier, so the launch dialog does not show it again. Updating from this page still works.`);
+  if (ctx.install === 'portable' || ctx.install === 'appimage') lines.push('Note: this build cannot install itself. It only shows a notice; download the new version from the releases page.');
+
+  if (api.release) {
+    const names = (api.release.assets || []).map((a) => a.name);
+    const has = (re: RegExp) => names.some((n) => re.test(n));
+    const setup = (api.release.assets || []).find((a) => /Setup\.exe$/i.test(a.name));
+    lines.push(`Release files: lite.json ${has(/^lite\.json$/i) ? 'found' : 'MISSING'}, .asar ${has(/\.asar$/i) ? 'found' : 'MISSING'}, Windows installer ${setup ? 'found' : 'MISSING'}${setup ? (setup.digest ? ' (has a SHA-256 digest)' : ' (NO digest, it will not be run)') : ''}`);
+    if (!has(/^lite\.json$/i) || !has(/\.asar$/i)) lines.push('Note: without lite.json and the .asar the small update cannot run, so the client needs the full installer.');
+  } else lines.push('Release files: not checked (the API did not answer).');
+  return { latest, available: true, report: lines.join('\n') };
+}

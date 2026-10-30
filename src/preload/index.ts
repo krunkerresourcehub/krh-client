@@ -43,7 +43,6 @@ import { setMotionBlur } from './motion-blur';
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
-import { setShiftSnip } from './shift-snip';
 import { installEscapeLockRelease } from './escape-lock';
 import { setLiveAccuracy } from './live-accuracy';
 import { setPerfHud } from './perf-hud';
@@ -177,7 +176,12 @@ ipcRenderer.on('matchmaker-find', (_e, mmConfig: MatchmakerConfig) => {
 // Safe mode (decided in the main process): overlays and the extra features are not started at all
 const SAFE: boolean = ipcRenderer.sendSync('is-safe-mode') === true;
 
-ipcRenderer.on('krh-toast', (_e, msg: string) => showToast(msg));
+ipcRenderer.on('krh-toast', (_e, msg: string, action?: { label: string; id: string }) => {
+  // Only one button exists so far: "Open folder" on a saved screenshot (the main process shows the file itself).
+  if (action && action.id === 'reveal-screenshot') {
+    showToast(msg, { label: String(action.label).slice(0, 24), onClick: () => { void ipcRenderer.invoke('reveal-screenshot'); } });
+  } else showToast(msg);
+});
 
 // Ranked leaderboard search: must wrap fetch before the social page requests the rankings, so it is
 // installed right away (not after the config round-trip below) and switched off later if disabled.
@@ -349,7 +353,6 @@ ipcRenderer.on('main_did-finish-load', () => {
         setChatDraft(ex.chatDraft);
         setRankedAlert(ex.rankedAlert);
         if (ex.accountEndMessage) void setAccountEndMessage(true);
-        setShiftSnip(ex.shiftSnip !== false);
         if (ex.liveAccuracy?.enabled) setLiveAccuracy(true, ex.liveAccuracy.placement);
         if (ex.perfHud) setPerfHud(ex.perfHud);
         if (ex.nameColors) initNameColors(ex.nameColors);

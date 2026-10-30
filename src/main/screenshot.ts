@@ -5,12 +5,20 @@
 
 import { app, BrowserWindow, clipboard, ipcMain, nativeImage, shell } from 'electron';
 import { join } from 'path';
-import { mkdirSync, promises as fsp, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, promises as fsp, writeFileSync } from 'fs';
 import { config } from './config';
 import { electronLog } from './logger';
 
 function screenshotDir(): string {
   return join(app.getPath('userData'), 'KRH Client', 'screenshots');
+}
+
+let lastSavedPath = '';
+
+/** Show the last saved screenshot in the file manager (or just open the folder when there is none yet). */
+export async function revealLastScreenshot(): Promise<void> {
+  if (lastSavedPath && existsSync(lastSavedPath)) { shell.showItemInFolder(lastSavedPath); return; }
+  await openScreenshotsFolder();
 }
 
 function timestamp(): string {
@@ -28,11 +36,13 @@ async function deliver(win: BrowserWindow, image: Electron.NativeImage, kind: st
     await fsp.mkdir(dir, { recursive: true });
     savedPath = join(dir, `Krunker_${timestamp()}.png`);
     await fsp.writeFile(savedPath, image.toPNG());
+    lastSavedPath = savedPath;
   }
   const { width, height } = image.getSize();
   electronLog.log(`[KRH] ${kind} (${width}x${height}) copied to clipboard${savedPath ? ` + saved to ${savedPath}` : ''}`);
   if (!win.isDestroyed()) {
-    win.webContents.send('krh-toast', savedPath ? 'Screenshot copied + saved' : 'Screenshot copied to clipboard');
+    if (savedPath) win.webContents.send('krh-toast', 'Screenshot copied + saved', { label: 'Open folder', id: 'reveal-screenshot' });
+    else win.webContents.send('krh-toast', 'Screenshot copied to clipboard');
   }
 }
 

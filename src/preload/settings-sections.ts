@@ -29,7 +29,6 @@ import { gameSetting, setGameSettings, storedGameSettingIds } from './game-setti
 import { setChatDraft } from './chat-draft';
 import { setRankedAlert } from './ranked-alert';
 import { setAccountEndMessage } from './end-message';
-import { setShiftSnip } from './shift-snip';
 import { updateSocialMusicConfig } from './social-music';
 import { initHPCounter, destroyHPCounter } from './competitive';
 import { initSuspectPing, destroySuspectPing } from './kpd-call';
@@ -2042,12 +2041,6 @@ export function buildExtrasSection(body: HTMLElement, exConf: any): void {
     desc: 'Krunker\'s Match End Message is remembered for each account. An account without a message of its own sends nothing, so an alt never sends your main account\'s message.',
     checked: ex.accountEndMessage, instant: true,
     onChange: (v) => { ex.accountEndMessage = v; save(); void setAccountEndMessage(v, true); },
-  }));
-  conv.appendChild(createToggleRow({
-    label: 'Tap Shift To Snip',
-    desc: 'In menus, a quick tap of Shift starts the area snip, like Windows Snipping Tool: drag a box and the picture is copied. Does nothing during a match, where Shift is sprint and crouch. The Screenshot Area hotkey still works everywhere.',
-    checked: ex.shiftSnip, instant: true,
-    onChange: (v) => { ex.shiftSnip = v; save(); setShiftSnip(v); },
   }));
   conv.appendChild(createToggleRow({
     label: 'Fast Escape',

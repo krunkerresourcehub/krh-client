@@ -1,14 +1,7 @@
-// Interface languages and font families of Language & Font (generated from the same list the KRH website uses).
+// Font families of the dashboard Font card (the interface is English only).
 // Fonts with a Google family (5th value) are web fonts: the dashboard loads that one stylesheet only when the font is chosen.
-export type LangEntry = readonly [code: string, label: string, english: string];
 export type FontEntry = readonly [id: string, label: string, stack: string, group: string, google: string];
 
-export const LANGS: readonly LangEntry[] = [["en","English","English"],["id","Bahasa Indonesia","Indonesian"],["ms","Bahasa Melayu","Malay"],["ko","한국어","Korean"],["zh","中文（简体）","Chinese (Simplified)"],["ja","日本語","Japanese"],["es","Español","Spanish"],["pt","Português (Brasil)","Portuguese (Brazil)"],["ar","العربية","Arabic"],["bn","বাংলা","Bengali"],["bg","Български","Bulgarian"],["zt","中文（繁體）","Chinese (Traditional)"],["hr","Hrvatski","Croatian"],["cs","Čeština","Czech"],["da","Dansk","Danish"],["nl","Nederlands","Dutch"],["fil","Filipino","Filipino"],["fi","Suomi","Finnish"],["fr","Français","French"],["de","Deutsch","German"],["el","Ελληνικά","Greek"],["he","עברית","Hebrew"],["hi","हिन्दी","Hindi"],["hu","Magyar","Hungarian"],["it","Italiano","Italian"],["jv","Basa Jawa","Javanese"],["no","Norsk","Norwegian"],["fa","فارسی","Persian"],["pl","Polski","Polish"],["ro","Română","Romanian"],["ru","Русский","Russian"],["sk","Slovenčina","Slovak"],["sv","Svenska","Swedish"],["th","ไทย","Thai"],["tr","Türkçe","Turkish"],["uk","Українська","Ukrainian"],["ur","اردو","Urdu"],["vi","Tiếng Việt","Vietnamese"]];
-export const LANG_IDS: readonly string[] = LANGS.map((l) => l[0]);
-/** Languages written right to left. */
-export const RTL_LANGS: readonly string[] = ["ar","he","fa","ur"];
-/** The BCP 47 tag used for <html lang> when it differs from the code. */
-export const LANG_TAGS: Readonly<Record<string, string>> = {"zh":"zh-Hans","zt":"zh-Hant","no":"nb","pt":"pt-BR","fil":"fil"};
 
 export const FONTS: readonly FontEntry[] = [
   ["","Default","","",""],
